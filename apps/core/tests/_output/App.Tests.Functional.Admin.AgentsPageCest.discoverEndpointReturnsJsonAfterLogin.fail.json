@@ -1,0 +1,1 @@
+{"discovered":2,"results":[{"name":"knowledge-agent","status":"error","violations":["Manifest could not be parsed (invalid JSON or empty response)"]},{"name":"news-maker-agent","status":"error","violations":["Manifest could not be parsed (invalid JSON or empty response)"]}]}

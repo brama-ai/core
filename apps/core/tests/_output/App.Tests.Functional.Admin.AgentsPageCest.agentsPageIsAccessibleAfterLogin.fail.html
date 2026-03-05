@@ -1,0 +1,60 @@
+Codeception\Exception\Warning {#12420
+  #message: "Undefined array key "violations" at /var/www/html/src/Controller/Admin/AgentsController.php:28"
+  #code: 2
+  #file: "/var/www/html/src/Controller/Admin/AgentsController.php"
+  #line: 28
+  trace: {
+    /var/www/html/src/Controller/Admin/AgentsController.php:28 {
+      App\Controller\Admin\AgentsController::{closure:App\Controller\Admin\AgentsController::__invoke():24}
+      › }
+      › if (is_string($agent['violations'])) {
+      ›     $agent['violations'] = json_decode($agent['violations'], true, 512, JSON_THROW_ON_ERROR);
+      arguments: {
+        $errNum: 2
+        $errMsg: "Undefined array key "violations""
+        $errFile: "/var/www/html/src/Controller/Admin/AgentsController.php"
+        $errLine: 28
+      }
+    }
+    App\Controller\Admin\AgentsController::{closure:App\Controller\Admin\AgentsController::__invoke():24}() {}
+    /var/www/html/src/Controller/Admin/AgentsController.php:24 { …}
+    /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:183 { …}
+    /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:76 { …}
+    /var/www/html/vendor/symfony/http-kernel/Kernel.php:193 { …}
+    /var/www/html/vendor/symfony/http-kernel/HttpKernelBrowser.php:62 { …}
+    /var/www/html/vendor/codeception/module-symfony/src/Codeception/Lib/Connector/Symfony.php:48 { …}
+    /var/www/html/vendor/symfony/browser-kit/AbstractBrowser.php:398 { …}
+    /var/www/html/vendor/symfony/browser-kit/AbstractBrowser.php:616 { …}
+    /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:1939 { …}
+    /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:245 { …}
+    /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:161 { …}
+    /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:700 { …}
+    /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:482 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Step.php:267 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Scenario.php:70 { …}
+    /var/www/html/tests/_support/_generated/FunctionalTesterActions.php:5663 { …}
+    /var/www/html/tests/Functional/Admin/AgentsPageCest.php:11 { …}
+    /var/www/html/tests/Functional/Admin/AgentsPageCest.php:26 { …}
+    App\Tests\Functional\Admin\AgentsPageCest->agentsPageIsAccessibleAfterLogin() {}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Lib/Di.php:118 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:181 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:193 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:126 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Test.php:157 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Suite.php:131 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/SuiteManager.php:141 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:244 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:206 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php:585 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php:406 { …}
+    /var/www/html/vendor/symfony/console/Command/Command.php:341 { …}
+    /var/www/html/vendor/symfony/console/Application.php:1094 { …}
+    /var/www/html/vendor/symfony/console/Application.php:356 { …}
+    /var/www/html/vendor/symfony/console/Application.php:195 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Application.php:107 { …}
+    /var/www/html/vendor/codeception/codeception/app.php:63 { …}
+    /var/www/html/vendor/codeception/codeception/app.php:64 { …}
+    /var/www/html/vendor/codeception/codeception/codecept:7 { …}
+    /var/www/html/vendor/bin/codecept:119 { …}
+  }
+}

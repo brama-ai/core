@@ -6,6 +6,7 @@ namespace App\AgentRegistry;
 
 use Doctrine\DBAL\Connection;
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Log\LoggerInterface;
 
 final class AgentRegistryRepository implements AgentRegistryInterface
 {
@@ -15,6 +16,7 @@ final class AgentRegistryRepository implements AgentRegistryInterface
     public function __construct(
         private readonly Connection $connection,
         private readonly CacheItemPoolInterface $cache,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -40,6 +42,7 @@ final class AgentRegistryRepository implements AgentRegistryInterface
                 SQL,
                 ['name' => $name, 'version' => $version, 'manifest' => $manifestJson],
             );
+            $this->logger->info('Agent registered', ['agent' => $name, 'version' => $version]);
         } else {
             $this->connection->executeStatement(
                 <<<'SQL'
@@ -49,6 +52,7 @@ final class AgentRegistryRepository implements AgentRegistryInterface
                 SQL,
                 ['name' => $name, 'version' => $version, 'manifest' => $manifestJson],
             );
+            $this->logger->info('Agent updated', ['agent' => $name, 'version' => $version]);
         }
 
         $this->invalidateCache();
@@ -66,6 +70,7 @@ final class AgentRegistryRepository implements AgentRegistryInterface
         );
 
         if ($rows > 0) {
+            $this->logger->info('Agent enabled', ['agent' => $name, 'enabled_by' => $enabledBy]);
             $this->invalidateCache();
         }
 
@@ -84,6 +89,7 @@ final class AgentRegistryRepository implements AgentRegistryInterface
         );
 
         if ($rows > 0) {
+            $this->logger->info('Agent disabled', ['agent' => $name]);
             $this->invalidateCache();
         }
 

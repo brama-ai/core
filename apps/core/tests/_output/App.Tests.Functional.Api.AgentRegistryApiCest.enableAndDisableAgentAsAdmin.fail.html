@@ -1,0 +1,68 @@
+Symfony\Component\HttpKernel\Exception\BadRequestHttpException {#13912
+  #message: "The key "_username" must be a string, "NULL" given."
+  #code: 0
+  #file: "/var/www/html/vendor/symfony/security-http/Authenticator/FormLoginAuthenticator.php"
+  #line: 125
+  -statusCode: 400
+  -headers: []
+  trace: {
+    /var/www/html/vendor/symfony/security-http/Authenticator/FormLoginAuthenticator.php:125 { …}
+    /var/www/html/vendor/symfony/security-http/Authenticator/FormLoginAuthenticator.php:80 { …}
+    /var/www/html/vendor/symfony/security-http/Authenticator/Debug/TraceableAuthenticator.php:74 { …}
+    /var/www/html/vendor/symfony/security-http/Authentication/AuthenticatorManager.php:185 { …}
+    /var/www/html/vendor/symfony/security-http/Authentication/AuthenticatorManager.php:167 { …}
+    /var/www/html/vendor/symfony/security-http/Authentication/AuthenticatorManager.php:149 { …}
+    /var/www/html/vendor/symfony/security-http/Firewall/AuthenticatorManagerListener.php:38 { …}
+    /var/www/html/vendor/symfony/security-http/Authenticator/Debug/TraceableAuthenticatorManagerListener.php:58 { …}
+    /var/www/html/vendor/symfony/security-bundle/Debug/WrappedLazyListener.php:46 { …}
+    /var/www/html/vendor/symfony/security-bundle/Debug/TraceableFirewallListener.php:94 { …}
+    /var/www/html/vendor/symfony/security-http/Firewall.php:93 { …}
+    /var/www/html/vendor/symfony/event-dispatcher/Debug/WrappedListener.php:115 { …}
+    /var/www/html/vendor/symfony/event-dispatcher/EventDispatcher.php:206 { …}
+    /var/www/html/vendor/symfony/event-dispatcher/EventDispatcher.php:56 { …}
+    /var/www/html/vendor/symfony/event-dispatcher/Debug/TraceableEventDispatcher.php:126 { …}
+    /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:159 { …}
+    /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:76 { …}
+    /var/www/html/vendor/symfony/http-kernel/Kernel.php:193 { …}
+    /var/www/html/vendor/symfony/http-kernel/HttpKernelBrowser.php:62 { …}
+    /var/www/html/vendor/codeception/module-symfony/src/Codeception/Lib/Connector/Symfony.php:48 { …}
+    /var/www/html/vendor/symfony/browser-kit/AbstractBrowser.php:398 { …}
+    /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:243 { …}
+    /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:161 { …}
+    /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:708 { …}
+    /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:482 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Step.php:267 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Scenario.php:70 { …}
+    /var/www/html/tests/_support/_generated/FunctionalTesterActions.php:5663 {
+      FunctionalTester->sendPost(string $url, $params = [], array $files = [])
+      › public function sendPost(string $url, $params = [], array $files = []) {
+      ›     return $this->getScenario()->runStep(new \Codeception\Step\Action('sendPost', func_get_args()));
+      › }
+      arguments: {
+        $step: Codeception\Step\Action {#14124 …}
+      }
+    }
+    /var/www/html/tests/Functional/Api/AgentRegistryApiCest.php:13 { …}
+    /var/www/html/tests/Functional/Api/AgentRegistryApiCest.php:115 { …}
+    App\Tests\Functional\Api\AgentRegistryApiCest->enableAndDisableAgentAsAdmin() {}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Lib/Di.php:118 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:181 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:193 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:126 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Test.php:157 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Suite.php:131 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/SuiteManager.php:141 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:244 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:206 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php:374 { …}
+    /var/www/html/vendor/symfony/console/Command/Command.php:341 { …}
+    /var/www/html/vendor/symfony/console/Application.php:1094 { …}
+    /var/www/html/vendor/symfony/console/Application.php:356 { …}
+    /var/www/html/vendor/symfony/console/Application.php:195 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Application.php:107 { …}
+    /var/www/html/vendor/codeception/codeception/app.php:63 { …}
+    /var/www/html/vendor/codeception/codeception/app.php:64 { …}
+    /var/www/html/vendor/codeception/codeception/codecept:7 { …}
+    /var/www/html/vendor/bin/codecept:119 { …}
+  }
+}

@@ -1,6 +1,12 @@
 twig:
     default_path: '%kernel.project_dir%/templates'
     file_name_pattern: '*.twig'
+    globals:
+        admin_openclaw_url: '%app.admin_openclaw_url%'
+        admin_langfuse_url: '%app.admin_langfuse_url%'
+        admin_traefik_url: '%app.admin_traefik_url%'
+        admin_litellm_url: '%app.admin_litellm_url%'
+        openclaw_gateway_token: '%app.openclaw_gateway_token%'
 
 when@test:
     twig:

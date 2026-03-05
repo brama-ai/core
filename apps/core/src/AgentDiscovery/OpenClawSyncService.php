@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\AgentDiscovery;
 
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Log\LoggerInterface;
 
 final class OpenClawSyncService
 {
@@ -14,6 +15,7 @@ final class OpenClawSyncService
     public function __construct(
         private readonly DiscoveryBuilder $discoveryBuilder,
         private readonly CacheItemPoolInterface $cache,
+        private readonly LoggerInterface $logger,
         private readonly string $pushUrl,
         private readonly string $gatewayToken,
     ) {
@@ -35,12 +37,26 @@ final class OpenClawSyncService
             $statusCode = $this->postDiscovery($payload);
             $success = $statusCode >= 200 && $statusCode < 300;
 
+            if ($success) {
+                $this->logger->info('Discovery pushed to OpenClaw', [
+                    'http_status' => $statusCode,
+                ]);
+            } else {
+                $this->logger->warning('Discovery push to OpenClaw failed', [
+                    'http_status' => $statusCode,
+                ]);
+            }
+
             $this->saveSyncStatus([
                 'status' => $success ? 'ok' : 'failed',
                 'timestamp' => time(),
                 'error' => $success ? null : "HTTP {$statusCode}",
             ]);
         } catch (\Throwable $e) {
+            $this->logger->error('Discovery push to OpenClaw exception', [
+                'exception' => $e,
+            ]);
+
             $this->saveSyncStatus([
                 'status' => 'failed',
                 'timestamp' => time(),

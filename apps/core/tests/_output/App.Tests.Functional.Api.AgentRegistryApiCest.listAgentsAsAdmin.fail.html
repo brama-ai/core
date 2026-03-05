@@ -1,0 +1,133 @@
+Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException {#8202
+  #message: "Access Denied. The user doesn't have ROLE_ADMIN."
+  #code: 0
+  #file: "/var/www/html/vendor/symfony/http-kernel/Exception/HttpException.php"
+  #line: 35
+  -previous: Symfony\Component\Security\Core\Exception\AccessDeniedException {#8247
+    #message: "Access Denied. The user doesn't have ROLE_ADMIN."
+    #code: 403
+    #file: "/var/www/html/vendor/symfony/security-http/EventListener/IsGrantedAttributeListener.php"
+    #line: 81
+    -attributes: array:1 [
+      0 => "ROLE_ADMIN"
+    ]
+    -subject: null
+    -accessDecision: Symfony\Component\Security\Core\Authorization\AccessDecision {#3957
+      +strategy: "affirmative"
+      +isGranted: false
+      +votes: array:1 [
+        0 => Symfony\Component\Security\Core\Authorization\Voter\Vote {#3202
+          +voter: "Symfony\Component\Security\Core\Authorization\Voter\RoleVoter"
+          +result: -1
+          +reasons: array:1 [
+            0 => "The user doesn't have ROLE_ADMIN."
+          ]
+          +extraData: []
+        }
+      ]
+    }
+    trace: {
+      /var/www/html/vendor/symfony/security-http/EventListener/IsGrantedAttributeListener.php:81 { …}
+      /var/www/html/vendor/symfony/event-dispatcher/Debug/WrappedListener.php:115 { …}
+      /var/www/html/vendor/symfony/event-dispatcher/EventDispatcher.php:206 { …}
+      /var/www/html/vendor/symfony/event-dispatcher/EventDispatcher.php:56 { …}
+      /var/www/html/vendor/symfony/event-dispatcher/Debug/TraceableEventDispatcher.php:126 { …}
+      /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:178 { …}
+      /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:76 { …}
+      /var/www/html/vendor/symfony/http-kernel/Kernel.php:193 { …}
+      /var/www/html/vendor/symfony/http-kernel/HttpKernelBrowser.php:62 { …}
+      /var/www/html/vendor/codeception/module-symfony/src/Codeception/Lib/Connector/Symfony.php:48 { …}
+      /var/www/html/vendor/symfony/browser-kit/AbstractBrowser.php:398 { …}
+      /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:243 { …}
+      /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:161 { …}
+      /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:700 { …}
+      /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:523 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Step.php:267 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Scenario.php:70 { …}
+      /var/www/html/tests/_support/_generated/FunctionalTesterActions.php:5713 {
+        FunctionalTester->sendGet(string $url, array $params = [])
+        › public function sendGet(string $url, array $params = []) {
+        ›     return $this->getScenario()->runStep(new \Codeception\Step\Action('sendGet', func_get_args()));
+        › }
+        arguments: {
+          $step: Codeception\Step\Action {#8802 …}
+        }
+      }
+      /var/www/html/tests/Functional/Api/AgentRegistryApiCest.php:102 { …}
+      App\Tests\Functional\Api\AgentRegistryApiCest->listAgentsAsAdmin() {}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Lib/Di.php:118 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:181 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:193 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:126 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Test.php:157 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Suite.php:131 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/SuiteManager.php:141 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:244 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:206 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php:585 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php:406 { …}
+      /var/www/html/vendor/symfony/console/Command/Command.php:341 { …}
+      /var/www/html/vendor/symfony/console/Application.php:1094 { …}
+      /var/www/html/vendor/symfony/console/Application.php:356 { …}
+      /var/www/html/vendor/symfony/console/Application.php:195 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Application.php:107 { …}
+      /var/www/html/vendor/codeception/codeception/app.php:63 { …}
+      /var/www/html/vendor/codeception/codeception/app.php:64 { …}
+      /var/www/html/vendor/codeception/codeception/codecept:7 { …}
+      /var/www/html/vendor/bin/codecept:119 { …}
+    }
+  }
+  -statusCode: 403
+  -headers: []
+  trace: {
+    /var/www/html/vendor/symfony/http-kernel/Exception/HttpException.php:35 { …}
+    /var/www/html/vendor/symfony/http-kernel/EventListener/ErrorListener.php:68 { …}
+    /var/www/html/vendor/symfony/event-dispatcher/Debug/WrappedListener.php:115 { …}
+    /var/www/html/vendor/symfony/event-dispatcher/EventDispatcher.php:206 { …}
+    /var/www/html/vendor/symfony/event-dispatcher/EventDispatcher.php:56 { …}
+    /var/www/html/vendor/symfony/event-dispatcher/Debug/TraceableEventDispatcher.php:126 { …}
+    /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:241 { …}
+    /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:91 { …}
+    /var/www/html/vendor/symfony/http-kernel/Kernel.php:193 { …}
+    /var/www/html/vendor/symfony/http-kernel/HttpKernelBrowser.php:62 { …}
+    /var/www/html/vendor/codeception/module-symfony/src/Codeception/Lib/Connector/Symfony.php:48 { …}
+    /var/www/html/vendor/symfony/browser-kit/AbstractBrowser.php:398 { …}
+    /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:243 { …}
+    /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:161 { …}
+    /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:700 { …}
+    /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:523 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Step.php:267 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Scenario.php:70 { …}
+    /var/www/html/tests/_support/_generated/FunctionalTesterActions.php:5713 {
+      FunctionalTester->sendGet(string $url, array $params = [])
+      › public function sendGet(string $url, array $params = []) {
+      ›     return $this->getScenario()->runStep(new \Codeception\Step\Action('sendGet', func_get_args()));
+      › }
+      arguments: {
+        $step: Codeception\Step\Action {#8802 …}
+      }
+    }
+    /var/www/html/tests/Functional/Api/AgentRegistryApiCest.php:102 { …}
+    App\Tests\Functional\Api\AgentRegistryApiCest->listAgentsAsAdmin() {}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Lib/Di.php:118 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:181 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:193 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:126 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Test.php:157 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Suite.php:131 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/SuiteManager.php:141 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:244 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:206 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php:585 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php:406 { …}
+    /var/www/html/vendor/symfony/console/Command/Command.php:341 { …}
+    /var/www/html/vendor/symfony/console/Application.php:1094 { …}
+    /var/www/html/vendor/symfony/console/Application.php:356 { …}
+    /var/www/html/vendor/symfony/console/Application.php:195 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Application.php:107 { …}
+    /var/www/html/vendor/codeception/codeception/app.php:63 { …}
+    /var/www/html/vendor/codeception/codeception/app.php:64 { …}
+    /var/www/html/vendor/codeception/codeception/codecept:7 { …}
+    /var/www/html/vendor/bin/codecept:119 { …}
+  }
+}

@@ -13,7 +13,7 @@ security:
             security: false
 
         admin:
-            pattern: ^/(admin|api/v1/internal)
+            pattern: ^/(admin|api/v1/internal|edge/auth)
             provider: admin_users
             form_login:
                 login_path: admin_login
@@ -27,6 +27,7 @@ security:
                 target: admin_login
 
     access_control:
+        - { path: ^/edge/auth, roles: PUBLIC_ACCESS }
         - { path: ^/admin/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1/internal/agents/register$, roles: PUBLIC_ACCESS }
         - { path: ^/admin, roles: ROLE_ADMIN }

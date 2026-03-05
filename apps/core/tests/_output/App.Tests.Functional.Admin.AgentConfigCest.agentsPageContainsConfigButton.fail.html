@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Управління агентами — Admin</title>
+    <link rel="stylesheet" href="/css/admin.css">
+    </head>
+<body>
+    <div class="admin-layout">
+                <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                AI Platform
+            </div>
+            <nav class="sidebar-nav">
+                                <a href="/admin/dashboard" class="">
+                    <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                    Статистика
+                </a>
+                <a href="/admin/chats" class="">
+                    <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+                    Управління чатами
+                </a>
+                <a href="/admin/agents" class="active">
+                    <svg viewBox="0 0 24 24"><path d="M20 9V7c0-1.1-.9-2-2-2h-3c0-1.66-1.34-3-3-3S9 3.34 9 5H6c-1.1 0-2 .9-2 2v2c-1.66 0-3 1.34-3 3s1.34 3 3 3v4c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4c1.66 0 3-1.34 3-3s-1.34-3-3-3zM7.5 11.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S9.83 13 9 13s-1.5-.67-1.5-1.5zM16 17H8v-2h8v2zm-1-4c-.83 0-1.5-.67-1.5-1.5S14.17 10 15 10s1.5.67 1.5 1.5S15.83 13 15 13z"/></svg>
+                    Управління агентами
+                </a>
+                <a href="/admin/settings" class="">
+                    <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4 2.81a.49.49 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41L9.25 5.35c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 00-.59.22L2.73 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1112 8.4a3.6 3.6 0 010 7.2z"/></svg>
+                    Налаштування
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                AI Community Platform v0.1
+            </div>
+        </aside>
+
+                <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+                <div class="main-area">
+            <header class="top-header">
+                <div style="display:flex;align-items:center;gap:.75rem;">
+                    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Меню">
+                        <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+                    </button>
+                    <h1>Управління агентами</h1>
+                </div>
+                <div class="header-right">
+                    <span style="color:var(--text-muted);font-size:.85rem;">admin</span>
+                    <a href="/admin/logout">Вийти</a>
+                </div>
+            </header>
+            <main class="content-area">
+                    <div class="action-bar">
+        <span id="discoverResult" class="action-result" style="display:none"></span>
+        <button class="btn btn-discover" id="discoverBtn" onclick="runDiscovery()">Виявити агентів</button>
+    </div>
+
+    <div class="glass-card" style="padding:0;overflow:hidden;">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Назва</th>
+                    <th>Версія</th>
+                    <th>Опис</th>
+                    <th>Статус</th>
+                    <th>Здоров'я</th>
+                    <th>Оновлено</th>
+                    <th>Дії</th>
+                </tr>
+            </thead>
+            <tbody>
+                                                                                    <tr data-agent-name="knowledge-agent">
+                            <td>
+                                <strong>knowledge-agent</strong>
+                                <details>
+                                    <summary>Деталі маніфесту</summary>
+                                    <div>
+                                                                                                                                                                    <p><strong>Можливості:</strong> knowledge.search, knowledge.upload</p>
+                                                                                                                                                                    <p><strong>A2A:</strong> http://knowledge-agent/api/v1/knowledge/a2a</p>
+                                                                                                                    </div>
+                                </details>
+                            </td>
+                            <td>1.0.0</td>
+                            <td>Knowledge base management and semantic search</td>
+                            <td>
+                                                                    <span class="badge badge-disabled">Вимкнено</span>
+                                                            </td>
+                            <td>
+                                                                    <span class="badge badge-healthy">Healthy</span>
+                                                            </td>
+                            <td>05.03.2026 08:41</td>
+                            <td>
+                                                                    <button type="button" class="btn btn-enable"
+                                            onclick="toggleAgent('knowledge\u002Dagent', 'enable')">Увімкнути</button>
+                                                                <a href="/admin/agents/knowledge-agent/settings" class="btn btn-settings">Налаштування</a>
+                            </td>
+                        </tr>
+                                                                    <tr data-agent-name="news-maker-agent">
+                            <td>
+                                <strong>news-maker-agent</strong>
+                                <details>
+                                    <summary>Деталі маніфесту</summary>
+                                    <div>
+                                                                                                                                                                    <p><strong>Можливості:</strong> news.publish, news.curate</p>
+                                                                                                                                                                    <p><strong>A2A:</strong> http://news-maker-agent:8000/api/v1/a2a</p>
+                                                                                                                    </div>
+                                </details>
+                            </td>
+                            <td>0.1.0</td>
+                            <td>AI-powered news curation and publishing</td>
+                            <td>
+                                                                    <span class="badge badge-enabled">Увімкнено</span>
+                                                            </td>
+                            <td>
+                                                                    <span class="badge badge-healthy">Healthy</span>
+                                                            </td>
+                            <td>05.03.2026 08:46</td>
+                            <td>
+                                                                    <button type="button" class="btn btn-disable"
+                                            onclick="toggleAgent('news\u002Dmaker\u002Dagent', 'disable')">Вимкнути</button>
+                                                                <a href="/admin/agents/news-maker-agent/settings" class="btn btn-settings">Налаштування</a>
+                            </td>
+                        </tr>
+                                                </tbody>
+        </table>
+    </div>
+
+        <div class="modal-overlay" id="violationsModal" onclick="closeModal(event)">
+        <div class="modal">
+            <h3 id="modalTitle">Порушення конвенцій</h3>
+            <ul id="modalList"></ul>
+            <button class="btn btn-disable modal-close" onclick="document.getElementById('violationsModal').classList.remove('active')">Закрити</button>
+        </div>
+    </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('sidebarOverlay').classList.toggle('active');
+    }
+    </script>
+    <script>
+function runDiscovery() {
+    var btn = document.getElementById('discoverBtn');
+    var result = document.getElementById('discoverResult');
+    btn.disabled = true;
+    btn.textContent = 'Виявлення...';
+    result.style.display = 'none';
+
+    fetch('/admin/agents/discover', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        result.textContent = 'Виявлено: ' + data.discovered + ' агент(ів)';
+        result.style.color = 'var(--success)';
+        result.style.display = 'inline';
+        btn.disabled = false;
+        btn.textContent = 'Виявити агентів';
+        setTimeout(function() { location.reload(); }, 1200);
+    })
+    .catch(function() {
+        result.textContent = 'Помилка запиту';
+        result.style.color = 'var(--danger)';
+        result.style.display = 'inline';
+        btn.disabled = false;
+        btn.textContent = 'Виявити агентів';
+    });
+}
+
+function toggleAgent(name, action) {
+    var label = action === 'enable' ? 'Увімкнути' : 'Вимкнути';
+    if (!confirm(label + ' агент ' + name + '?')) return;
+
+    fetch('/api/v1/internal/agents/' + encodeURIComponent(name) + '/' + action, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) {
+        if (r.ok) { location.reload(); }
+        else { alert('Помилка: ' + r.status); }
+    })
+    .catch(function() { alert('Помилка мережі'); });
+}
+
+function showViolations(name, violations) {
+    var list = document.getElementById('modalList');
+    document.getElementById('modalTitle').textContent = 'Порушення: ' + name;
+    list.innerHTML = '';
+    var items = typeof violations === 'string' ? JSON.parse(violations) : violations;
+    items.forEach(function(v) {
+        var li = document.createElement('li');
+        li.textContent = v;
+        list.appendChild(li);
+    });
+    document.getElementById('violationsModal').classList.add('active');
+}
+
+function closeModal(e) {
+    if (e.target === document.getElementById('violationsModal')) {
+        e.target.classList.remove('active');
+    }
+}
+</script>
+</body>
+</html>

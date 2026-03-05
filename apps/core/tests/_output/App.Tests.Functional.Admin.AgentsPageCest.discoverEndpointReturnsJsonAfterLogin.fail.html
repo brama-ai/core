@@ -1,0 +1,244 @@
+Doctrine\DBAL\Exception\InvalidFieldNameException {#15319
+  #message: """
+    An exception occurred while executing a query: SQLSTATE[42703]: Undefined column: 7 ERROR:  column "violations" of relation "agent_registry" does not exist\n
+    LINE 1: ...ersion, manifest, config, enabled, health_status, violations...\n
+                                                                 ^
+    """
+  #code: 7
+  #file: "/var/www/html/vendor/doctrine/dbal/src/Driver/API/PostgreSQL/ExceptionConverter.php"
+  #line: 69
+  -previous: Doctrine\DBAL\Driver\PDO\Exception {#15315
+    #message: """
+      SQLSTATE[42703]: Undefined column: 7 ERROR:  column "violations" of relation "agent_registry" does not exist\n
+      LINE 1: ...ersion, manifest, config, enabled, health_status, violations...\n
+                                                                   ^
+      """
+    #code: 7
+    #file: "/var/www/html/vendor/doctrine/dbal/src/Driver/PDO/Exception.php"
+    #line: 24
+    -previous: PDOException {#15314
+      #message: """
+        SQLSTATE[42703]: Undefined column: 7 ERROR:  column "violations" of relation "agent_registry" does not exist\n
+        LINE 1: ...ersion, manifest, config, enabled, health_status, violations...\n
+                                                                     ^
+        """
+      #code: "42703"
+      #file: "/var/www/html/vendor/doctrine/dbal/src/Driver/PDO/Statement.php"
+      #line: 55
+      +errorInfo: array:3 [
+        0 => "42703"
+        1 => 7
+        2 => """
+          ERROR:  column "violations" of relation "agent_registry" does not exist\n
+          LINE 1: ...ersion, manifest, config, enabled, health_status, violations...\n
+                                                                       ^
+          """
+      ]
+      trace: {
+        /var/www/html/vendor/doctrine/dbal/src/Driver/PDO/Statement.php:55 { …}
+        /var/www/html/vendor/doctrine/dbal/src/Driver/Middleware/AbstractStatementMiddleware.php:24 { …}
+        /var/www/html/vendor/symfony/doctrine-bridge/Middleware/Debug/Statement.php:58 { …}
+        /var/www/html/vendor/doctrine/dbal/src/Connection.php:905 { …}
+        /var/www/html/src/AgentRegistry/AgentRegistryRepository.php:130 {
+          App\AgentRegistry\AgentRegistryRepository->upsertFromDiscovery(string $name, ?array $manifest, string $status, array $violations): void
+          › 
+          › $this->connection->executeStatement(
+          ›     <<<'SQL'
+          arguments: {
+            $sql: """
+              INSERT INTO agent_registry (name, version, manifest, config, enabled, health_status, violations, registered_at, updated_at)\n
+              VALUES (?, ?, ?, '{}', FALSE, ?, ?, now(), now())\n
+              ON CONFLICT (name) DO UPDATE SET\n
+                  version       = EXCLUDED.version,\n
+                  manifest      = EXCLUDED.manifest,\n
+                  health_status = EXCLUDED.health_status,\n
+                  violations    = EXCLUDED.violations,\n
+                  updated_at    = now()
+              """
+            $params: array:5 [ …5]
+          }
+        }
+        /var/www/html/src/Controller/Admin/AgentRunDiscoveryController.php:41 { …}
+        /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:183 { …}
+        /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:76 { …}
+        /var/www/html/vendor/symfony/http-kernel/Kernel.php:193 { …}
+        /var/www/html/vendor/symfony/http-kernel/HttpKernelBrowser.php:62 { …}
+        /var/www/html/vendor/codeception/module-symfony/src/Codeception/Lib/Connector/Symfony.php:48 { …}
+        /var/www/html/vendor/symfony/browser-kit/AbstractBrowser.php:398 { …}
+        /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:243 { …}
+        /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:161 { …}
+        /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:700 { …}
+        /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:482 { …}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/Step.php:267 { …}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/Scenario.php:70 { …}
+        /var/www/html/tests/_support/_generated/FunctionalTesterActions.php:5663 { …}
+        /var/www/html/tests/Functional/Admin/AgentsPageCest.php:69 { …}
+        App\Tests\Functional\Admin\AgentsPageCest->discoverEndpointReturnsJsonAfterLogin() {}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/Lib/Di.php:118 { …}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:181 { …}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:193 { …}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:126 { …}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Test.php:157 { …}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/Suite.php:131 { …}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/SuiteManager.php:141 { …}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:244 { …}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:206 { …}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php:585 { …}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php:406 { …}
+        /var/www/html/vendor/symfony/console/Command/Command.php:341 { …}
+        /var/www/html/vendor/symfony/console/Application.php:1094 { …}
+        /var/www/html/vendor/symfony/console/Application.php:356 { …}
+        /var/www/html/vendor/symfony/console/Application.php:195 { …}
+        /var/www/html/vendor/codeception/codeception/src/Codeception/Application.php:107 { …}
+        /var/www/html/vendor/codeception/codeception/app.php:63 { …}
+        /var/www/html/vendor/codeception/codeception/app.php:64 { …}
+        /var/www/html/vendor/codeception/codeception/codecept:7 { …}
+        /var/www/html/vendor/bin/codecept:119 { …}
+      }
+    }
+    -sqlState: "42703"
+    trace: {
+      /var/www/html/vendor/doctrine/dbal/src/Driver/PDO/Exception.php:24 { …}
+      /var/www/html/vendor/doctrine/dbal/src/Driver/PDO/Statement.php:57 { …}
+      /var/www/html/vendor/doctrine/dbal/src/Driver/Middleware/AbstractStatementMiddleware.php:24 { …}
+      /var/www/html/vendor/symfony/doctrine-bridge/Middleware/Debug/Statement.php:58 { …}
+      /var/www/html/vendor/doctrine/dbal/src/Connection.php:905 { …}
+      /var/www/html/src/AgentRegistry/AgentRegistryRepository.php:130 {
+        App\AgentRegistry\AgentRegistryRepository->upsertFromDiscovery(string $name, ?array $manifest, string $status, array $violations): void
+        › 
+        › $this->connection->executeStatement(
+        ›     <<<'SQL'
+        arguments: {
+          $sql: """
+            INSERT INTO agent_registry (name, version, manifest, config, enabled, health_status, violations, registered_at, updated_at)\n
+            VALUES (?, ?, ?, '{}', FALSE, ?, ?, now(), now())\n
+            ON CONFLICT (name) DO UPDATE SET\n
+                version       = EXCLUDED.version,\n
+                manifest      = EXCLUDED.manifest,\n
+                health_status = EXCLUDED.health_status,\n
+                violations    = EXCLUDED.violations,\n
+                updated_at    = now()
+            """
+          $params: array:5 [ …5]
+        }
+      }
+      /var/www/html/src/Controller/Admin/AgentRunDiscoveryController.php:41 { …}
+      /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:183 { …}
+      /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:76 { …}
+      /var/www/html/vendor/symfony/http-kernel/Kernel.php:193 { …}
+      /var/www/html/vendor/symfony/http-kernel/HttpKernelBrowser.php:62 { …}
+      /var/www/html/vendor/codeception/module-symfony/src/Codeception/Lib/Connector/Symfony.php:48 { …}
+      /var/www/html/vendor/symfony/browser-kit/AbstractBrowser.php:398 { …}
+      /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:243 { …}
+      /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:161 { …}
+      /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:700 { …}
+      /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:482 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Step.php:267 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Scenario.php:70 { …}
+      /var/www/html/tests/_support/_generated/FunctionalTesterActions.php:5663 { …}
+      /var/www/html/tests/Functional/Admin/AgentsPageCest.php:69 { …}
+      App\Tests\Functional\Admin\AgentsPageCest->discoverEndpointReturnsJsonAfterLogin() {}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Lib/Di.php:118 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:181 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:193 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:126 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Test.php:157 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Suite.php:131 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/SuiteManager.php:141 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:244 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:206 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php:585 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php:406 { …}
+      /var/www/html/vendor/symfony/console/Command/Command.php:341 { …}
+      /var/www/html/vendor/symfony/console/Application.php:1094 { …}
+      /var/www/html/vendor/symfony/console/Application.php:356 { …}
+      /var/www/html/vendor/symfony/console/Application.php:195 { …}
+      /var/www/html/vendor/codeception/codeception/src/Codeception/Application.php:107 { …}
+      /var/www/html/vendor/codeception/codeception/app.php:63 { …}
+      /var/www/html/vendor/codeception/codeception/app.php:64 { …}
+      /var/www/html/vendor/codeception/codeception/codecept:7 { …}
+      /var/www/html/vendor/bin/codecept:119 { …}
+    }
+  }
+  -query: Doctrine\DBAL\Query {#15317
+    -sql: """
+      INSERT INTO agent_registry (name, version, manifest, config, enabled, health_status, violations, registered_at, updated_at)\n
+      VALUES (?, ?, ?, '{}', FALSE, ?, ?, now(), now())\n
+      ON CONFLICT (name) DO UPDATE SET\n
+          version       = EXCLUDED.version,\n
+          manifest      = EXCLUDED.manifest,\n
+          health_status = EXCLUDED.health_status,\n
+          violations    = EXCLUDED.violations,\n
+          updated_at    = now()
+      """
+    -params: array:5 [
+      0 => "knowledge-agent"
+      1 => "0.0.0"
+      2 => "{}"
+      3 => "error"
+      4 => "["Manifest could not be parsed (invalid JSON or empty response)"]"
+    ]
+    -types: []
+  }
+  trace: {
+    /var/www/html/vendor/doctrine/dbal/src/Driver/API/PostgreSQL/ExceptionConverter.php:69 { …}
+    /var/www/html/vendor/doctrine/dbal/src/Connection.php:1460 { …}
+    /var/www/html/vendor/doctrine/dbal/src/Connection.php:1396 { …}
+    /var/www/html/vendor/doctrine/dbal/src/Connection.php:911 { …}
+    /var/www/html/src/AgentRegistry/AgentRegistryRepository.php:130 {
+      App\AgentRegistry\AgentRegistryRepository->upsertFromDiscovery(string $name, ?array $manifest, string $status, array $violations): void
+      › 
+      › $this->connection->executeStatement(
+      ›     <<<'SQL'
+      arguments: {
+        $sql: """
+          INSERT INTO agent_registry (name, version, manifest, config, enabled, health_status, violations, registered_at, updated_at)\n
+          VALUES (?, ?, ?, '{}', FALSE, ?, ?, now(), now())\n
+          ON CONFLICT (name) DO UPDATE SET\n
+              version       = EXCLUDED.version,\n
+              manifest      = EXCLUDED.manifest,\n
+              health_status = EXCLUDED.health_status,\n
+              violations    = EXCLUDED.violations,\n
+              updated_at    = now()
+          """
+        $params: array:5 [ …5]
+      }
+    }
+    /var/www/html/src/Controller/Admin/AgentRunDiscoveryController.php:41 { …}
+    /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:183 { …}
+    /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:76 { …}
+    /var/www/html/vendor/symfony/http-kernel/Kernel.php:193 { …}
+    /var/www/html/vendor/symfony/http-kernel/HttpKernelBrowser.php:62 { …}
+    /var/www/html/vendor/codeception/module-symfony/src/Codeception/Lib/Connector/Symfony.php:48 { …}
+    /var/www/html/vendor/symfony/browser-kit/AbstractBrowser.php:398 { …}
+    /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:243 { …}
+    /var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:161 { …}
+    /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:700 { …}
+    /var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php:482 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Step.php:267 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Scenario.php:70 { …}
+    /var/www/html/tests/_support/_generated/FunctionalTesterActions.php:5663 { …}
+    /var/www/html/tests/Functional/Admin/AgentsPageCest.php:69 { …}
+    App\Tests\Functional\Admin\AgentsPageCest->discoverEndpointReturnsJsonAfterLogin() {}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Lib/Di.php:118 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:181 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:193 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php:126 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Test/Test.php:157 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Suite.php:131 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/SuiteManager.php:141 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:244 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php:206 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php:585 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php:406 { …}
+    /var/www/html/vendor/symfony/console/Command/Command.php:341 { …}
+    /var/www/html/vendor/symfony/console/Application.php:1094 { …}
+    /var/www/html/vendor/symfony/console/Application.php:356 { …}
+    /var/www/html/vendor/symfony/console/Application.php:195 { …}
+    /var/www/html/vendor/codeception/codeception/src/Codeception/Application.php:107 { …}
+    /var/www/html/vendor/codeception/codeception/app.php:63 { …}
+    /var/www/html/vendor/codeception/codeception/app.php:64 { …}
+    /var/www/html/vendor/codeception/codeception/codecept:7 { …}
+    /var/www/html/vendor/bin/codecept:119 { …}
+  }
+}

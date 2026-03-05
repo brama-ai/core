@@ -22,5 +22,11 @@
     <div class="glass-card">
         <h2>Ласкаво просимо, {{ username }}</h2>
         <p>Це панель адміністрування AI Community Platform. Використовуйте навігацію зліва для управління системою.</p>
+        <div style="margin-top:1rem;display:flex;gap:.6rem;flex-wrap:wrap;">
+            <a class="btn btn-primary" href="{{ admin_langfuse_url }}">Відкрити Langfuse</a>
+            <a class="btn btn-settings" href="{{ admin_litellm_url }}">Відкрити LiteLLM</a>
+            <a class="btn btn-settings" href="{{ admin_openclaw_url }}?token={{ openclaw_gateway_token }}" target="_blank">Відкрити OpenClaw UI</a>
+            <a class="btn btn-settings" href="{{ admin_traefik_url }}">Відкрити Traefik</a>
+        </div>
     </div>
 {% endblock %}

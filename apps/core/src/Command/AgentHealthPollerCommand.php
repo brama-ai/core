@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\AgentRegistry\AgentRegistryInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -17,6 +18,7 @@ final class AgentHealthPollerCommand extends Command
 
     public function __construct(
         private readonly AgentRegistryInterface $registry,
+        private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
     }
@@ -49,14 +51,17 @@ final class AgentHealthPollerCommand extends Command
                     );
                     $restoredStatus = (is_array($violations) && [] !== $violations) ? 'degraded' : 'healthy';
                     $this->registry->resetHealthCheckFailures($name, $restoredStatus);
+                    $this->logger->info('Agent recovered', ['agent' => $name, 'status' => $restoredStatus]);
                     $output->writeln(sprintf('[%s] recovered → %s', $name, $restoredStatus));
                 }
             } else {
                 $failures = $this->registry->recordHealthCheckFailure($name);
+                $this->logger->info('Agent health check failed', ['agent' => $name, 'consecutive_failures' => $failures]);
                 $output->writeln(sprintf('[%s] health check failed (consecutive: %d)', $name, $failures));
 
                 if ($failures >= self::FAILURE_THRESHOLD) {
                     $this->registry->updateHealthStatus($name, 'unavailable');
+                    $this->logger->warning('Agent marked unavailable', ['agent' => $name, 'failures' => $failures]);
                     $output->writeln(sprintf('[%s] → unavailable (threshold reached)', $name));
                 }
             }

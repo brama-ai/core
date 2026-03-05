@@ -1,0 +1,120 @@
+[0;38;5;208m[38;5;38mTwig\Error\SyntaxError[0;38;5;208m]8;;file:///var/www/html/vendor/twig/twig/src/Error/SyntaxError.php#L20\^]8;;\ {[38;5;247m#12210[0;38;5;208m[m
+  [0;38;5;208m#[39mmessage[0;38;5;208m: "[1;38;5;113mUnexpected "endblock" tag (expecting closing tag for the "for" tag defined near line 42) in "admin/log_trace.html.twig" at line 48.[0;38;5;208m"[m
+  [0;38;5;208m#[39mcode[0;38;5;208m: [1;38;5;38m0[0;38;5;208m[m
+  [0;38;5;208m#[39mfile[0;38;5;208m: "]8;;file:///var/www/html/templates/admin/log_trace.html.twig#L48\[0;38;5;208m/var/www/html/[0;38;5;208m[1;38;5;113mtemplates/admin/log_trace.html.twig[0;38;5;208m]8;;\"[m
+  [0;38;5;208m#[39mline[0;38;5;208m: [1;38;5;38m48[0;38;5;208m[m
+  [0;38;5;208m-[39mlineno[0;38;5;208m: [1;38;5;38m48[0;38;5;208m[m
+  [0;38;5;208m-[39mrawMessage[0;38;5;208m: "[1;38;5;113mUnexpected "endblock" tag (expecting closing tag for the "for" tag defined near line 42).[0;38;5;208m"[m
+  [0;38;5;208m-[39msource[0;38;5;208m: [38;5;38mTwig\Source[0;38;5;208m]8;;file:///var/www/html/vendor/twig/twig/src/Source.php#L19\^]8;;\ {[38;5;247m#11063[0;38;5;208m[m
+    [0;38;5;208m-[39mcode[0;38;5;208m: """[m
+    [0;38;5;208m  [1;38;5;113m{% extends 'admin/layout.html.twig' %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  \n[m
+    [0;38;5;208m  [1;38;5;113m{% block title %}Trace {{ trace_id|slice(0, 8) }}… — Логи — Admin{% endblock %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m{% block page_title %}Trace: <span style="font-family:monospace;font-size:.9rem;">{{ trace_id }}</span>{% endblock %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  \n[m
+    [0;38;5;208m  [1;38;5;113m{% block content %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m    <div style="margin-bottom:1rem;">[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m        <a href="{{ path('admin_logs') }}" class="btn btn-settings">&laquo; Назад до логів</a>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m    </div>[m[0;38;5;208m\n[m
+    [0;38;5;208m  \n[m
+    [0;38;5;208m  [1;38;5;113m    <div class="glass-card">[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m        <div style="margin-bottom:.75rem;font-size:.85rem;color:var(--text-secondary);">[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m            Записів у trace: {{ hits|length }}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m        </div>[m[0;38;5;208m\n[m
+    [0;38;5;208m  \n[m
+    [0;38;5;208m  [1;38;5;113m        <div class="trace-timeline">[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m            {% for hit in hits %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                {% set requestIdIndent = loop.index0 % 3 %} {# Just visual mock indent for now if hierarchy isn't explicitly built #}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                <div class="trace-entry trace-indent trace-indent-{{ hit.request_id is defined ? 1 : 0 }}" style="margin-left: {{ (hit.request_id is defined ? 1 : 0) * 20 }}px; border-left: 3px solid var(--accent);">[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                    <div class="trace-entry-header">[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                        <span class="trace-time">{{ hit['@timestamp']|default('')|slice(0, 23)|replace({'T': ' '}) }}</span>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                        {% set ln = hit.level_name|default('UNKNOWN') %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                        <span class="badge badge-log-{{ ln|lower }}">{{ ln }}</span>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                        {% set appName = hit.app_name|default('—') %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                        <span class="badge app-col app-col-{{ appName|replace({'-': ''})|lower }}">{{ appName }}</span>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                        {% if hit.request_uri is defined %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                            <span class="trace-uri">{{ hit.request_method|default('') }} {{ hit.request_uri }}</span>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                        {% endif %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                        {% if hit.request_id is defined %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                            <span class="trace-req-id" style="font-size: 0.7rem; color: var(--text-muted);">Req: {{ hit.request_id|slice(0, 8) }}</span>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                        {% endif %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                    </div>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                    <div class="trace-entry-message">{{ hit.message|default('') }}</div>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                    {% if hit.exception is defined and hit.exception.class is defined %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                        <details class="trace-exception">[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                            <summary>{{ hit.exception.class }}: {{ hit.exception.message|default('')|slice(0, 150) }}</summary>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                            <pre>{{ hit.exception.trace|default('') }}</pre>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                        </details>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                    {% endif %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                </div>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m            {% else %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m                <p style="color:var(--text-muted);text-align:center;padding:2rem;">Записів не знайдено для цього trace ID.</p>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m        </div>[m[0;38;5;208m\n[m
+    [0;38;5;208m  \n[m
+    [0;38;5;208m  [1;38;5;113m        {# Hidden marker for testing that the UI supports these classes #}[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m        <div style="display:none;" class="trace-indent app-col"></div>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m    </div>[m[0;38;5;208m\n[m
+    [0;38;5;208m  [1;38;5;113m{% endblock %}[m[0;38;5;208m\n[m
+    [0;38;5;208m  """[m
+    [0;38;5;208m-[39mname[0;38;5;208m: "[1;38;5;113madmin/log_trace.html.twig[0;38;5;208m"[m
+    [0;38;5;208m-[39mpath[0;38;5;208m: "[1;38;5;113m/var/www/html/templates/admin/log_trace.html.twig[0;38;5;208m"[m
+  [0;38;5;208m}[m
+  [0;38;5;208m-[39mphpFile[0;38;5;208m: "[1;38;5;113m/var/www/html/vendor/twig/twig/src/Parser.php[0;38;5;208m"[m
+  [0;38;5;208m-[39mphpLine[0;38;5;208m: [1;38;5;38m207[0;38;5;208m[m
+  [0;38;5;208m[38;5;170mtrace[0;38;5;208m: {[m
+    [0;38;5;208m]8;;file:///var/www/html/templates/admin/log_trace.html.twig#L48\[0;38;5;208m/var/www/html/[0;38;5;208m[38;5;170mtemplates/admin/log_trace.html.twig:48[0;38;5;208m]8;;\ {[m
+      [0;38;5;208m[38;5;38mTwig\Parser->subparse($test, bool $dropNeedle = false): Node[0;38;5;208m]8;;file:///var/www/html/vendor/twig/twig/src/Parser.php#L167\^]8;;\[m
+      [0;38;5;208m› [0;38;5;208m    </div>[0;38;5;208m[m
+      [0;38;5;208m› ]8;;file:///var/www/html/templates/admin/log_trace.html.twig#L48\[1;38;5;208m{% endblock %}[0;38;5;208m]8;;\[m
+      [0;38;5;208m› [m
+    [0;38;5;208m}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/twig/twig/src/TokenParser/ForTokenParser.php#L47\[0;38;5;208m/var/www/html/vendor/twig/twig/[0;38;5;208m[38;5;170msrc/TokenParser/ForTokenParser.php:47[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/twig/twig/src/Parser.php#L224\[0;38;5;208m/var/www/html/vendor/twig/twig/[0;38;5;208m[38;5;170msrc/Parser.php:224[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/twig/twig/src/TokenParser/BlockTokenParser.php#L46\[0;38;5;208m/var/www/html/vendor/twig/twig/[0;38;5;208m[38;5;170msrc/TokenParser/BlockTokenParser.php:46[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/twig/twig/src/Parser.php#L224\[0;38;5;208m/var/www/html/vendor/twig/twig/[0;38;5;208m[38;5;170msrc/Parser.php:224[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/twig/twig/src/Parser.php#L104\[0;38;5;208m/var/www/html/vendor/twig/twig/[0;38;5;208m[38;5;170msrc/Parser.php:104[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/twig/twig/src/Environment.php#L558\[0;38;5;208m/var/www/html/vendor/twig/twig/[0;38;5;208m[38;5;170msrc/Environment.php:558[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/twig/twig/src/Environment.php#L589\[0;38;5;208m/var/www/html/vendor/twig/twig/[0;38;5;208m[38;5;170msrc/Environment.php:589[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/twig/twig/src/Environment.php#L408\[0;38;5;208m/var/www/html/vendor/twig/twig/[0;38;5;208m[38;5;170msrc/Environment.php:408[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/twig/twig/src/Environment.php#L370\[0;38;5;208m/var/www/html/vendor/twig/twig/[0;38;5;208m[38;5;170msrc/Environment.php:370[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/twig/twig/src/Environment.php#L333\[0;38;5;208m/var/www/html/vendor/twig/twig/[0;38;5;208m[38;5;170msrc/Environment.php:333[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/symfony/framework-bundle/Controller/AbstractController.php#L467\[0;38;5;208m/var/www/html/vendor/symfony/framework-bundle/[0;38;5;208m[38;5;170mController/AbstractController.php:467[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/symfony/framework-bundle/Controller/AbstractController.php#L472\[0;38;5;208m/var/www/html/vendor/symfony/framework-bundle/[0;38;5;208m[38;5;170mController/AbstractController.php:472[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/symfony/framework-bundle/Controller/AbstractController.php#L284\[0;38;5;208m/var/www/html/vendor/symfony/framework-bundle/[0;38;5;208m[38;5;170mController/AbstractController.php:284[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/src/Controller/Admin/LogTraceController.php#L43\[0;38;5;208m/var/www/html/[0;38;5;208m[38;5;170msrc/Controller/Admin/LogTraceController.php:43[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/symfony/http-kernel/HttpKernel.php#L183\[0;38;5;208m/var/www/html/vendor/symfony/http-kernel/[0;38;5;208m[38;5;170mHttpKernel.php:183[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/symfony/http-kernel/HttpKernel.php#L76\[0;38;5;208m/var/www/html/vendor/symfony/http-kernel/[0;38;5;208m[38;5;170mHttpKernel.php:76[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/symfony/http-kernel/Kernel.php#L193\[0;38;5;208m/var/www/html/vendor/symfony/http-kernel/[0;38;5;208m[38;5;170mKernel.php:193[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/symfony/http-kernel/HttpKernelBrowser.php#L62\[0;38;5;208m/var/www/html/vendor/symfony/http-kernel/[0;38;5;208m[38;5;170mHttpKernelBrowser.php:62[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/module-symfony/src/Codeception/Lib/Connector/Symfony.php#L48\[0;38;5;208m/var/www/html/vendor/codeception/module-symfony/[0;38;5;208m[38;5;170msrc/Codeception/Lib/Connector/Symfony.php:48[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/symfony/browser-kit/AbstractBrowser.php#L398\[0;38;5;208m/var/www/html/vendor/symfony/browser-kit/[0;38;5;208m[38;5;170mAbstractBrowser.php:398[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php#L243\[0;38;5;208m/var/www/html/vendor/codeception/lib-innerbrowser/[0;38;5;208m[38;5;170msrc/Codeception/Lib/InnerBrowser.php:243[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php#L161\[0;38;5;208m/var/www/html/vendor/codeception/lib-innerbrowser/[0;38;5;208m[38;5;170msrc/Codeception/Lib/InnerBrowser.php:161[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php#L700\[0;38;5;208m/var/www/html/vendor/codeception/module-rest/[0;38;5;208m[38;5;170msrc/Codeception/Module/REST.php:700[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/module-rest/src/Codeception/Module/REST.php#L523\[0;38;5;208m/var/www/html/vendor/codeception/module-rest/[0;38;5;208m[38;5;170msrc/Codeception/Module/REST.php:523[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/src/Codeception/Step.php#L267\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170msrc/Codeception/Step.php:267[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/src/Codeception/Scenario.php#L70\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170msrc/Codeception/Scenario.php:70[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/tests/_support/_generated/FunctionalTesterActions.php#L5713\[0;38;5;208m/var/www/html/[0;38;5;208m[38;5;170mtests/_support/_generated/FunctionalTesterActions.php:5713[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/tests/Functional/Admin/LogGroupingCest.php#L30\[0;38;5;208m/var/www/html/[0;38;5;208m[38;5;170mtests/Functional/Admin/LogGroupingCest.php:30[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m[0;38;5;208mApp\Tests\Functional\Admin\[0;38;5;208m[38;5;170mLogGroupingCest->traceLogsPageGroupsVisuallyByColorsAndIndents()[0;38;5;208m {}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/src/Codeception/Lib/Di.php#L118\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170msrc/Codeception/Lib/Di.php:118[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php#L181\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170msrc/Codeception/Test/Cest.php:181[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php#L193\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170msrc/Codeception/Test/Cest.php:193[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/src/Codeception/Test/Cest.php#L126\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170msrc/Codeception/Test/Cest.php:126[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/src/Codeception/Test/Test.php#L157\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170msrc/Codeception/Test/Test.php:157[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/src/Codeception/Suite.php#L131\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170msrc/Codeception/Suite.php:131[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/src/Codeception/SuiteManager.php#L141\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170msrc/Codeception/SuiteManager.php:141[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php#L244\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170msrc/Codeception/Codecept.php:244[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/src/Codeception/Codecept.php#L206\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170msrc/Codeception/Codecept.php:206[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/src/Codeception/Command/Run.php#L374\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170msrc/Codeception/Command/Run.php:374[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/symfony/console/Command/Command.php#L341\[0;38;5;208m/var/www/html/vendor/symfony/console/[0;38;5;208m[38;5;170mCommand/Command.php:341[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/symfony/console/Application.php#L1094\[0;38;5;208m/var/www/html/vendor/symfony/console/[0;38;5;208m[38;5;170mApplication.php:1094[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/symfony/console/Application.php#L356\[0;38;5;208m/var/www/html/vendor/symfony/console/[0;38;5;208m[38;5;170mApplication.php:356[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/symfony/console/Application.php#L195\[0;38;5;208m/var/www/html/vendor/symfony/console/[0;38;5;208m[38;5;170mApplication.php:195[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/src/Codeception/Application.php#L107\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170msrc/Codeception/Application.php:107[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/app.php#L63\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170mapp.php:63[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/app.php#L64\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170mapp.php:64[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/codeception/codeception/codecept#L7\[0;38;5;208m/var/www/html/vendor/codeception/codeception/[0;38;5;208m[38;5;170mcodecept:7[0;38;5;208m]8;;\ { …}[m
+    [0;38;5;208m]8;;file:///var/www/html/vendor/bin/codecept#L119\[0;38;5;208m/var/www/html/vendor/bin/codecept:[0;38;5;208m[38;5;170m119[0;38;5;208m]8;;\ { …}[m
+  [0;38;5;208m}[m
+[0;38;5;208m}[m

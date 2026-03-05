@@ -4,6 +4,40 @@
 {% block page_title %}Управління агентами{% endblock %}
 
 {% block content %}
+    <div class="glass-card state-legend">
+        <h2>Пояснення стейтів</h2>
+        <div class="state-legend-grid">
+            <div class="state-legend-item">
+                <span class="badge badge-enabled">Увімкнено</span>
+                <span class="state-hint">Агент активний: події та команди маршрутизуються.</span>
+            </div>
+            <div class="state-legend-item">
+                <span class="badge badge-disabled">Вимкнено</span>
+                <span class="state-hint">Агент вимкнений: події та команди не надсилаються.</span>
+            </div>
+            <div class="state-legend-item">
+                <span class="badge badge-healthy">Healthy</span>
+                <span class="state-hint">Агент доступний та відповідає за конвенціями.</span>
+            </div>
+            <div class="state-legend-item">
+                <span class="badge badge-degraded">Degraded</span>
+                <span class="state-hint">Є порушення конвенцій, але агент частково працює.</span>
+            </div>
+            <div class="state-legend-item">
+                <span class="badge badge-unavailable">Unavailable</span>
+                <span class="state-hint">Агент тимчасово недоступний по мережі або health-check.</span>
+            </div>
+            <div class="state-legend-item">
+                <span class="badge badge-error">Error</span>
+                <span class="state-hint">Критична помилка реєстрації/маніфесту. Потрібне втручання.</span>
+            </div>
+            <div class="state-legend-item">
+                <span class="badge badge-unknown">Unknown</span>
+                <span class="state-hint">Стан ще не визначений або недостатньо даних.</span>
+            </div>
+        </div>
+    </div>
+
     <div class="action-bar">
         <span id="discoverResult" class="action-result" style="display:none"></span>
         <button class="btn btn-discover" id="discoverBtn" onclick="runDiscovery()">Виявити агентів</button>
@@ -30,6 +64,19 @@
                 {% else %}
                     {% for agent in agents %}
                         {% set manifest = agent.manifest %}
+                        {% set enabledHint = agent.enabled
+                            ? 'Агент увімкнений: події та команди будуть оброблятися.'
+                            : 'Агент вимкнений: події та команди не маршрутизуються.' %}
+                        {% set healthHint = 'Стан ще не визначений. Запустіть discovery або зачекайте health-check.' %}
+                        {% if agent.health_status == 'healthy' %}
+                            {% set healthHint = 'Агент доступний, конвенції пройдено, помилок не виявлено.' %}
+                        {% elseif agent.health_status == 'degraded' %}
+                            {% set healthHint = 'Виявлено порушення конвенцій. Натисніть badge для деталей.' %}
+                        {% elseif agent.health_status == 'unavailable' %}
+                            {% set healthHint = 'Агент тимчасово недоступний по мережі або не відповідає на health-check.' %}
+                        {% elseif agent.health_status == 'error' %}
+                            {% set healthHint = 'Критична помилка в маніфесті або discovery. Перевірте деталі.' %}
+                        {% endif %}
                         <tr data-agent-name="{{ agent.name }}">
                             <td>
                                 <strong>{{ agent.name }}</strong>
@@ -61,32 +108,40 @@
                             <td>{{ agent.version }}</td>
                             <td>{{ manifest.description ?? '—' }}</td>
                             <td>
-                                {% if agent.enabled %}
-                                    <span class="badge badge-enabled">Увімкнено</span>
-                                {% else %}
-                                    <span class="badge badge-disabled">Вимкнено</span>
-                                {% endif %}
+                                <div class="state-cell">
+                                    {% if agent.enabled %}
+                                        <span class="badge badge-enabled" title="{{ enabledHint }}">Увімкнено</span>
+                                    {% else %}
+                                        <span class="badge badge-disabled" title="{{ enabledHint }}">Вимкнено</span>
+                                    {% endif %}
+                                    <span class="state-hint">{{ enabledHint }}</span>
+                                </div>
                             </td>
                             <td>
-                                {% if agent.health_status == 'healthy' %}
-                                    <span class="badge badge-healthy">Healthy</span>
-                                {% elseif agent.health_status == 'degraded' %}
-                                    {% if agent.violations|length > 0 %}
-                                        <span class="badge badge-degraded"
-                                              onclick="showViolations('{{ agent.name|e('js') }}', {{ agent.violations|json_encode|e('html_attr') }})"
-                                              title="Натисніть, щоб побачити порушення">Degraded ({{ agent.violations|length }})</span>
+                                <div class="state-cell">
+                                    {% if agent.health_status == 'healthy' %}
+                                        <span class="badge badge-healthy" title="{{ healthHint }}">Healthy</span>
+                                    {% elseif agent.health_status == 'degraded' %}
+                                        {% if agent.violations|length > 0 %}
+                                            <span class="badge badge-degraded"
+                                                  onclick="showViolations('{{ agent.name|e('js') }}', {{ agent.violations|json_encode|e('html_attr') }})"
+                                                  title="{{ healthHint }}">Degraded ({{ agent.violations|length }})</span>
+                                        {% else %}
+                                            <span class="badge badge-degraded" title="{{ healthHint }}">Degraded</span>
+                                        {% endif %}
+                                    {% elseif agent.health_status == 'unavailable' %}
+                                        <span class="badge badge-unavailable"
+                                              {% if agent.violations|length > 0 %}onclick="showViolations('{{ agent.name|e('js') }}', {{ agent.violations|json_encode|e('html_attr') }})"{% endif %}
+                                              title="{{ healthHint }}">Unavailable</span>
+                                    {% elseif agent.health_status == 'error' %}
+                                        <span class="badge badge-error"
+                                              {% if agent.violations|length > 0 %}onclick="showViolations('{{ agent.name|e('js') }}', {{ agent.violations|json_encode|e('html_attr') }})"{% endif %}
+                                              title="{{ healthHint }}">Error ({{ agent.violations|length }})</span>
                                     {% else %}
-                                        <span class="badge badge-degraded">Degraded</span>
+                                        <span class="badge badge-unknown" title="{{ healthHint }}">Unknown</span>
                                     {% endif %}
-                                {% elseif agent.health_status == 'unavailable' %}
-                                    <span class="badge badge-unavailable"
-                                          {% if agent.violations|length > 0 %}onclick="showViolations('{{ agent.name|e('js') }}', {{ agent.violations|json_encode|e('html_attr') }})" title="Натисніть, щоб побачити деталі"{% endif %}>Unavailable</span>
-                                {% elseif agent.health_status == 'error' %}
-                                    <span class="badge badge-error"
-                                          {% if agent.violations|length > 0 %}onclick="showViolations('{{ agent.name|e('js') }}', {{ agent.violations|json_encode|e('html_attr') }})" title="Натисніть, щоб побачити помилки"{% endif %}>Error ({{ agent.violations|length }})</span>
-                                {% else %}
-                                    <span class="badge badge-unknown">Unknown</span>
-                                {% endif %}
+                                    <span class="state-hint">{{ healthHint }}</span>
+                                </div>
                             </td>
                             <td>{{ agent.updated_at|date('d.m.Y H:i') }}</td>
                             <td>

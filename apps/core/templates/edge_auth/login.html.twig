@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Вхід до інструментів</title>
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="login-page">
+    <div class="login-box">
+        <h1>Вхід до інструментів</h1>
+        <p style="margin-top:0;color:var(--text-secondary);font-size:.9rem;">Авторизуйтесь, щоб відкрити Langfuse, OpenClaw та сторінки агентів.</p>
+
+        {% if error %}
+            <div class="login-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" action="{{ path('edge_auth_login') }}">
+            <input type="hidden" name="rd" value="{{ rd }}">
+
+            <label for="username">Логін</label>
+            <input type="text" id="username" name="_username" value="{{ last_username }}" autocomplete="username" autofocus>
+
+            <label for="password">Пароль</label>
+            <input type="password" id="password" name="_password" autocomplete="current-password">
+
+            <button type="submit">Увійти</button>
+        </form>
+    </div>
+</body>
+</html>

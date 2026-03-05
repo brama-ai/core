@@ -1,0 +1,113 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Логи — Admin{% endblock %}
+{% block page_title %}Логи{% endblock %}
+
+{% block content %}
+    <div class="glass-card" style="margin-bottom:1rem;">
+        <form method="get" action="{{ path('admin_logs') }}" class="log-filter-form">
+            <div class="log-filter-row">
+                <div class="log-filter-field" style="flex:2;">
+                    <label class="form-label" for="q">Пошук</label>
+                    <input type="text" id="q" name="q" class="form-input" value="{{ q }}" placeholder="Повідомлення, trace_id, URI…">
+                </div>
+                <div class="log-filter-field">
+                    <label class="form-label" for="level">Рівень</label>
+                    <select id="level" name="level" class="form-input">
+                        <option value="">Всі</option>
+                        {% for l in levels %}
+                            <option value="{{ l }}" {{ level == l ? 'selected' : '' }}>{{ l }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="log-filter-field">
+                    <label class="form-label" for="app">Додаток</label>
+                    <select id="app" name="app" class="form-input">
+                        <option value="">Всі</option>
+                        {% for a in apps %}
+                            <option value="{{ a }}" {{ app_filter == a ? 'selected' : '' }}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="log-filter-field">
+                    <label class="form-label" for="from">Від</label>
+                    <input type="date" id="from" name="from" class="form-input" value="{{ date_from }}">
+                </div>
+                <div class="log-filter-field">
+                    <label class="form-label" for="to">До</label>
+                    <input type="date" id="to" name="to" class="form-input" value="{{ date_to }}">
+                </div>
+                <div class="log-filter-field" style="align-self:flex-end;">
+                    <button type="submit" class="btn btn-primary">Шукати</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="glass-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+            <span style="font-size:.85rem;color:var(--text-secondary);">Знайдено: {{ total }}</span>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width:160px;">Час</th>
+                        <th style="width:80px;">Рівень</th>
+                        <th style="width:130px;">Додаток</th>
+                        <th>Повідомлення</th>
+                        <th style="width:100px;">Trace</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for hit in hits %}
+                        <tr>
+                            <td style="font-family:monospace;font-size:.8rem;white-space:nowrap;">{{ hit['@timestamp']|default('')|slice(0, 19)|replace({'T': ' '}) }}</td>
+                            <td>
+                                {% set ln = hit.level_name|default('UNKNOWN') %}
+                                <span class="badge badge-log-{{ ln|lower }}">{{ ln }}</span>
+                            </td>
+                            <td style="font-size:.85rem;">{{ hit.app_name|default('—') }}</td>
+                            <td>
+                                <div class="log-message">{{ hit.message|default('')|slice(0, 200) }}</div>
+                                {% if hit.exception is defined and hit.exception.class is defined %}
+                                    <details style="margin-top:.3rem;">
+                                        <summary style="font-size:.8rem;color:var(--danger);cursor:pointer;">{{ hit.exception.class }}: {{ hit.exception.message|default('')|slice(0, 100) }}</summary>
+                                        <pre style="max-height:200px;overflow:auto;margin-top:.3rem;">{{ hit.exception.trace|default('') }}</pre>
+                                    </details>
+                                {% endif %}
+                                {% if hit.request_uri is defined %}
+                                    <div style="font-size:.75rem;color:var(--text-muted);margin-top:.2rem;">{{ hit.request_method|default('') }} {{ hit.request_uri }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if hit.trace_id is defined and hit.trace_id %}
+                                    <a href="{{ path('admin_log_trace', {traceId: hit.trace_id}) }}" style="font-family:monospace;font-size:.75rem;" title="{{ hit.trace_id }}">{{ hit.trace_id|slice(0, 8) }}…</a>
+                                {% else %}
+                                    <span style="color:var(--text-muted);">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="empty-row">Логів не знайдено</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if pages > 1 %}
+            <div class="log-pagination">
+                {% if page > 1 %}
+                    <a href="{{ path('admin_logs', {q: q, level: level, app: app_filter, from: date_from, to: date_to, page: page - 1}) }}" class="btn btn-settings">&laquo; Назад</a>
+                {% endif %}
+                <span style="color:var(--text-secondary);font-size:.85rem;">Сторінка {{ page }} з {{ pages }}</span>
+                {% if page < pages %}
+                    <a href="{{ path('admin_logs', {q: q, level: level, app: app_filter, from: date_from, to: date_to, page: page + 1}) }}" class="btn btn-settings">Далі &raquo;</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

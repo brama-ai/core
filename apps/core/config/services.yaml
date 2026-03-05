@@ -4,6 +4,22 @@ parameters:
     app.openclaw_discovery_push_url: '%env(OPENCLAW_DISCOVERY_PUSH_URL)%'
     app.redis_url: '%env(REDIS_URL)%'
     app.opensearch_url: '%env(OPENSEARCH_URL)%'
+    app.log_app_name: 'core'
+    app.log_retention_days: 7
+    app.log_max_size_gb: 2
+    app.langfuse_enabled: '%env(bool:LANGFUSE_ENABLED)%'
+    app.langfuse_base_url: '%env(LANGFUSE_BASE_URL)%'
+    app.langfuse_public_key: '%env(LANGFUSE_PUBLIC_KEY)%'
+    app.langfuse_secret_key: '%env(LANGFUSE_SECRET_KEY)%'
+    app.langfuse_environment: '%env(LANGFUSE_ENV)%'
+    app.admin_openclaw_url: '%env(ADMIN_OPENCLAW_URL)%'
+    app.admin_langfuse_url: '%env(ADMIN_LANGFUSE_URL)%'
+    app.admin_traefik_url: '%env(ADMIN_TRAEFIK_URL)%'
+    app.admin_litellm_url: '%env(ADMIN_LITELLM_URL)%'
+    app.edge_auth_jwt_secret: '%env(EDGE_AUTH_JWT_SECRET)%'
+    app.edge_auth_cookie_name: '%env(EDGE_AUTH_COOKIE_NAME)%'
+    app.edge_auth_token_ttl: '%env(int:EDGE_AUTH_TOKEN_TTL)%'
+    app.edge_auth_login_base_url: '%env(EDGE_AUTH_LOGIN_BASE_URL)%'
 
 services:
     _defaults:
@@ -15,6 +31,7 @@ services:
         exclude:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
+            - '../src/Security/AdminUser.php'
             - '../src/Kernel.php'
 
     App\AgentRegistry\AgentRegistryRepository:
@@ -58,3 +75,48 @@ services:
         arguments:
             $internalToken: '%app.internal_token%'
 
+    App\Observability\LangfuseIngestionClient:
+        arguments:
+            $enabled: '%app.langfuse_enabled%'
+            $baseUrl: '%app.langfuse_base_url%'
+            $publicKey: '%app.langfuse_public_key%'
+            $secretKey: '%app.langfuse_secret_key%'
+            $environment: '%app.langfuse_environment%'
+
+    App\EdgeAuth\EdgeJwtService:
+        arguments:
+            $secret: '%app.edge_auth_jwt_secret%'
+
+    App\Controller\EdgeAuth\LoginController:
+        arguments:
+            $cookieName: '%app.edge_auth_cookie_name%'
+            $tokenTtlSeconds: '%app.edge_auth_token_ttl%'
+
+    App\Controller\EdgeAuth\VerifyController:
+        arguments:
+            $cookieName: '%app.edge_auth_cookie_name%'
+            $loginBaseUrl: '%app.edge_auth_login_base_url%'
+
+    App\Logging\LogSettingsProvider:
+        arguments:
+            $settingsPath: '%kernel.project_dir%/var/log_settings.json'
+
+    App\Logging\OpenSearchHandler:
+        arguments:
+            $opensearchUrl: '%app.opensearch_url%'
+            $settingsProvider: '@App\Logging\LogSettingsProvider'
+
+    App\Logging\OpenSearchProcessor:
+        arguments:
+            $appName: '%app.log_app_name%'
+        tags:
+            - { name: monolog.processor }
+
+    App\Logging\LogIndexManager:
+        arguments:
+            $opensearchUrl: '%app.opensearch_url%'
+
+    App\Command\LogsCleanupCommand:
+        arguments:
+            $defaultRetentionDays: '%app.log_retention_days%'
+            $defaultMaxSizeGb: '%app.log_max_size_gb%'

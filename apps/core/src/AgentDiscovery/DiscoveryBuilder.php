@@ -31,6 +31,12 @@ final class DiscoveryBuilder
             $agentName = (string) $agent['name'];
             $agentDescription = (string) ($manifest['description'] ?? '');
 
+            /** @var array<string, mixed> $config */
+            $config = is_string($agent['config'] ?? null)
+                ? (array) json_decode((string) $agent['config'], true)
+                : (array) ($agent['config'] ?? []);
+            $configDescription = (string) ($config['description'] ?? '');
+
             /** @var list<string> $capabilities */
             $capabilities = (array) ($manifest['capabilities'] ?? []);
 
@@ -39,10 +45,16 @@ final class DiscoveryBuilder
 
             foreach ($capabilities as $capability) {
                 $capSchema = $capabilitySchemas[$capability] ?? [];
+                $description = (string) ($capSchema['description'] ?? '');
+                if ('' !== $configDescription) {
+                    $description = $configDescription;
+                } elseif ('' === $description) {
+                    $description = $agentDescription;
+                }
                 $tools[] = [
                     'name' => $capability,
                     'agent' => $agentName,
-                    'description' => (string) ($capSchema['description'] ?? $agentDescription),
+                    'description' => $description,
                     'input_schema' => $capSchema['input_schema'] ?? ['type' => 'object'],
                 ];
             }

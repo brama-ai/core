@@ -1,0 +1,114 @@
+Twig\Error\SyntaxError {#3465
+  #message: "Did you forget to run "composer require symfony/form"? Unknown function "csrf_token" in "admin/login.html.twig"."
+  #code: 0
+  #file: "./templates/admin/login.html.twig"
+  #line: -1
+  -lineno: -1
+  -rawMessage: "Did you forget to run "composer require symfony/form"? Unknown function "csrf_token"."
+  -source: Twig\Source {#6723
+    -code: """
+      <!DOCTYPE html>\n
+      <html lang="en">\n
+      <head>\n
+          <meta charset="UTF-8">\n
+          <title>Admin Login</title>\n
+          <style>\n
+              body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f5f5f5; }\n
+              .login-box { background: #fff; padding: 2rem; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.12); width: 320px; }\n
+              h1 { margin: 0 0 1.5rem; font-size: 1.4rem; }\n
+              label { display: block; margin-bottom: .25rem; font-size: .9rem; }\n
+              input { width: 100%; box-sizing: border-box; padding: .5rem; margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 4px; }\n
+              button { width: 100%; padding: .6rem; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }\n
+              button:hover { background: #555; }\n
+              .error { background: #fde8e8; border: 1px solid #f5c6c6; color: #c0392b; padding: .6rem; border-radius: 4px; margin-bottom: 1rem; font-size: .9rem; }\n
+          </style>\n
+      </head>\n
+      <body>\n
+          <div class="login-box">\n
+              <h1>Admin Login</h1>\n
+      \n
+              {% if error %}\n
+                  <div class="error">{{ error.messageKey | trans(error.messageData, 'security') }}</div>\n
+              {% endif %}\n
+      \n
+              <form method="post" action="{{ path('admin_login') }}">\n
+                  <label for="username">Username</label>\n
+                  <input type="text" id="username" name="_username" value="{{ last_username }}" autocomplete="username" autofocus>\n
+      \n
+                  <label for="password">Password</label>\n
+                  <input type="password" id="password" name="_password" autocomplete="current-password">\n
+      \n
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">\n
+      \n
+                  <button type="submit">Sign in</button>\n
+              </form>\n
+          </div>\n
+      </body>\n
+      </html>\n
+      """
+    -name: "admin/login.html.twig"
+    -path: "/var/www/html/templates/admin/login.html.twig"
+  }
+  -phpFile: "/var/www/html/vendor/symfony/twig-bridge/UndefinedCallableHandler.php"
+  -phpLine: 113
+  trace: {
+    ./templates/admin/login.html.twig:-1 {
+      Symfony\Bridge\Twig\UndefinedCallableHandler::onUndefinedFunction(string $name): TwigFunction|false
+      › 
+      › "in Symfony\Bridge\Twig\UndefinedCallableHandler::onUndefinedFunction(string $name): TwigFunction|false"
+      › 
+    }
+    ./vendor/symfony/twig-bundle/DependencyInjection/Configurator/EnvironmentConfigurator.php:47 { …}
+    ./vendor/twig/twig/src/ExtensionSet.php:209 { …}
+    ./vendor/twig/twig/src/Environment.php:851 { …}
+    ./vendor/twig/twig/src/Parser.php:439 { …}
+    ./vendor/twig/twig/src/ExpressionParser/Infix/FunctionExpressionParser.php:51 { …}
+    ./vendor/twig/twig/src/Parser.php:390 { …}
+    ./vendor/twig/twig/src/Parser.php:180 { …}
+    ./vendor/twig/twig/src/Parser.php:104 { …}
+    ./vendor/twig/twig/src/Environment.php:558 { …}
+    ./vendor/twig/twig/src/Environment.php:589 { …}
+    ./vendor/twig/twig/src/Environment.php:408 { …}
+    ./vendor/twig/twig/src/Environment.php:370 { …}
+    ./vendor/twig/twig/src/Environment.php:333 { …}
+    ./vendor/symfony/framework-bundle/Controller/AbstractController.php:467 { …}
+    ./vendor/symfony/framework-bundle/Controller/AbstractController.php:472 { …}
+    ./vendor/symfony/framework-bundle/Controller/AbstractController.php:284 { …}
+    ./src/Controller/Admin/LoginController.php:17 { …}
+    ./vendor/symfony/http-kernel/HttpKernel.php:183 { …}
+    ./vendor/symfony/http-kernel/HttpKernel.php:76 { …}
+    ./vendor/symfony/http-kernel/Kernel.php:193 { …}
+    ./vendor/symfony/http-kernel/HttpKernelBrowser.php:62 { …}
+    ./vendor/codeception/module-symfony/src/Codeception/Lib/Connector/Symfony.php:48 { …}
+    ./vendor/symfony/browser-kit/AbstractBrowser.php:398 { …}
+    ./vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:243 { …}
+    ./vendor/codeception/lib-innerbrowser/src/Codeception/Lib/InnerBrowser.php:161 { …}
+    ./vendor/codeception/module-rest/src/Codeception/Module/REST.php:700 { …}
+    ./vendor/codeception/module-rest/src/Codeception/Module/REST.php:523 { …}
+    ./vendor/codeception/codeception/src/Codeception/Step.php:267 { …}
+    ./vendor/codeception/codeception/src/Codeception/Scenario.php:70 { …}
+    ./tests/_support/_generated/FunctionalTesterActions.php:5713 { …}
+    ./tests/Functional/Admin/LoginCest.php:11 { …}
+    App\Tests\Functional\Admin\LoginCest->loginPageIsPubliclyAccessible() {}
+    ./vendor/codeception/codeception/src/Codeception/Lib/Di.php:118 { …}
+    ./vendor/codeception/codeception/src/Codeception/Test/Cest.php:181 { …}
+    ./vendor/codeception/codeception/src/Codeception/Test/Cest.php:193 { …}
+    ./vendor/codeception/codeception/src/Codeception/Test/Cest.php:126 { …}
+    ./vendor/codeception/codeception/src/Codeception/Test/Test.php:157 { …}
+    ./vendor/codeception/codeception/src/Codeception/Suite.php:131 { …}
+    ./vendor/codeception/codeception/src/Codeception/SuiteManager.php:141 { …}
+    ./vendor/codeception/codeception/src/Codeception/Codecept.php:244 { …}
+    ./vendor/codeception/codeception/src/Codeception/Codecept.php:206 { …}
+    ./vendor/codeception/codeception/src/Codeception/Command/Run.php:585 { …}
+    ./vendor/codeception/codeception/src/Codeception/Command/Run.php:406 { …}
+    ./vendor/symfony/console/Command/Command.php:341 { …}
+    ./vendor/symfony/console/Application.php:1094 { …}
+    ./vendor/symfony/console/Application.php:356 { …}
+    ./vendor/symfony/console/Application.php:195 { …}
+    ./vendor/codeception/codeception/src/Codeception/Application.php:107 { …}
+    ./vendor/codeception/codeception/app.php:63 { …}
+    ./vendor/codeception/codeception/app.php:64 { …}
+    ./vendor/codeception/codeception/codecept:7 { …}
+    ./vendor/bin/codecept:119 { …}
+  }
+}

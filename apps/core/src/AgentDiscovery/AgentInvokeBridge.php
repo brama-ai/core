@@ -5,13 +5,18 @@ declare(strict_types=1);
 namespace App\AgentDiscovery;
 
 use App\AgentRegistry\AgentRegistryInterface;
+use App\Observability\LangfuseIngestionClient;
+use App\Observability\TraceContext;
 use Doctrine\DBAL\Connection;
+use Psr\Log\LoggerInterface;
 
 final class AgentInvokeBridge
 {
     public function __construct(
         private readonly AgentRegistryInterface $registry,
         private readonly Connection $dbal,
+        private readonly LangfuseIngestionClient $langfuse,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -49,11 +54,18 @@ final class AgentInvokeBridge
             $capabilities = (array) ($manifest['capabilities'] ?? []);
 
             if (in_array($tool, $capabilities, true)) {
+                $this->logger->warning('Tool found on disabled agent', [
+                    'tool' => $tool,
+                    'agent' => (string) $agent['name'],
+                    'trace_id' => $traceId,
+                ]);
                 $this->auditLog($tool, (string) $agent['name'], $traceId, $requestId, 0, 'failed');
 
                 return ['status' => 'failed', 'reason' => 'agent_disabled'];
             }
         }
+
+        $this->logger->warning('Unknown tool requested', ['tool' => $tool, 'trace_id' => $traceId]);
 
         return ['status' => 'failed', 'reason' => 'unknown_tool'];
     }
@@ -77,10 +89,26 @@ final class AgentInvokeBridge
         $agentName = (string) $agent['name'];
 
         if ('' === $a2aEndpoint) {
+            $this->logger->warning('Agent has no A2A endpoint', [
+                'agent' => $agentName,
+                'tool' => $tool,
+                'trace_id' => $traceId,
+            ]);
             $this->auditLog($tool, $agentName, $traceId, $requestId, 0, 'failed');
 
             return ['status' => 'failed', 'reason' => 'no_a2a_endpoint'];
         }
+
+        $this->logger->info('A2A call started', [
+            'agent' => $agentName,
+            'tool' => $tool,
+            'trace_id' => $traceId,
+        ]);
+
+        /** @var array<string, mixed> $config */
+        $config = is_string($agent['config'] ?? null)
+            ? (array) json_decode((string) $agent['config'], true)
+            : (array) ($agent['config'] ?? []);
 
         $start = microtime(true);
         $payload = [
@@ -90,20 +118,65 @@ final class AgentInvokeBridge
             'trace_id' => $traceId,
         ];
 
+        $systemPrompt = (string) ($config['system_prompt'] ?? '');
+        if ('' !== $systemPrompt) {
+            $payload['system_prompt'] = $systemPrompt;
+        }
+        $agentRunId = 'run_'.bin2hex(random_bytes(8));
+        $payload['agent_run_id'] = $agentRunId;
+        $payload['hop'] = 1;
+        $headers = [
+            'traceparent' => TraceContext::buildTraceparent($traceId),
+            'x-request-id' => $requestId,
+            'x-agent-run-id' => $agentRunId,
+            'x-a2a-hop' => '1',
+        ];
+        $httpStatusCode = 0;
+
         try {
-            $responseBody = $this->postJson($a2aEndpoint, $payload);
+            $response = $this->postJson($a2aEndpoint, $payload, $headers);
             $durationMs = (int) ((microtime(true) - $start) * 1000);
+            $httpStatusCode = $response['status_code'];
 
             /** @var array<string, mixed> $result */
-            $result = json_decode($responseBody, true, 512, JSON_THROW_ON_ERROR);
+            $result = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
             $status = (string) ($result['status'] ?? 'unknown');
         } catch (\Throwable $e) {
             $durationMs = (int) ((microtime(true) - $start) * 1000);
             $status = 'failed';
             $result = ['status' => 'failed', 'reason' => 'a2a_error', 'error' => $e->getMessage()];
+            $this->logger->error('A2A call failed', [
+                'agent' => $agentName,
+                'tool' => $tool,
+                'duration_ms' => $durationMs,
+                'trace_id' => $traceId,
+                'exception' => $e,
+            ]);
+        }
+
+        if ('failed' !== $status) {
+            $this->logger->info('A2A call completed', [
+                'agent' => $agentName,
+                'tool' => $tool,
+                'status' => $status,
+                'duration_ms' => $durationMs,
+                'http_status' => $httpStatusCode,
+                'trace_id' => $traceId,
+            ]);
         }
 
         $this->auditLog($tool, $agentName, $traceId, $requestId, $durationMs, $status);
+        $this->langfuse->recordA2ACall(
+            $traceId,
+            $requestId,
+            $tool,
+            $agentName,
+            $durationMs,
+            $status,
+            $httpStatusCode,
+            $input,
+            $result,
+        );
 
         return array_merge($result, [
             'agent' => $agentName,
@@ -113,16 +186,26 @@ final class AgentInvokeBridge
     }
 
     /**
-     * @param array<string, mixed> $payload
+     * @param array<string, mixed>  $payload
+     * @param array<string, string> $extraHeaders
+     *
+     * @return array{body: string, status_code: int}
      */
-    private function postJson(string $url, array $payload): string
+    private function postJson(string $url, array $payload, array $extraHeaders = []): array
     {
         $body = json_encode($payload, JSON_THROW_ON_ERROR);
+        $headerLines = [
+            'Content-Type: application/json',
+            'Content-Length: '.strlen($body),
+        ];
+        foreach ($extraHeaders as $name => $value) {
+            $headerLines[] = $name.': '.$value;
+        }
 
         $context = stream_context_create([
             'http' => [
                 'method' => 'POST',
-                'header' => "Content-Type: application/json\r\nContent-Length: ".strlen($body),
+                'header' => implode("\r\n", $headerLines)."\r\n",
                 'content' => $body,
                 'timeout' => 30,
                 'ignore_errors' => true,
@@ -141,7 +224,25 @@ final class AgentInvokeBridge
             throw new \RuntimeException("Failed to connect to A2A endpoint: {$url}");
         }
 
-        return $result;
+        return [
+            'body' => $result,
+            'status_code' => $this->extractStatusCode(),
+        ];
+    }
+
+    private function extractStatusCode(): int
+    {
+        global $http_response_header;
+
+        if (!isset($http_response_header) || !is_array($http_response_header) || [] === $http_response_header) {
+            return 0;
+        }
+
+        if (1 !== preg_match('/HTTP\\/\\d+(?:\\.\\d+)?\\s+(\\d{3})/', (string) $http_response_header[0], $matches)) {
+            return 0;
+        }
+
+        return (int) $matches[1];
     }
 
     private function auditLog(

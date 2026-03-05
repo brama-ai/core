@@ -6,6 +6,7 @@ namespace App\Controller\Api\OpenClaw;
 
 use App\AgentDiscovery\DiscoveryBuilder;
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,6 +21,7 @@ final class DiscoveryController extends AbstractController
     public function __construct(
         private readonly DiscoveryBuilder $discoveryBuilder,
         private readonly CacheItemPoolInterface $cache,
+        private readonly LoggerInterface $logger,
         private readonly string $gatewayToken,
     ) {
     }
@@ -28,6 +30,10 @@ final class DiscoveryController extends AbstractController
     public function __invoke(Request $request): JsonResponse
     {
         if (!$this->isAuthorized($request)) {
+            $this->logger->warning('Unauthorized discovery request', [
+                'ip' => $request->getClientIp(),
+            ]);
+
             return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
@@ -36,6 +42,7 @@ final class DiscoveryController extends AbstractController
         if ($item->isHit()) {
             /** @var array<string, mixed> $cached */
             $cached = $item->get();
+            $this->logger->debug('Discovery served from cache');
 
             return $this->json($cached);
         }
@@ -45,6 +52,9 @@ final class DiscoveryController extends AbstractController
         $item->set($payload);
         $item->expiresAfter(self::CACHE_TTL);
         $this->cache->save($item);
+
+        $toolCount = \count($payload['tools'] ?? []);
+        $this->logger->info('Discovery payload built', ['tool_count' => $toolCount]);
 
         return $this->json($payload);
     }
