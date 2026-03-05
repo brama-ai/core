@@ -1,0 +1,10 @@
+{
+  "id": "platform-tools",
+  "name": "Platform Tools Bridge",
+  "description": "Bridges platform agent tools (A2A protocol) into OpenClaw agent context.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

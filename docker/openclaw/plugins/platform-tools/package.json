@@ -1,0 +1,9 @@
+{
+  "name": "platform-tools",
+  "version": "0.1.0",
+  "description": "OpenClaw plugin that bridges platform agent tools via A2A protocol",
+  "main": "index.js",
+  "openclaw": {
+    "extensions": ["./index.js"]
+  }
+}
