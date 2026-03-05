@@ -23,6 +23,8 @@ var/
 cache/
 storage/
 *.log
+__pycache__/
+*.pyc
 
 # Docker volumes (local)
 docker/volumes/

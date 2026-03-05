@@ -4,6 +4,50 @@ This repository includes a local Docker Compose stack for validating routing, se
 
 The stack is defined as a single Docker Compose project named `ai-community-platform`, so Docker Desktop will group all related containers together under one local environment.
 
+## Prerequisites
+
+- Docker Desktop (or Docker Engine + Compose plugin)
+- Git
+- Node.js 18+ (for E2E tests and CodeceptJS conventions tests)
+- Make
+
+## Quick Start (from scratch)
+
+```bash
+# 1. Clone
+git clone https://github.com/nmdimas/ai-community-platform.git
+cd ai-community-platform
+
+# 2. Build and start the stack
+make setup
+make up
+
+# 3. Install PHP dependencies
+make install
+
+# 4. Run database migrations
+make migrate
+
+# 5. Verify everything works
+make test
+```
+
+After this, the platform is available at `http://localhost/` and the admin panel at `http://localhost/admin/login`.
+
+## AI Agent Skills Setup
+
+Shared skills live in `skills/` and need to be synced to agent-specific directories after cloning:
+
+```bash
+# Sync skills for Claude Code
+make sync-skills
+
+# Or sync for a specific agent
+./scripts/sync-skills.sh claude
+```
+
+This copies skills from `skills/` (source of truth) into `.claude/skills/`. When editing skills, always edit in `skills/` and re-run `make sync-skills`.
+
 ## Topology
 
 - `Traefik` is the only public entry layer.
