@@ -2,33 +2,34 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\AgentDiscovery;
+namespace App\Tests\Unit\A2AGateway;
 
-use App\AgentDiscovery\DiscoveryBuilder;
+use App\A2AGateway\SkillCatalogBuilder;
 use App\AgentRegistry\AgentRegistryInterface;
+use App\AgentRegistry\ManifestValidator;
 use Codeception\Test\Unit;
 use PHPUnit\Framework\MockObject\MockObject;
 
-final class DiscoveryBuilderTest extends Unit
+final class SkillCatalogBuilderTest extends Unit
 {
     private AgentRegistryInterface&MockObject $registry;
-    private DiscoveryBuilder $builder;
+    private SkillCatalogBuilder $builder;
 
     protected function setUp(): void
     {
         $this->registry = $this->createMock(AgentRegistryInterface::class);
-        $this->builder = new DiscoveryBuilder($this->registry);
+        $this->builder = new SkillCatalogBuilder($this->registry, new ManifestValidator());
     }
 
-    public function testConfigDescriptionOverridesCapabilityDescription(): void
+    public function testConfigDescriptionOverridesSkillDescription(): void
     {
         $this->registry->method('findEnabled')->willReturn([
             [
                 'name' => 'test-agent',
                 'manifest' => json_encode([
                     'description' => 'Manifest description',
-                    'capabilities' => ['test.action'],
-                    'capability_schemas' => [
+                    'skills' => ['test.action'],
+                    'skill_schemas' => [
                         'test.action' => [
                             'description' => 'Schema description',
                             'input_schema' => ['type' => 'object'],
@@ -46,15 +47,15 @@ final class DiscoveryBuilderTest extends Unit
         $this->assertSame('Custom config description', $result['tools'][0]['description']);
     }
 
-    public function testCapabilitySchemaDescriptionUsedWhenNoConfig(): void
+    public function testSkillSchemaDescriptionUsedWhenNoConfig(): void
     {
         $this->registry->method('findEnabled')->willReturn([
             [
                 'name' => 'test-agent',
                 'manifest' => json_encode([
                     'description' => 'Manifest description',
-                    'capabilities' => ['test.action'],
-                    'capability_schemas' => [
+                    'skills' => ['test.action'],
+                    'skill_schemas' => [
                         'test.action' => [
                             'description' => 'Schema description',
                             'input_schema' => ['type' => 'object'],
@@ -78,8 +79,8 @@ final class DiscoveryBuilderTest extends Unit
                 'name' => 'test-agent',
                 'manifest' => json_encode([
                     'description' => 'Manifest description',
-                    'capabilities' => ['test.action'],
-                    'capability_schemas' => [
+                    'skills' => ['test.action'],
+                    'skill_schemas' => [
                         'test.action' => [
                             'input_schema' => ['type' => 'object'],
                         ],
@@ -113,8 +114,8 @@ final class DiscoveryBuilderTest extends Unit
                 'name' => 'hello-agent',
                 'manifest' => json_encode([
                     'description' => 'Hello agent',
-                    'capabilities' => ['hello.greet'],
-                    'capability_schemas' => [
+                    'skills' => ['hello.greet'],
+                    'skill_schemas' => [
                         'hello.greet' => [
                             'description' => 'Greet a user',
                             'input_schema' => [
@@ -135,6 +136,44 @@ final class DiscoveryBuilderTest extends Unit
         $this->assertSame('hello.greet', $tool['name']);
         $this->assertSame('hello-agent', $tool['agent']);
         $this->assertSame('Greet a user', $tool['description']);
+        $this->assertArrayHasKey('properties', $tool['input_schema']);
+    }
+
+    public function testStructuredSkillsProduceCorrectTools(): void
+    {
+        $this->registry->method('findEnabled')->willReturn([
+            [
+                'name' => 'hello-agent',
+                'manifest' => json_encode([
+                    'description' => 'Hello agent',
+                    'skills' => [
+                        [
+                            'id' => 'hello.greet',
+                            'name' => 'Hello Greet',
+                            'description' => 'Greet a user by name',
+                            'tags' => ['greeting'],
+                        ],
+                    ],
+                    'skill_schemas' => [
+                        'hello.greet' => [
+                            'input_schema' => [
+                                'type' => 'object',
+                                'properties' => ['name' => ['type' => 'string']],
+                            ],
+                        ],
+                    ],
+                ], JSON_THROW_ON_ERROR),
+                'config' => null,
+                'enabled' => true,
+            ],
+        ]);
+
+        $result = $this->builder->build();
+        $tool = $result['tools'][0];
+
+        $this->assertSame('hello.greet', $tool['name']);
+        $this->assertSame('Greet a user by name', $tool['description']);
+        $this->assertSame(['greeting'], $tool['tags']);
         $this->assertArrayHasKey('properties', $tool['input_schema']);
     }
 }

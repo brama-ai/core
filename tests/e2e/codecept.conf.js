@@ -24,6 +24,7 @@ exports.config = {
         loginPage: './support/pages/LoginPage.js',
         agentsPage: './support/pages/AgentsPage.js',
         logsPage: './support/pages/LogsPage.js',
+        chatsPage: './support/pages/ChatsPage.js',
     },
     name: 'ai-community-platform-e2e',
 };

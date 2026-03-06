@@ -43,19 +43,20 @@ Scenario('manifest version follows semver X.Y.Z format', async ({ I }) => {
     I.assertTrue(isSemver, `version "${version}" must follow semver X.Y.Z`);
 });
 
-Scenario('manifest has capabilities field as array', async ({ I }) => {
+Scenario('manifest has skills field as array', async ({ I }) => {
     const res = await I.sendGetRequest('/api/v1/manifest');
     const body = res.data;
-    if (body.capabilities !== undefined) {
-        I.assertTrue(Array.isArray(body.capabilities), 'capabilities must be an array');
+    if (body.skills !== undefined) {
+        I.assertTrue(Array.isArray(body.skills), 'skills must be an array');
     }
 });
 
-Scenario('manifest has a2a_endpoint when capabilities is non-empty', async ({ I }) => {
+Scenario('manifest has a2a_endpoint when skills is non-empty', async ({ I }) => {
     const res = await I.sendGetRequest('/api/v1/manifest');
     const body = res.data;
-    if (Array.isArray(body.capabilities) && body.capabilities.length > 0) {
-        I.assertTruthy(body.a2a_endpoint, 'a2a_endpoint is required when capabilities is non-empty');
-        I.assertEqual(typeof body.a2a_endpoint, 'string');
+    if (Array.isArray(body.skills) && body.skills.length > 0) {
+        const endpoint = body.url || body.a2a_endpoint;
+        I.assertTruthy(endpoint, 'url or a2a_endpoint is required when skills is non-empty');
+        I.assertEqual(typeof endpoint, 'string');
     }
 });

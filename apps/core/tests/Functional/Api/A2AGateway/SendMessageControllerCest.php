@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Functional\Api\OpenClaw;
+namespace App\Tests\Functional\Api\A2AGateway;
 
-final class InvokeControllerCest
+final class SendMessageControllerCest
 {
     private function gatewayToken(): string
     {
         return (string) ($_ENV['OPENCLAW_GATEWAY_TOKEN'] ?? $_SERVER['OPENCLAW_GATEWAY_TOKEN'] ?? 'test-openclaw-token');
     }
 
-    public function invokeWithoutAuthReturns401(\FunctionalTester $I): void
+    public function sendMessageWithoutAuthReturns401(\FunctionalTester $I): void
     {
         $I->haveHttpHeader('Content-Type', 'application/json');
-        $I->sendPost('/api/v1/agents/invoke', json_encode([
+        $I->sendPost('/api/v1/a2a/send-message', json_encode([
             'tool' => 'hello.greet',
             'input' => ['name' => 'Test'],
         ], JSON_THROW_ON_ERROR));
@@ -24,11 +24,11 @@ final class InvokeControllerCest
         $I->seeResponseContainsJson(['error' => 'Unauthorized']);
     }
 
-    public function invokeWithInvalidTokenReturns401(\FunctionalTester $I): void
+    public function sendMessageWithInvalidTokenReturns401(\FunctionalTester $I): void
     {
         $I->haveHttpHeader('Authorization', 'Bearer wrong-token');
         $I->haveHttpHeader('Content-Type', 'application/json');
-        $I->sendPost('/api/v1/agents/invoke', json_encode([
+        $I->sendPost('/api/v1/a2a/send-message', json_encode([
             'tool' => 'hello.greet',
             'input' => ['name' => 'Test'],
         ], JSON_THROW_ON_ERROR));
@@ -37,22 +37,22 @@ final class InvokeControllerCest
         $I->seeResponseIsJson();
     }
 
-    public function invokeWithInvalidJsonReturns400(\FunctionalTester $I): void
+    public function sendMessageWithInvalidJsonReturns400(\FunctionalTester $I): void
     {
         $I->haveHttpHeader('Authorization', 'Bearer '.$this->gatewayToken());
         $I->haveHttpHeader('Content-Type', 'application/json');
-        $I->sendPost('/api/v1/agents/invoke', '{invalid-json}');
+        $I->sendPost('/api/v1/a2a/send-message', '{invalid-json}');
 
         $I->seeResponseCodeIs(400);
         $I->seeResponseIsJson();
         $I->seeResponseContainsJson(['error' => 'Invalid JSON']);
     }
 
-    public function invokeWithMissingToolReturns400(\FunctionalTester $I): void
+    public function sendMessageWithMissingToolReturns400(\FunctionalTester $I): void
     {
         $I->haveHttpHeader('Authorization', 'Bearer '.$this->gatewayToken());
         $I->haveHttpHeader('Content-Type', 'application/json');
-        $I->sendPost('/api/v1/agents/invoke', json_encode([
+        $I->sendPost('/api/v1/a2a/send-message', json_encode([
             'input' => ['name' => 'Test'],
         ], JSON_THROW_ON_ERROR));
 
@@ -61,11 +61,11 @@ final class InvokeControllerCest
         $I->seeResponseContainsJson(['error' => 'tool is required']);
     }
 
-    public function invokeWithUnknownToolReturnsFailed(\FunctionalTester $I): void
+    public function sendMessageWithUnknownToolReturnsFailed(\FunctionalTester $I): void
     {
         $I->haveHttpHeader('Authorization', 'Bearer '.$this->gatewayToken());
         $I->haveHttpHeader('Content-Type', 'application/json');
-        $I->sendPost('/api/v1/agents/invoke', json_encode([
+        $I->sendPost('/api/v1/a2a/send-message', json_encode([
             'trace_id' => 'trace-provided-001',
             'tool' => 'nonexistent.tool',
             'input' => [],
@@ -78,11 +78,11 @@ final class InvokeControllerCest
         $I->seeResponseJsonMatchesJsonPath('$.request_id');
     }
 
-    public function invokeWithoutTraceIdReturnsGeneratedTraceId(\FunctionalTester $I): void
+    public function sendMessageWithoutTraceIdReturnsGeneratedTraceId(\FunctionalTester $I): void
     {
         $I->haveHttpHeader('Authorization', 'Bearer '.$this->gatewayToken());
         $I->haveHttpHeader('Content-Type', 'application/json');
-        $I->sendPost('/api/v1/agents/invoke', json_encode([
+        $I->sendPost('/api/v1/a2a/send-message', json_encode([
             'tool' => 'nonexistent.tool',
             'input' => [],
         ], JSON_THROW_ON_ERROR));

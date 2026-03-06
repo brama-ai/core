@@ -79,4 +79,29 @@ module.exports = {
         const row = `//tr[@data-agent-name="${agentName}"]`;
         I.click(`${row}//button[contains(@class,"btn-enable")]`);
     },
+
+    /**
+     * Assert that a delete button is visible for a given agent.
+     */
+    seeDeleteButton(agentName) {
+        const row = `//tr[@data-agent-name="${agentName}"]`;
+        I.seeElement(`${row}//button[contains(@class,"btn-delete")]`);
+    },
+
+    /**
+     * Assert that no delete button is visible for a given agent.
+     */
+    dontSeeDeleteButton(agentName) {
+        const row = `//tr[@data-agent-name="${agentName}"]`;
+        I.dontSeeElement(`${row}//button[contains(@class,"btn-delete")]`);
+    },
+
+    /**
+     * Click the delete button for a given agent.
+     * Confirm dialog must be auto-accepted beforehand.
+     */
+    async deleteAgent(agentName) {
+        const row = `//tr[@data-agent-name="${agentName}"]`;
+        I.click(`${row}//button[contains(@class,"btn-delete")]`);
+    },
 };

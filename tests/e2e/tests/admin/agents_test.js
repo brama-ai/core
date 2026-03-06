@@ -2,6 +2,8 @@
 // Tests that the agents page shows both agents with healthy status
 // after running discovery.
 
+const assert = require('assert');
+
 Feature('Admin: Agents Page');
 
 Before(async ({ I, loginPage }) => {
@@ -66,13 +68,13 @@ Scenario(
         I.amOnPage('/admin/agents');
         await I.waitForElement('table tbody', 5);
 
-        // There must be zero error/degraded/unavailable badges
-        const errorBadges = await I.grabNumberOfVisibleElements('.badge-error');
-        const degradedBadges = await I.grabNumberOfVisibleElements('.badge-degraded');
-        const unavailableBadges = await I.grabNumberOfVisibleElements('.badge-unavailable');
+        // There must be zero error/degraded/unavailable badges inside the agents table
+        const errorBadges = await I.grabNumberOfVisibleElements('table .badge-error');
+        const degradedBadges = await I.grabNumberOfVisibleElements('table .badge-degraded');
+        const unavailableBadges = await I.grabNumberOfVisibleElements('table .badge-unavailable');
 
-        I.assertEqual(errorBadges, 0, `Expected 0 error badges, got ${errorBadges}`);
-        I.assertEqual(degradedBadges, 0, `Expected 0 degraded badges, got ${degradedBadges}`);
-        I.assertEqual(unavailableBadges, 0, `Expected 0 unavailable badges, got ${unavailableBadges}`);
+        assert.strictEqual(errorBadges, 0, `Expected 0 error badges, got ${errorBadges}`);
+        assert.strictEqual(degradedBadges, 0, `Expected 0 degraded badges, got ${degradedBadges}`);
+        assert.strictEqual(unavailableBadges, 0, `Expected 0 unavailable badges, got ${unavailableBadges}`);
     },
 ).tag('@admin');

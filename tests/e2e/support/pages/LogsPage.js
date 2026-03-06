@@ -7,6 +7,7 @@ module.exports = {
     searchInput: '#q',
     levelSelect: '#level',
     appSelect: '#app',
+    categorySelect: '#category',
     submitButton: '.log-filter-form button[type="submit"]',
     resultsTable: 'table.admin-table tbody',
     totalCount: '.glass-card span',
@@ -31,6 +32,12 @@ module.exports = {
 
     async filterByApp(app) {
         I.selectOption(this.appSelect, app);
+        I.click(this.submitButton);
+        await I.waitForElement(this.resultsTable, 10);
+    },
+
+    async filterByCategory(category) {
+        I.selectOption(this.categorySelect, category);
         I.click(this.submitButton);
         await I.waitForElement(this.resultsTable, 10);
     },

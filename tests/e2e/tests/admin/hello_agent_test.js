@@ -114,10 +114,10 @@ Scenario(
         assert.strictEqual(response.status, 200);
         assert.strictEqual(response.data.name, 'hello-agent');
         assert.strictEqual(response.data.version, '1.0.0');
-        assert.ok(Array.isArray(response.data.capabilities), 'capabilities must be an array');
+        assert.ok(Array.isArray(response.data.skills), 'skills must be an array');
         assert.ok(
-            response.data.capabilities.includes('hello.greet'),
-            'capabilities must contain hello.greet',
+            response.data.skills.some((s) => s.id === 'hello.greet'),
+            'skills must contain hello.greet',
         );
     },
 ).tag('@smoke').tag('@hello');

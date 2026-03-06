@@ -15,6 +15,17 @@ final class TraceSequenceProjectorTest extends Unit
 
         $projection = $projector->project([
             [
+                '@timestamp' => '2026-03-06T09:59:59Z',
+                'event_name' => 'core.invoke.tool_resolved',
+                'step' => 'tool_resolve',
+                'source_app' => 'core',
+                'target_app' => 'hello-agent',
+                'tool' => 'hello.greet',
+                'status' => 'completed',
+                'trace_id' => 'trace-1',
+                'request_id' => 'req-1',
+            ],
+            [
                 '@timestamp' => '2026-03-06T10:00:00Z',
                 'event_name' => 'core.a2a.outbound.started',
                 'step' => 'a2a_outbound',
@@ -34,10 +45,38 @@ final class TraceSequenceProjectorTest extends Unit
             ],
         ]);
 
-        $this->assertCount(1, $projection['events']);
-        $this->assertSame('core', $projection['events'][0]['from']);
-        $this->assertSame('hello-agent', $projection['events'][0]['to']);
-        $this->assertSame('hello.greet', $projection['events'][0]['operation']);
+        $this->assertCount(2, $projection['events']);
+        $this->assertSame('tool_resolve', $projection['events'][0]['step']);
+        $this->assertSame('a2a_outbound', $projection['events'][1]['step']);
         $this->assertSame(['core', 'hello-agent'], $projection['participants']);
+        $this->assertCount(1, $projection['call_events']);
+        $this->assertSame('a2a_outbound', $projection['call_events'][0]['step']);
+        $this->assertSame(['core', 'hello-agent'], $projection['call_participants']);
+    }
+
+    public function testAgentCardFetchIsCallStep(): void
+    {
+        $projector = new TraceSequenceProjector();
+
+        $projection = $projector->project([
+            [
+                '@timestamp' => '2026-03-06T10:00:00Z',
+                'event_name' => 'core.agent_card.fetch_completed',
+                'step' => 'agent_card_fetch',
+                'source_app' => 'core',
+                'target_app' => 'hello-agent',
+                'status' => 'completed',
+                'duration_ms' => 42,
+                'trace_id' => 'trace-1',
+                'request_id' => 'req-1',
+                'http_status_code' => 200,
+                'task_id' => 'task-abc',
+            ],
+        ]);
+
+        $this->assertCount(1, $projection['call_events']);
+        $this->assertSame('agent_card_fetch', $projection['call_events'][0]['step']);
+        $this->assertSame(200, $projection['call_events'][0]['details']['http_status_code']);
+        $this->assertSame('task-abc', $projection['call_events'][0]['details']['task_id']);
     }
 }

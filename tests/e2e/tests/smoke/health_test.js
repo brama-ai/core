@@ -1,21 +1,26 @@
 // Smoke: core platform health endpoint
 // Migrated from tests/health.spec.ts
 
+const assert = require('assert');
+
 Feature('Smoke: Health Endpoint');
 
-Scenario('returns 200 with ok status through Traefik', async ({ I }) => {
+Scenario('returns 200 with ok status through Traefik @smoke', async ({ I }) => {
     const res = await I.sendGetRequest('/health');
-    I.assertEqual(res.status, 200);
-    I.assertEqual(res.data.status, 'ok');
-    I.assertEqual(res.data.service, 'core-platform');
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.data.status, 'ok');
+    assert.strictEqual(res.data.service, 'core-platform');
 }).tag('@smoke');
 
-Scenario('is accessible without authentication', async ({ I }) => {
+Scenario('is accessible without authentication @smoke', async ({ I }) => {
     const res = await I.sendGetRequest('/health');
-    I.assertEqual(res.status, 200);
+    assert.strictEqual(res.status, 200);
 }).tag('@smoke');
 
-Scenario('returns application/json content-type', async ({ I }) => {
+Scenario('returns application/json content-type @smoke', async ({ I }) => {
     const res = await I.sendGetRequest('/health');
-    I.assertContain(res.headers['content-type'], 'application/json');
+    assert.ok(
+        res.headers['content-type'].includes('application/json'),
+        'content-type must include application/json',
+    );
 }).tag('@smoke');

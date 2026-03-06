@@ -49,15 +49,14 @@ final class AgentRegistryApiCest
         $I->haveHttpHeader('Content-Type', 'application/json');
         $I->haveHttpHeader('X-Platform-Internal-Token', self::INTERNAL_TOKEN);
 
-        $invalid = $this->validManifest('invalid-manifest-agent');
-        unset($invalid['a2a_endpoint']);
+        $invalid = ['name' => 'INVALID NAME!', 'version' => 'not-semver'];
 
         $I->sendPost('/api/v1/internal/agents/register', json_encode($invalid, JSON_THROW_ON_ERROR));
 
         $I->seeResponseCodeIs(422);
         $I->seeResponseIsJson();
         $I->seeResponseContains('"Manifest validation failed"');
-        $I->seeResponseContains('a2a_endpoint');
+        $I->seeResponseContains('name');
     }
 
     public function registerAgentWithValidManifest(\FunctionalTester $I): void

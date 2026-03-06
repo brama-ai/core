@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Functional\Api\OpenClaw;
+namespace App\Tests\Functional\Api\A2AGateway;
 
 final class DiscoveryControllerCest
 {
@@ -13,7 +13,7 @@ final class DiscoveryControllerCest
 
     public function discoveryWithoutAuthReturns401(\FunctionalTester $I): void
     {
-        $I->sendGet('/api/v1/agents/discovery');
+        $I->sendGet('/api/v1/a2a/discovery');
 
         $I->seeResponseCodeIs(401);
         $I->seeResponseIsJson();
@@ -23,7 +23,7 @@ final class DiscoveryControllerCest
     public function discoveryWithInvalidTokenReturns401(\FunctionalTester $I): void
     {
         $I->haveHttpHeader('Authorization', 'Bearer wrong-token');
-        $I->sendGet('/api/v1/agents/discovery');
+        $I->sendGet('/api/v1/a2a/discovery');
 
         $I->seeResponseCodeIs(401);
         $I->seeResponseIsJson();
@@ -32,7 +32,7 @@ final class DiscoveryControllerCest
     public function discoveryWithValidTokenReturnsTools(\FunctionalTester $I): void
     {
         $I->haveHttpHeader('Authorization', 'Bearer '.$this->gatewayToken());
-        $I->sendGet('/api/v1/agents/discovery');
+        $I->sendGet('/api/v1/a2a/discovery');
 
         $I->seeResponseCodeIs(200);
         $I->seeResponseIsJson();
