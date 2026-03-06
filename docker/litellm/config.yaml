@@ -8,6 +8,12 @@ model_list:
       model: openrouter/minimax/minimax-m2.5
       api_key: os.environ/OPENROUTER_API_KEY
 
+general_settings:
+  store_model_in_db: true
+  store_prompts_in_spend_logs: true
+  maximum_spend_logs_retention_period: "7d"
+  maximum_spend_logs_retention_interval: "1d"
+
 litellm_settings:
   set_verbose: true
   database_url: os.environ/DATABASE_URL
