@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Api\OpenClaw;
+namespace App\Controller\Api\A2AGateway;
 
-use App\AgentDiscovery\DiscoveryBuilder;
+use App\A2AGateway\SkillCatalogBuilder;
 use App\Logging\PayloadSanitizer;
 use App\Logging\TraceEvent;
 use Psr\Cache\CacheItemPoolInterface;
@@ -17,11 +17,11 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class DiscoveryController extends AbstractController
 {
-    private const CACHE_KEY = 'openclaw_discovery_payload';
+    private const CACHE_KEY = 'a2a_discovery_payload';
     private const CACHE_TTL = 30;
 
     public function __construct(
-        private readonly DiscoveryBuilder $discoveryBuilder,
+        private readonly SkillCatalogBuilder $catalogBuilder,
         private readonly CacheItemPoolInterface $cache,
         private readonly LoggerInterface $logger,
         private readonly PayloadSanitizer $payloadSanitizer,
@@ -29,7 +29,7 @@ final class DiscoveryController extends AbstractController
     ) {
     }
 
-    #[Route('/api/v1/agents/discovery', name: 'api_openclaw_discovery', methods: ['GET'])]
+    #[Route('/api/v1/a2a/discovery', name: 'api_a2a_discovery', methods: ['GET'])]
     public function __invoke(Request $request): JsonResponse
     {
         if (!$this->isAuthorized($request)) {
@@ -76,7 +76,7 @@ final class DiscoveryController extends AbstractController
             return $this->json($cached);
         }
 
-        $payload = $this->discoveryBuilder->build();
+        $payload = $this->catalogBuilder->build();
 
         $item->set($payload);
         $item->expiresAfter(self::CACHE_TTL);

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Api\Internal;
 
-use App\AgentDiscovery\OpenClawSyncService;
+use App\A2AGateway\SkillCatalogSyncService;
 use App\AgentInstaller\AgentInstallerService;
 use App\AgentInstaller\AgentInstallException;
 use App\AgentInstaller\AgentMigrationTrigger;
@@ -23,7 +23,7 @@ final class AgentEnableController extends AbstractController
     public function __construct(
         private readonly AgentRegistryRepository $registry,
         private readonly AgentRegistryAuditLogger $audit,
-        private readonly OpenClawSyncService $syncService,
+        private readonly SkillCatalogSyncService $syncService,
         private readonly AgentInstallerService $installer,
         private readonly AgentMigrationTrigger $migrationTrigger,
         private readonly LoggerInterface $logger,
@@ -50,13 +50,14 @@ final class AgentEnableController extends AbstractController
         if (null === ($agent['installed_at'] ?? null) && isset($manifest['storage'])) {
             try {
                 $actions = $this->installer->install($manifest);
-                $this->registry->markInstalled($name);
-                $this->logger->info('Agent storage provisioned', ['agent' => $name, 'actions' => $actions]);
 
                 if (isset($manifest['storage']['postgres'])) {
                     $this->migrationTrigger->triggerMigrations($manifest);
                     $this->logger->info('Agent migrations triggered', ['agent' => $name]);
                 }
+
+                $this->registry->markInstalled($name);
+                $this->logger->info('Agent storage provisioned', ['agent' => $name, 'actions' => $actions]);
             } catch (AgentInstallException $e) {
                 $this->logger->error('Agent provisioning failed', ['agent' => $name, 'error' => $e->getMessage()]);
 

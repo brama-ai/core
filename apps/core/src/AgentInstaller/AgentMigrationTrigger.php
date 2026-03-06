@@ -72,10 +72,10 @@ final class AgentMigrationTrigger
             }
         }
 
-        $a2aEndpoint = $manifest['a2a_endpoint'] ?? null;
+        $url = $manifest['url'] ?? $manifest['a2a_endpoint'] ?? null;
 
-        if (is_string($a2aEndpoint) && '' !== $a2aEndpoint) {
-            $parsed = parse_url($a2aEndpoint);
+        if (is_string($url) && '' !== $url) {
+            $parsed = parse_url($url);
 
             if (false !== $parsed && isset($parsed['scheme'], $parsed['host'])) {
                 $port = isset($parsed['port']) ? sprintf(':%d', $parsed['port']) : '';

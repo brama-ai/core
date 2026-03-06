@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\AgentDiscovery\AgentConventionVerifier;
-use App\AgentDiscovery\AgentDiscoveryService;
-use App\AgentDiscovery\AgentManifestFetcher;
+use App\A2AGateway\AgentCardFetcher;
+use App\A2AGateway\AgentConventionVerifier;
+use App\A2AGateway\AgentDiscoveryService;
 use App\AgentRegistry\AgentRegistryInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -18,7 +18,7 @@ final class AgentDiscoveryCommand extends Command
 {
     public function __construct(
         private readonly AgentDiscoveryService $discoveryService,
-        private readonly AgentManifestFetcher $manifestFetcher,
+        private readonly AgentCardFetcher $agentCardFetcher,
         private readonly AgentConventionVerifier $conventionVerifier,
         private readonly AgentRegistryInterface $registry,
     ) {
@@ -42,7 +42,7 @@ final class AgentDiscoveryCommand extends Command
         $errors = 0;
 
         foreach ($agents as ['hostname' => $hostname, 'port' => $port]) {
-            $manifest = $this->manifestFetcher->fetch($hostname, $port);
+            $manifest = $this->agentCardFetcher->fetch($hostname, $port);
             $result = $this->conventionVerifier->verify($manifest);
 
             // Use manifest name if available, fall back to hostname for error state

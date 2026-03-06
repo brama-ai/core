@@ -2,19 +2,21 @@
 
 declare(strict_types=1);
 
-namespace App\AgentDiscovery;
+namespace App\A2AGateway;
 
 use App\AgentRegistry\AgentRegistryInterface;
+use App\AgentRegistry\ManifestValidator;
 
-final class DiscoveryBuilder
+final class SkillCatalogBuilder
 {
     public function __construct(
         private readonly AgentRegistryInterface $registry,
+        private readonly ManifestValidator $manifestValidator,
     ) {
     }
 
     /**
-     * Build the OpenClaw-compatible tool catalog from all enabled agents.
+     * Build the skill catalog from all enabled agents.
      *
      * @return array<string, mixed>
      */
@@ -37,26 +39,46 @@ final class DiscoveryBuilder
                 : (array) ($agent['config'] ?? []);
             $configDescription = (string) ($config['description'] ?? '');
 
-            /** @var list<string> $capabilities */
-            $capabilities = (array) ($manifest['capabilities'] ?? []);
+            // Normalize manifest to get structured AgentSkill objects
+            $normalized = $this->manifestValidator->normalize($manifest);
 
-            /** @var array<string, array<string, mixed>> $capabilitySchemas */
-            $capabilitySchemas = (array) ($manifest['capability_schemas'] ?? []);
+            /** @var list<array<string, mixed>> $skills */
+            $skills = (array) ($normalized['skills'] ?? []);
 
-            foreach ($capabilities as $capability) {
-                $capSchema = $capabilitySchemas[$capability] ?? [];
-                $description = (string) ($capSchema['description'] ?? '');
+            /** @var array<string, array<string, mixed>> $skillSchemas */
+            $skillSchemas = (array) ($manifest['skill_schemas'] ?? []);
+
+            foreach ($skills as $skill) {
+                /** @var string $skillId */
+                $skillId = (string) ($skill['id'] ?? '');
+                $skillDescription = (string) ($skill['description'] ?? '');
+
+                // Description priority: config > skill > agent
+                $description = $skillDescription;
                 if ('' !== $configDescription) {
                     $description = $configDescription;
                 } elseif ('' === $description) {
                     $description = $agentDescription;
                 }
-                $tools[] = [
-                    'name' => $capability,
+
+                // Input schema from skill_schemas (legacy) or future structured skill extension
+                $schema = $skillSchemas[$skillId] ?? [];
+                $inputSchema = $schema['input_schema'] ?? ['type' => 'object'];
+
+                $tool = [
+                    'name' => $skillId,
                     'agent' => $agentName,
                     'description' => $description,
-                    'input_schema' => $capSchema['input_schema'] ?? ['type' => 'object'],
+                    'input_schema' => $inputSchema,
                 ];
+
+                /** @var list<string> $tags */
+                $tags = (array) ($skill['tags'] ?? []);
+                if ([] !== $tags) {
+                    $tool['tags'] = $tags;
+                }
+
+                $tools[] = $tool;
             }
         }
 

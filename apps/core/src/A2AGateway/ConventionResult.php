@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\AgentDiscovery;
+namespace App\A2AGateway;
 
 final class ConventionResult
 {

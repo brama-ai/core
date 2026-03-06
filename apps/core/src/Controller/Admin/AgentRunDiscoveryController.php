@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
-use App\AgentDiscovery\AgentConventionVerifier;
-use App\AgentDiscovery\AgentDiscoveryService;
-use App\AgentDiscovery\AgentManifestFetcher;
+use App\A2AGateway\AgentCardFetcher;
+use App\A2AGateway\AgentConventionVerifier;
+use App\A2AGateway\AgentDiscoveryService;
 use App\AgentRegistry\AgentRegistryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,7 +18,7 @@ final class AgentRunDiscoveryController extends AbstractController
 {
     public function __construct(
         private readonly AgentDiscoveryService $discoveryService,
-        private readonly AgentManifestFetcher $manifestFetcher,
+        private readonly AgentCardFetcher $agentCardFetcher,
         private readonly AgentConventionVerifier $conventionVerifier,
         private readonly AgentRegistryInterface $registry,
     ) {
@@ -31,7 +31,7 @@ final class AgentRunDiscoveryController extends AbstractController
         $results = [];
 
         foreach ($agents as ['hostname' => $hostname, 'port' => $port]) {
-            $manifest = $this->manifestFetcher->fetch($hostname, $port);
+            $manifest = $this->agentCardFetcher->fetch($hostname, $port);
             $result = $this->conventionVerifier->verify($manifest);
 
             $name = is_string($manifest['name'] ?? null) && '' !== $manifest['name']

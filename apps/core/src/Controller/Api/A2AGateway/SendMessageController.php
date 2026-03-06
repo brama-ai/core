@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Api\OpenClaw;
+namespace App\Controller\Api\A2AGateway;
 
-use App\AgentDiscovery\AgentInvokeBridge;
+use App\A2AGateway\A2AClient;
 use App\Logging\PayloadSanitizer;
 use App\Logging\TraceEvent;
 use App\Observability\LangfuseIngestionClient;
@@ -15,10 +15,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-final class InvokeController extends AbstractController
+final class SendMessageController extends AbstractController
 {
     public function __construct(
-        private readonly AgentInvokeBridge $bridge,
+        private readonly A2AClient $a2aClient,
         private readonly LangfuseIngestionClient $langfuse,
         private readonly LoggerInterface $logger,
         private readonly PayloadSanitizer $payloadSanitizer,
@@ -26,7 +26,7 @@ final class InvokeController extends AbstractController
     ) {
     }
 
-    #[Route('/api/v1/agents/invoke', name: 'api_openclaw_invoke', methods: ['POST'])]
+    #[Route('/api/v1/a2a/send-message', name: 'api_a2a_send_message', methods: ['POST'])]
     public function __invoke(Request $request): JsonResponse
     {
         if (!$this->isAuthorized($request)) {
@@ -97,7 +97,7 @@ final class InvokeController extends AbstractController
         );
 
         $start = microtime(true);
-        $result = $this->bridge->invoke($tool, $input, $traceId, $requestId);
+        $result = $this->a2aClient->invoke($tool, $input, $traceId, $requestId);
         $durationMs = (int) ((microtime(true) - $start) * 1000);
         $this->langfuse->recordOpenClawInvoke($traceId, $requestId, $tool, $input, $result, $durationMs);
         $sanitizedOutput = $this->payloadSanitizer->sanitize($result);

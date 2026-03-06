@@ -14,7 +14,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('ROLE_ADMIN')]
-final class AgentDisableController extends AbstractController
+final class AgentDeleteController extends AbstractController
 {
     public function __construct(
         private readonly AgentRegistryRepository $registry,
@@ -23,20 +23,28 @@ final class AgentDisableController extends AbstractController
     ) {
     }
 
-    #[Route('/api/v1/internal/agents/{name}/disable', name: 'api_internal_agents_disable', methods: ['POST'])]
+    #[Route('/api/v1/internal/agents/{name}', name: 'api_internal_agents_delete', methods: ['DELETE'])]
     public function __invoke(string $name): JsonResponse
     {
-        $actor = $this->getUser()?->getUserIdentifier() ?? 'unknown';
+        $agent = $this->registry->findByName($name);
 
-        $updated = $this->registry->disable($name);
-
-        if (!$updated) {
+        if (null === $agent) {
             return $this->json(['error' => sprintf('Agent "%s" not found', $name)], Response::HTTP_NOT_FOUND);
         }
 
-        $this->audit->log($name, 'disabled', $actor);
+        if ($agent['enabled']) {
+            return $this->json(
+                ['error' => sprintf('Agent "%s" is enabled. Disable it before deleting.', $name)],
+                Response::HTTP_CONFLICT,
+            );
+        }
+
+        $actor = $this->getUser()?->getUserIdentifier() ?? 'unknown';
+
+        $this->registry->delete($name);
+        $this->audit->log($name, 'deleted', $actor);
         $this->syncService->pushDiscovery();
 
-        return $this->json(['status' => 'disabled', 'name' => $name]);
+        return $this->json(['status' => 'deleted', 'name' => $name]);
     }
 }

@@ -243,6 +243,21 @@ final class AgentRegistryRepository implements AgentRegistryInterface
         return $rows > 0;
     }
 
+    public function delete(string $name): bool
+    {
+        $rows = $this->connection->executeStatement(
+            'DELETE FROM agent_registry WHERE name = :name',
+            ['name' => $name],
+        );
+
+        if ($rows > 0) {
+            $this->logger->info('Agent deleted', ['agent' => $name]);
+            $this->invalidateCache();
+        }
+
+        return $rows > 0;
+    }
+
     private function invalidateCache(): void
     {
         $this->cache->deleteItem(self::CACHE_KEY);

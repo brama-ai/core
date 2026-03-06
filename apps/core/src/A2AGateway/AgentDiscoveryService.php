@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\AgentDiscovery;
+namespace App\A2AGateway;
 
 use Psr\Log\LoggerInterface;
 
@@ -34,7 +34,10 @@ final class AgentDiscoveryService
         }
 
         if (false === $raw) {
-            $this->logger->warning('AgentDiscoveryService: could not reach Traefik API at '.self::TRAEFIK_API_URL);
+            $this->logger->warning('AgentDiscoveryService: could not reach Traefik API', [
+                'url' => self::TRAEFIK_API_URL,
+                'event_name' => 'core.discovery.traefik_unreachable',
+            ]);
 
             return [];
         }
@@ -43,7 +46,11 @@ final class AgentDiscoveryService
             /** @var list<array<string, mixed>> $services */
             $services = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
-            $this->logger->warning('AgentDiscoveryService: Traefik API returned invalid JSON', ['error' => $e->getMessage()]);
+            $this->logger->warning('AgentDiscoveryService: Traefik API returned invalid JSON', [
+                'url' => self::TRAEFIK_API_URL,
+                'event_name' => 'core.discovery.invalid_json',
+                'error' => $e->getMessage(),
+            ]);
 
             return [];
         }

@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace App\AgentDiscovery;
+namespace App\A2AGateway;
 
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 
-final class OpenClawSyncService
+final class SkillCatalogSyncService
 {
     private const SYNC_STATUS_KEY = 'openclaw_sync_status';
     private const SYNC_STATUS_TTL = 3600;
 
     public function __construct(
-        private readonly DiscoveryBuilder $discoveryBuilder,
+        private readonly SkillCatalogBuilder $catalogBuilder,
         private readonly CacheItemPoolInterface $cache,
         private readonly LoggerInterface $logger,
         private readonly string $pushUrl,
@@ -22,7 +22,7 @@ final class OpenClawSyncService
     }
 
     /**
-     * Push the current discovery payload to OpenClaw's reload endpoint.
+     * Push the current skill catalog to OpenClaw's reload endpoint.
      * Fails gracefully — never throws; stores result in cache.
      */
     public function pushDiscovery(): void
@@ -31,7 +31,7 @@ final class OpenClawSyncService
             return;
         }
 
-        $payload = $this->discoveryBuilder->build();
+        $payload = $this->catalogBuilder->build();
 
         try {
             $statusCode = $this->postDiscovery($payload);

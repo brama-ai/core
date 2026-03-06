@@ -1,11 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "agent-manifest",
-  "title": "Agent Manifest",
-  "description": "Schema for platform agent manifest.json",
+  "$id": "agent-card",
+  "title": "Agent Card",
+  "description": "Schema for platform Agent Card aligned with official A2A protocol AgentCard specification",
   "type": "object",
-  "required": ["name", "version", "description", "permissions", "commands", "events", "a2a_endpoint"],
-  "additionalProperties": false,
+  "required": ["name", "version"],
+  "additionalProperties": true,
   "properties": {
     "name": {
       "type": "string",
@@ -22,49 +22,111 @@
     "description": {
       "type": "string",
       "minLength": 1,
-      "description": "Human-readable purpose shown in admin UI"
+      "description": "Human-readable purpose shown in admin UI and discovery"
     },
-    "permissions": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Minimum roles allowed to trigger this agent"
-    },
-    "commands": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Chat commands this agent handles"
-    },
-    "events": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Platform event types this agent subscribes to"
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "A2A Server endpoint URL (official A2A field)"
     },
     "a2a_endpoint": {
       "type": "string",
       "format": "uri",
-      "description": "Internal A2A request target URL"
+      "description": "Deprecated: use 'url' instead. Kept for backward compatibility"
+    },
+    "provider": {
+      "type": "object",
+      "properties": {
+        "organization": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri" }
+      },
+      "description": "Service provider information (official A2A field)"
+    },
+    "documentationUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to agent documentation (official A2A field)"
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "streaming": { "type": "boolean", "default": false },
+        "pushNotifications": { "type": "boolean", "default": false },
+        "stateTransitionHistory": { "type": "boolean", "default": false }
+      },
+      "additionalProperties": false,
+      "description": "A2A protocol capabilities (official A2A AgentCapabilities)"
+    },
+    "defaultInputModes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["text"],
+      "description": "Default MIME types for input (official A2A field)"
+    },
+    "defaultOutputModes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["text"],
+      "description": "Default MIME types for output (official A2A field)"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "required": ["id", "name", "description"],
+            "properties": {
+              "id": { "type": "string", "description": "Unique skill identifier (e.g. hello.greet)" },
+              "name": { "type": "string", "description": "Human-readable skill name" },
+              "description": { "type": "string", "description": "What this skill does" },
+              "tags": { "type": "array", "items": { "type": "string" }, "description": "Categorization tags" },
+              "examples": { "type": "array", "items": { "type": "string" }, "description": "Example prompts" },
+              "inputModes": { "type": "array", "items": { "type": "string" }, "description": "Supported input MIME types" },
+              "outputModes": { "type": "array", "items": { "type": "string" }, "description": "Supported output MIME types" }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "description": "Named A2A skills — accepts string IDs (legacy) or structured AgentSkill objects (official A2A)"
+    },
+    "skill_schemas": {
+      "type": "object",
+      "description": "Deprecated: fold into structured skills. Per-skill input schemas keyed by skill name"
+    },
+    "permissions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Platform extension: minimum roles allowed to trigger this agent"
+    },
+    "commands": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Platform extension: chat commands this agent handles"
+    },
+    "events": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Platform extension: event types this agent subscribes to"
     },
     "config_schema": {
       "type": "object",
-      "description": "JSON Schema for runtime config rendered in admin UI"
-    },
-    "capabilities": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Named A2A intents this agent exposes"
-    },
-    "capability_schemas": {
-      "type": "object",
-      "description": "Per-capability input schemas keyed by capability name"
+      "description": "Platform extension: JSON Schema for runtime config rendered in admin UI"
     },
     "admin_url": {
       "type": "string",
-      "description": "Deep link to agent's own admin page"
+      "description": "Platform extension: deep link to agent's own admin page"
     },
     "health_url": {
       "type": "string",
       "format": "uri",
-      "description": "Health check URL polled by platform"
+      "description": "Platform extension: health check URL polled by platform"
+    },
+    "storage": {
+      "type": "object",
+      "description": "Platform extension: storage requirements (postgres, redis, opensearch)"
     }
   }
 }
