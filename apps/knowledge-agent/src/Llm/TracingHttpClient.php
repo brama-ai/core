@@ -81,7 +81,7 @@ final class TracingHttpClient implements HttpClientInterface
 
         if (\is_array($body)) {
             if (!isset($body['user'])) {
-                $body['user'] = sprintf(
+                $body['user'] = \sprintf(
                     'service=%s;feature=%s;request_id=%s',
                     $this->serviceName,
                     $featureName,

@@ -29,7 +29,7 @@ final class TraceContext
     {
         $hex = bin2hex(random_bytes(16));
 
-        return sprintf(
+        return \sprintf(
             '%s-%s-%s-%s-%s',
             substr($hex, 0, 8),
             substr($hex, 8, 4),

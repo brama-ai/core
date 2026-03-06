@@ -14,7 +14,7 @@ final class A2AControllerCest
             'payload' => ['name' => 'TestUser'],
             'request_id' => 'test-req-001',
             'trace_id' => 'test-trace-001',
-        ], JSON_THROW_ON_ERROR));
+        ], \JSON_THROW_ON_ERROR));
 
         $I->seeResponseCodeIs(200);
         $I->seeResponseIsJson();
@@ -28,7 +28,7 @@ final class A2AControllerCest
         $I->haveHttpHeader('Content-Type', 'application/json');
         $I->sendPost('/api/v1/a2a', json_encode([
             'payload' => ['name' => 'Test'],
-        ], JSON_THROW_ON_ERROR));
+        ], \JSON_THROW_ON_ERROR));
 
         $I->seeResponseCodeIs(422);
         $I->seeResponseIsJson();
@@ -50,7 +50,7 @@ final class A2AControllerCest
         $I->sendPost('/api/v1/a2a', json_encode([
             'intent' => 'unknown.action',
             'request_id' => 'test-req-002',
-        ], JSON_THROW_ON_ERROR));
+        ], \JSON_THROW_ON_ERROR));
 
         $I->seeResponseCodeIs(200);
         $I->seeResponseIsJson();
@@ -65,7 +65,7 @@ final class A2AControllerCest
             'intent' => 'hello.greet',
             'payload' => [],
             'request_id' => 'test-req-003',
-        ], JSON_THROW_ON_ERROR));
+        ], \JSON_THROW_ON_ERROR));
 
         $I->seeResponseCodeIs(200);
         $I->seeResponseIsJson();

@@ -14,8 +14,11 @@ final class ManifestCest
         $I->seeResponseContainsJson([
             'name' => 'hello-agent',
             'version' => '1.0.0',
-            'capabilities' => [],
         ]);
+        $I->seeResponseContainsJson(['url' => 'http://hello-agent/api/v1/a2a']);
+        $response = json_decode($I->grabResponse(), true);
+        \PHPUnit\Framework\Assert::assertIsArray($response['skills']);
+        \PHPUnit\Framework\Assert::assertSame('hello.greet', $response['skills'][0]['id']);
     }
 
     public function testManifestContainsHealthUrl(\FunctionalTester $I): void

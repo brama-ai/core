@@ -112,13 +112,14 @@ final class LangfuseIngestionClient
             if (false === $response) {
                 $this->logger->warning('Langfuse ingestion failed', [
                     'service' => 'hello-agent',
-                    'event' => 'langfuse.ingestion_failed',
+                    'event_name' => 'hello.langfuse.ingestion_failed',
+                    'trace_id' => $events[0]['body']['id'],
                 ]);
             }
         } catch (\Throwable $exception) {
             $this->logger->warning('Langfuse ingestion exception', [
                 'service' => 'hello-agent',
-                'event' => 'langfuse.ingestion_exception',
+                'event_name' => 'hello.langfuse.ingestion_exception',
                 'error' => $exception->getMessage(),
             ]);
         }

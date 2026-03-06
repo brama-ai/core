@@ -17,11 +17,27 @@ final class ManifestController extends AbstractController
             'name' => 'hello-agent',
             'version' => '1.0.0',
             'description' => 'Simple hello-world reference agent',
-            'permissions' => [],
-            'commands' => ['/hello'],
-            'events' => [],
-            'capabilities' => ['hello.greet'],
-            'capability_schemas' => [
+            'url' => 'http://hello-agent/api/v1/a2a',
+            'provider' => [
+                'organization' => 'AI Community Platform',
+                'url' => 'https://github.com/nmdimas/ai-community-platform',
+            ],
+            'capabilities' => [
+                'streaming' => false,
+                'pushNotifications' => false,
+            ],
+            'defaultInputModes' => ['text'],
+            'defaultOutputModes' => ['text'],
+            'skills' => [
+                [
+                    'id' => 'hello.greet',
+                    'name' => 'Hello Greet',
+                    'description' => 'Greet a user by name. Returns a friendly hello message.',
+                    'tags' => ['greeting'],
+                    'examples' => ['Greet John', 'Say hello to Maria'],
+                ],
+            ],
+            'skill_schemas' => [
                 'hello.greet' => [
                     'description' => 'Greet a user by name. Returns a friendly hello message.',
                     'input_schema' => [
@@ -35,7 +51,9 @@ final class ManifestController extends AbstractController
                     ],
                 ],
             ],
-            'a2a_endpoint' => 'http://hello-agent/api/v1/a2a',
+            'permissions' => [],
+            'commands' => ['/hello'],
+            'events' => [],
             'health_url' => 'http://hello-agent/health',
         ]);
     }

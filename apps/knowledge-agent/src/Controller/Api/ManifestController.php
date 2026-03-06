@@ -22,11 +22,34 @@ final class ManifestController extends AbstractController
             'name' => 'knowledge-agent',
             'version' => '1.0.0',
             'description' => 'Knowledge base management and semantic search',
+            'url' => 'http://knowledge-agent/api/v1/knowledge/a2a',
+            'provider' => [
+                'organization' => 'AI Community Platform',
+                'url' => 'https://github.com/nmdimas/ai-community-platform',
+            ],
+            'capabilities' => [
+                'streaming' => false,
+                'pushNotifications' => false,
+            ],
+            'defaultInputModes' => ['text'],
+            'defaultOutputModes' => ['text'],
+            'skills' => [
+                [
+                    'id' => 'knowledge.search',
+                    'name' => 'Knowledge Search',
+                    'description' => 'Search the knowledge base using semantic and hybrid search',
+                    'tags' => ['search', 'knowledge'],
+                ],
+                [
+                    'id' => 'knowledge.upload',
+                    'name' => 'Knowledge Upload',
+                    'description' => 'Extract and store knowledge from messages',
+                    'tags' => ['upload', 'knowledge'],
+                ],
+            ],
             'permissions' => ['admin', 'moderator'],
             'commands' => ['/wiki', '/knowledge'],
             'events' => ['message.created'],
-            'capabilities' => ['knowledge.search', 'knowledge.upload'],
-            'a2a_endpoint' => 'http://knowledge-agent/api/v1/knowledge/a2a',
             'health_url' => 'http://knowledge-agent/health',
             'admin_url' => $this->adminPublicUrl,
             'storage' => [

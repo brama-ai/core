@@ -221,7 +221,7 @@ final class HelloA2AHandler
         string $traceId,
         string $featureName,
     ): string {
-        $userTag = sprintf(
+        $userTag = \sprintf(
             'service=%s;feature=%s;request_id=%s',
             self::SERVICE_NAME,
             $featureName,
@@ -247,7 +247,7 @@ final class HelloA2AHandler
         $headers = [
             'Content-Type: application/json',
             'Authorization: Bearer '.$this->liteLlmApiKey,
-            'Content-Length: '.strlen($body),
+            'Content-Length: '.\strlen($body),
             'X-Request-Id: '.$requestId,
             'X-Service-Name: '.self::SERVICE_NAME,
             'X-Agent-Name: '.self::SERVICE_NAME,

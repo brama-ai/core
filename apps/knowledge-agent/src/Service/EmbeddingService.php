@@ -44,7 +44,7 @@ final class EmbeddingService
             $headers['X-Trace-Id'] = $traceId;
         }
 
-        $userTag = sprintf(
+        $userTag = \sprintf(
             'service=%s;feature=%s;request_id=%s',
             self::SERVICE_NAME,
             $featureName,
@@ -79,9 +79,9 @@ final class EmbeddingService
             $shortClass = str_contains($class, '\\')
                 ? substr($class, (int) strrpos($class, '\\') + 1)
                 : $class;
-            $method = (string) ($frame['function'] ?? 'call');
+            $method = $frame['function'];
 
-            return strtolower(sprintf('embedding.%s.%s', $shortClass, $method));
+            return strtolower(\sprintf('embedding.%s.%s', $shortClass, $method));
         }
 
         return 'embedding.unknown';

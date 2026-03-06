@@ -45,7 +45,7 @@ final class OpenSearchHandler extends AbstractProcessingHandler
             return;
         }
 
-        $indexName = sprintf('%s_%s', self::INDEX_PREFIX, date('Y_m_d'));
+        $indexName = \sprintf('%s_%s', self::INDEX_PREFIX, date('Y_m_d'));
         $body = '';
 
         foreach ($this->buffer as $record) {
@@ -65,7 +65,7 @@ final class OpenSearchHandler extends AbstractProcessingHandler
         $data = [
             '@timestamp' => $record->datetime->format('c'),
             'level' => $record->level->value,
-            'level_name' => $record->level->name,
+            'level_name' => strtoupper($record->level->name),
             'message' => $record->message,
             'channel' => $record->channel,
         ];

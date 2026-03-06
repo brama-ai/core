@@ -25,7 +25,7 @@ final class PayloadSanitizer
         $capturedJson = $this->encode($sanitized);
         $isTruncated = false;
 
-        if (strlen($capturedJson) > $maxBytes) {
+        if (\strlen($capturedJson) > $maxBytes) {
             $isTruncated = true;
             $sanitized = [
                 '_truncated' => true,
@@ -38,8 +38,8 @@ final class PayloadSanitizer
             'data' => $sanitized,
             'capture_meta' => [
                 'is_truncated' => $isTruncated,
-                'original_size_bytes' => strlen($originalJson),
-                'captured_size_bytes' => strlen($capturedJson),
+                'original_size_bytes' => \strlen($originalJson),
+                'captured_size_bytes' => \strlen($capturedJson),
                 'redacted_fields_count' => $redactedCount,
                 'truncated_values_count' => $truncatedValues,
             ],
@@ -48,7 +48,7 @@ final class PayloadSanitizer
 
     private function normalize(mixed $value): mixed
     {
-        if (is_array($value)) {
+        if (\is_array($value)) {
             $normalized = [];
             foreach ($value as $key => $item) {
                 $normalized[$key] = $this->normalize($item);
@@ -57,7 +57,7 @@ final class PayloadSanitizer
             return $normalized;
         }
 
-        if (is_object($value)) {
+        if (\is_object($value)) {
             if ($value instanceof \JsonSerializable) {
                 return $this->normalize($value->jsonSerialize());
             }
@@ -69,7 +69,7 @@ final class PayloadSanitizer
             return ['_object' => $value::class];
         }
 
-        if (is_resource($value)) {
+        if (\is_resource($value)) {
             return '[resource]';
         }
 
@@ -78,7 +78,7 @@ final class PayloadSanitizer
 
     private function sanitizeValue(mixed $value, string $keyPath, int &$redactedCount, int &$truncatedValues): mixed
     {
-        if (is_array($value)) {
+        if (\is_array($value)) {
             $sanitized = [];
             foreach ($value as $key => $item) {
                 $keyString = (string) $key;
@@ -96,8 +96,8 @@ final class PayloadSanitizer
             return $sanitized;
         }
 
-        if (is_string($value)) {
-            if (strlen($value) > self::DEFAULT_MAX_STRING_BYTES) {
+        if (\is_string($value)) {
+            if (\strlen($value) > self::DEFAULT_MAX_STRING_BYTES) {
                 ++$truncatedValues;
 
                 return substr($value, 0, self::DEFAULT_MAX_STRING_BYTES).'...[truncated]';
@@ -124,7 +124,7 @@ final class PayloadSanitizer
 
     private function encode(mixed $value): string
     {
-        $json = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $json = json_encode($value, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES);
 
         return false === $json ? '"[unencodable]"' : $json;
     }
