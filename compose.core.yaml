@@ -7,21 +7,19 @@ services:
       - ./docker/openclaw/.env
     labels:
       - traefik.enable=true
+
       - traefik.http.routers.core-public.rule=Host(`ai-community-platform.org`) || Host(`www.ai-community-platform.org`) || Host(`localhost`)
       - traefik.http.routers.core-public.entrypoints=web
       - traefik.http.routers.core-public.service=core
-      - traefik.http.services.core.loadbalancer.server.port=80
-      - traefik.http.middlewares.edge-auth.forwardauth.address=http://core/edge/auth/verify
-      - traefik.http.middlewares.edge-auth.forwardauth.trustForwardHeader=true
-      - traefik.http.routers.core-admin.rule=Host(`admin.ai-community-platform.org`) && PathPrefix(`/admin`)
+
+      - traefik.http.routers.core-admin.rule=Host(`admin.ai-community-platform.org`)
       - traefik.http.routers.core-admin.entrypoints=web
       - traefik.http.routers.core-admin.service=core
-      - traefik.http.routers.core-admin-root.rule=Host(`admin.ai-community-platform.org`) && Path(`/`)
-      - traefik.http.routers.core-admin-root.entrypoints=web
-      - traefik.http.routers.core-admin-root.middlewares=admin-root-redirect
-      - traefik.http.middlewares.admin-root-redirect.redirectregex.regex=^https?://admin\\.ai-community-platform\\.org/$
-      - traefik.http.middlewares.admin-root-redirect.redirectregex.replacement=https://admin.ai-community-platform.org/admin
-      - traefik.http.middlewares.admin-root-redirect.redirectregex.permanent=true
+
+      - traefik.http.services.core.loadbalancer.server.port=80
+
+      - traefik.http.middlewares.edge-auth.forwardauth.address=http://core/edge/auth/verify
+      - traefik.http.middlewares.edge-auth.forwardauth.trustForwardHeader=true
     environment:
       LANGFUSE_ENABLED: "true"
       LANGFUSE_BASE_URL: http://langfuse-web:3000
