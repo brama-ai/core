@@ -12,6 +12,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare minimal env files for CI
+        run: |
+          set -euo pipefail
+          mkdir -p docker/openclaw
+          cat > docker/openclaw/.env <<'EOF'
+          OPENCLAW_GATEWAY_TOKEN=ci-gateway-token
+          TELEGRAM_BOT_TOKEN=
+          TELEGRAM_WEBHOOK_URL=
+          EOF
+
       - name: Validate merged compose config (core + agents)
         run: |
           set -euo pipefail
