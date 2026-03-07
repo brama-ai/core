@@ -131,11 +131,6 @@
 </style>
 
 <main class="wrap">
-  {% set host = app.request.host %}
-  {% set is_local_host = host in ['localhost', '127.0.0.1'] %}
-  {% set is_admin_host = host starts with 'admin.' %}
-  {% set admin_host = is_admin_host ? host : (host starts with 'www.' ? 'admin.' ~ host|slice(4) : 'admin.' ~ host) %}
-  {% set admin_url = is_local_host ? '/admin' : app.request.scheme ~ '://' ~ admin_host ~ '/admin' %}
   <span class="tag">Demo Environment</span>
   <h1>AI Community Platform</h1>
   <p class="subtitle">
@@ -159,7 +154,7 @@
   </section>
 
   <div class="actions">
-    <a class="btn btn-primary" href="{{ admin_url }}">Open Admin</a>
+    <a class="btn btn-primary" href="/admin">Open Admin</a>
     <a class="btn btn-secondary" href="/health">Platform Health</a>
   </div>
 
