@@ -32,7 +32,7 @@ docker/volumes/
 docker/openclaw/.env
 
 compose.override.yaml
-
+compose.override.yml
 # Claude / agent artifacts
 .claude/*
 !.claude/skills/

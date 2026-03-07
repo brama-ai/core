@@ -1,0 +1,193 @@
+name: Deploy (Core + Agents)
+
+on:
+  workflow_dispatch:
+    inputs:
+      services:
+        description: "Optional: comma-separated services. Use 'all' to redeploy core + all agents."
+        required: false
+        default: ""
+  push:
+    branches:
+      - main
+      - ci-cd
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect-services:
+    runs-on: ubuntu-latest
+    outputs:
+      services_csv: ${{ steps.detect.outputs.services_csv }}
+      should_deploy: ${{ steps.detect.outputs.should_deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed deployable services
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          INPUT_SERVICES="${{ github.event.inputs.services || '' }}"
+
+          parse_service_builds() {
+            local compose_file="$1"
+            awk '
+              BEGIN { in_services=0; svc=""; in_build=0; }
+              /^services:[[:space:]]*$/ { in_services=1; next }
+              in_services && /^[^[:space:]]/ { in_services=0 }
+              in_services && /^  [A-Za-z0-9_.-]+:[[:space:]]*$/ {
+                svc=$1; sub(":", "", svc); in_build=0; next
+              }
+              in_services && /^    build:[[:space:]]*$/ { in_build=1; next }
+              in_services && /^    [A-Za-z0-9_.-]+:[[:space:]]*$/ && $1 != "build:" { in_build=0 }
+              in_services && in_build && /^[[:space:]]+dockerfile:[[:space:]]*/ {
+                df=$2; gsub(/"/, "", df); print svc "|" df
+              }
+            ' "$compose_file"
+          }
+
+          declare -A SERVICE_DOCKERFILE=()
+          declare -A SERVICE_SOURCE=()
+          declare -A SERVICE_COMPOSE=()
+
+          for file in compose.core.yaml compose.agent-*.yaml; do
+            [[ -f "$file" ]] || continue
+            while IFS='|' read -r svc dockerfile; do
+              [[ -n "$svc" && -n "$dockerfile" ]] || continue
+              SERVICE_DOCKERFILE["$svc"]="$dockerfile"
+              SERVICE_COMPOSE["$svc"]="$file"
+              if [[ "$dockerfile" == docker/*/* ]]; then
+                source_dir="${dockerfile#docker/}"
+                source_dir="${source_dir%%/*}"
+                SERVICE_SOURCE["$svc"]="$source_dir"
+              fi
+            done < <(parse_service_builds "$file")
+          done
+
+          if [[ -n "$INPUT_SERVICES" ]]; then
+            if [[ "$INPUT_SERVICES" == "all" ]]; then
+              mapfile -t ORDERED_ALL < <(printf '%s\n' "${!SERVICE_DOCKERFILE[@]}" | sort)
+              CSV_ALL="$(IFS=,; echo "${ORDERED_ALL[*]}")"
+              echo "services_csv=$CSV_ALL" >> "$GITHUB_OUTPUT"
+            else
+              echo "services_csv=$INPUT_SERVICES" >> "$GITHUB_OUTPUT"
+            fi
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          else
+            BASE_SHA="$(git rev-list --max-count=1 HEAD~1)"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+
+          mapfile -t CHANGED < <(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          printf 'Changed files:\n%s\n' "${CHANGED[@]:-<none>}"
+
+          build_all=false
+          declare -A SERVICES=()
+          for file in "${CHANGED[@]}"; do
+            case "$file" in
+              compose.yaml|Makefile|.github/workflows/deploy.yml)
+                build_all=true
+                ;;
+            esac
+
+            for svc in "${!SERVICE_DOCKERFILE[@]}"; do
+              source_dir="${SERVICE_SOURCE[$svc]:-}"
+              compose_file="${SERVICE_COMPOSE[$svc]:-}"
+
+              if [[ "$file" == "$compose_file" ]]; then
+                SERVICES["$svc"]=1
+              fi
+              if [[ -n "$source_dir" && "$file" == "apps/$source_dir/"* ]]; then
+                SERVICES["$svc"]=1
+              fi
+              if [[ -n "$source_dir" && "$file" == "docker/$source_dir/"* ]]; then
+                SERVICES["$svc"]=1
+              fi
+            done
+          done
+
+          if [[ "$build_all" == "true" ]]; then
+            for svc in "${!SERVICE_DOCKERFILE[@]}"; do
+              SERVICES["$svc"]=1
+            done
+          fi
+
+          if [[ ${#SERVICES[@]} -eq 0 ]]; then
+            echo "services_csv=" >> "$GITHUB_OUTPUT"
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          mapfile -t ORDERED < <(printf '%s\n' "${!SERVICES[@]}" | sort)
+          CSV="$(IFS=,; echo "${ORDERED[*]}")"
+
+          echo "services_csv=$CSV" >> "$GITHUB_OUTPUT"
+          echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: detect-services
+    if: needs.detect-services.outputs.should_deploy == 'true'
+    environment: production
+    steps:
+      - name: Setup SSH key
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy changed services
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          APP_PATH: ${{ vars.APP_PATH }}
+          TARGET_REF: ${{ github.ref_name }}
+          SERVICES_CSV: ${{ needs.detect-services.outputs.services_csv }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${APP_PATH:-}" ]]; then
+            APP_PATH="/root/app/ai-community-platform"
+          fi
+
+          REMOTE_SERVICES="${SERVICES_CSV//,/ }"
+          echo "Deploying services: ${REMOTE_SERVICES}"
+
+          ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "
+            set -euo pipefail
+            cd '$APP_PATH'
+            git fetch --all --prune
+            if git show-ref --verify --quiet refs/remotes/origin/$TARGET_REF; then
+              git checkout -B \"$TARGET_REF\" \"origin/$TARGET_REF\"
+              git pull --ff-only origin \"$TARGET_REF\"
+            else
+              git checkout \"$TARGET_REF\"
+              git pull --ff-only
+            fi
+            COMPOSE_ARGS='-f compose.yaml -f compose.core.yaml'
+            for f in compose.agent-*.yaml; do
+              [ -f \"\$f\" ] && COMPOSE_ARGS=\"\$COMPOSE_ARGS -f \$f\"
+            done
+            eval docker compose \$COMPOSE_ARGS up -d --build --no-deps ${REMOTE_SERVICES}
+            eval docker compose \$COMPOSE_ARGS ps
+          "

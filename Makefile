@@ -1,7 +1,10 @@
 AGENT_FILES := $(sort $(wildcard compose.agent-*.yaml))
+OVERRIDE_FILE := $(firstword $(wildcard compose.override.yaml compose.override.yml))
+OVERRIDE_COMPOSE := $(if $(OVERRIDE_FILE),-f $(OVERRIDE_FILE),)
 COMPOSE_FILES := -f compose.yaml -f compose.core.yaml \
         $(addprefix -f ,$(AGENT_FILES)) \
-        -f compose.langfuse.yaml -f compose.openclaw.yaml
+        -f compose.langfuse.yaml -f compose.openclaw.yaml \
+        $(OVERRIDE_COMPOSE)
 COMPOSE ?= docker compose $(COMPOSE_FILES)
 
 .PHONY: help bootstrap setup infra-setup core-setup knowledge-setup news-setup hello-setup claw-setup \

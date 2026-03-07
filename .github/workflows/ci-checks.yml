@@ -1,0 +1,187 @@
+name: CI Checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  compose-validate:
+    name: Validate Compose
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare minimal env files for CI
+        run: |
+          set -euo pipefail
+          mkdir -p docker/openclaw
+          cat > docker/openclaw/.env <<'EOF'
+          OPENCLAW_GATEWAY_TOKEN=ci-gateway-token
+          TELEGRAM_BOT_TOKEN=
+          TELEGRAM_WEBHOOK_URL=
+          EOF
+
+      - name: Validate merged compose config (core + agents)
+        run: |
+          set -euo pipefail
+          files=(compose.yaml compose.core.yaml)
+          for f in compose.agent-*.yaml; do
+            [[ -f "$f" ]] && files+=("$f")
+          done
+
+          args=()
+          for f in "${files[@]}"; do
+            args+=(-f "$f")
+          done
+
+          docker compose "${args[@]}" config >/dev/null
+
+  detect-build-targets:
+    name: Detect Build Targets
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.detect.outputs.should_build }}
+      matrix: ${{ steps.detect.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed core/agent services
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          parse_service_builds() {
+            local compose_file="$1"
+            awk '
+              BEGIN { in_services=0; svc=""; in_build=0; }
+              /^services:[[:space:]]*$/ { in_services=1; next }
+              in_services && /^[^[:space:]]/ { in_services=0 }
+              in_services && /^  [A-Za-z0-9_.-]+:[[:space:]]*$/ {
+                svc=$1; sub(":", "", svc); in_build=0; next
+              }
+              in_services && /^    build:[[:space:]]*$/ { in_build=1; next }
+              in_services && /^    [A-Za-z0-9_.-]+:[[:space:]]*$/ && $1 != "build:" { in_build=0 }
+              in_services && in_build && /^[[:space:]]+dockerfile:[[:space:]]*/ {
+                df=$2; gsub(/"/, "", df); print svc "|" df
+              }
+            ' "$compose_file"
+          }
+
+          declare -A SERVICE_DOCKERFILE=()
+          declare -A SERVICE_SOURCE=()
+          declare -A SERVICE_COMPOSE=()
+
+          for file in compose.core.yaml compose.agent-*.yaml; do
+            [[ -f "$file" ]] || continue
+            while IFS='|' read -r svc dockerfile; do
+              [[ -n "$svc" && -n "$dockerfile" ]] || continue
+              SERVICE_DOCKERFILE["$svc"]="$dockerfile"
+              SERVICE_COMPOSE["$svc"]="$file"
+              if [[ "$dockerfile" == docker/*/* ]]; then
+                source_dir="${dockerfile#docker/}"
+                source_dir="${source_dir%%/*}"
+                SERVICE_SOURCE["$svc"]="$source_dir"
+              fi
+            done < <(parse_service_builds "$file")
+          done
+
+          all_include=()
+          for svc in "${!SERVICE_DOCKERFILE[@]}"; do
+            all_include+=("{\"service\":\"$svc\",\"dockerfile\":\"${SERVICE_DOCKERFILE[$svc]}\"}")
+          done
+
+          if [[ ${#all_include[@]} -eq 0 ]]; then
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ALL_JSON="$(IFS=,; echo "${all_include[*]}")"
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "matrix={\"include\":[${ALL_JSON}]}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          mapfile -t CHANGED < <(git diff --name-only "$BASE" "$HEAD")
+          printf 'Changed files:\n%s\n' "${CHANGED[@]:-<none>}"
+
+          build_all=false
+          declare -A SELECTED=()
+
+          for path in "${CHANGED[@]}"; do
+            case "$path" in
+              compose.yaml|Makefile|.github/workflows/ci-checks.yml)
+                build_all=true
+                ;;
+            esac
+
+            for svc in "${!SERVICE_DOCKERFILE[@]}"; do
+              source_dir="${SERVICE_SOURCE[$svc]:-}"
+              compose_file="${SERVICE_COMPOSE[$svc]:-}"
+
+              if [[ "$path" == "$compose_file" ]]; then
+                SELECTED["$svc"]=1
+              fi
+              if [[ -n "$source_dir" && "$path" == "apps/$source_dir/"* ]]; then
+                SELECTED["$svc"]=1
+              fi
+              if [[ -n "$source_dir" && "$path" == "docker/$source_dir/"* ]]; then
+                SELECTED["$svc"]=1
+              fi
+            done
+          done
+
+          if [[ "$build_all" == "true" ]]; then
+            ALL_JSON="$(IFS=,; echo "${all_include[*]}")"
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "matrix={\"include\":[${ALL_JSON}]}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          include=()
+          for svc in "${!SELECTED[@]}"; do
+            include+=("{\"service\":\"$svc\",\"dockerfile\":\"${SERVICE_DOCKERFILE[$svc]}\"}")
+          done
+
+          if [[ ${#include[@]} -eq 0 ]]; then
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          JSON="$(IFS=,; echo "${include[*]}")"
+          echo "should_build=true" >> "$GITHUB_OUTPUT"
+          echo "matrix={\"include\":[${JSON}]}" >> "$GITHUB_OUTPUT"
+
+  build-core-and-agents:
+    name: Build Changed Core/Agents
+    runs-on: ubuntu-latest
+    needs: detect-build-targets
+    if: needs.detect-build-targets.outputs.should_build == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-build-targets.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.service }} with cache
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./${{ matrix.dockerfile }}
+          push: false
+          tags: local/${{ matrix.service }}:ci
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
