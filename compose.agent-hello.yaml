@@ -1,6 +1,7 @@
 services:
   hello-agent:
     build:
+      # Trigger CI validation for this agent (1)
       context: .
       dockerfile: docker/hello-agent/Dockerfile
     labels:
