@@ -17,3 +17,5 @@ general_settings:
 litellm_settings:
   set_verbose: true
   database_url: os.environ/DATABASE_URL
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]

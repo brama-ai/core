@@ -24,7 +24,7 @@ def _get_client() -> OpenAI:
     )
 
 
-def _trace_context() -> tuple[str, str, dict[str, str], str]:
+def _trace_context() -> tuple[str, str, dict[str, str], str, dict[str, object]]:
     request_id = request_id_var.get("") or f"llm-ranker-{uuid.uuid4()}"
     trace_id = trace_id_var.get("")
     headers = {
@@ -37,8 +37,21 @@ def _trace_context() -> tuple[str, str, dict[str, str], str]:
         headers["x-trace-id"] = trace_id
 
     user_tag = f"service={SERVICE_NAME};feature={FEATURE_NAME};request_id={request_id}"
+    metadata = {
+        "trace_id": trace_id,
+        "trace_name": f"{SERVICE_NAME}.{FEATURE_NAME}",
+        "session_id": request_id,
+        "generation_name": FEATURE_NAME,
+        "tags": [f"agent:{SERVICE_NAME}", f"method:{FEATURE_NAME}"],
+        "trace_user_id": user_tag,
+        "trace_metadata": {
+            "request_id": request_id,
+            "agent_name": SERVICE_NAME,
+            "feature_name": FEATURE_NAME,
+        },
+    }
 
-    return request_id, trace_id, headers, user_tag
+    return request_id, trace_id, headers, user_tag, metadata
 
 
 def run_ranking() -> int:
@@ -70,14 +83,7 @@ def run_ranking() -> int:
         )
 
         client = _get_client()
-        request_id, trace_id, llm_headers, user_tag = _trace_context()
-        metadata = {
-            "request_id": request_id,
-            "service_name": SERVICE_NAME,
-            "agent_name": SERVICE_NAME,
-            "feature_name": FEATURE_NAME,
-            "trace_id": trace_id,
-        }
+        request_id, trace_id, llm_headers, user_tag, metadata = _trace_context()
         response = client.chat.completions.create(
             model=model,
             messages=[

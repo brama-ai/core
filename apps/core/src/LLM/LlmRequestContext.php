@@ -11,6 +11,7 @@ final class LlmRequestContext
         public readonly string $featureName,
         public readonly string $requestId = '',
         public readonly string $traceId = '',
+        public readonly string $sessionId = '',
     ) {
     }
 
@@ -26,16 +27,34 @@ final class LlmRequestContext
     }
 
     /**
-     * @return array<string, string>
+     * Langfuse-compatible metadata for LiteLLM proxy callback.
+     *
+     * @return array<string, mixed>
      */
     public function metadata(): array
     {
         return [
-            'request_id' => $this->requestId,
             'trace_id' => $this->traceId,
-            'service_name' => $this->agentName,
-            'agent_name' => $this->agentName,
-            'feature_name' => $this->featureName,
+            'trace_name' => $this->agentName.'.'.$this->featureName,
+            'session_id' => '' !== $this->sessionId ? $this->sessionId : $this->requestId,
+            'generation_name' => $this->featureName,
+            'tags' => $this->tags(),
+            'trace_user_id' => $this->userTag(),
+            'trace_metadata' => [
+                'request_id' => $this->requestId,
+                'agent_name' => $this->agentName,
+                'feature_name' => $this->featureName,
+            ],
         ];
+    }
+
+    public function userTag(): string
+    {
+        return \sprintf(
+            'service=%s;feature=%s;request_id=%s',
+            $this->agentName,
+            $this->featureName,
+            $this->requestId,
+        );
     }
 }

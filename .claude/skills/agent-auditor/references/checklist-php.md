@@ -76,8 +76,8 @@ Checks for agents built with PHP 8.5 + Symfony 7.
 | O-10 | Error/warning paths include context | Grep src/ for `->warning(` and `->error(` calls; check they include relevant identifiers (agent, tool, trace_id) not just a bare string | All have context | Some bare | Majority bare |
 | O-11 | LLM calls log duration and model | If agent calls external LLM, grep for `duration_ms` and `model` near LLM call code | Both logged | One of two | Neither |
 | O-12 | Monolog config with OpenSearch handler | Glob `apps/<agent>/config/packages/monolog.yaml`, check for opensearch handler | Configured | — | Missing |
-| O-13 | LLM calls include `tags` field | If agent calls LLM, grep src/ for `'tags'` near LLM call code; must contain `agent:<name>` and `method:<feature>` | Both tags present | Partial | No tags |
-| O-14 | LLM calls include `metadata` with IDs | If agent calls LLM, grep src/ for `'metadata'` near LLM call code; must contain `request_id` and `trace_id` | Both present | One of two | Neither |
+| O-13 | LLM calls include `tags` field | If agent calls LLM, grep src/ for `'tags'` near LLM call code; must contain `agent:<name>` and `method:<feature>` (both top-level `tags` and inside `metadata.tags`) | Both tags present | Partial | No tags |
+| O-14 | LLM metadata is Langfuse-compatible | If agent calls LLM, grep src/ for `'metadata'` near LLM call code; must contain `trace_id`, `trace_name`, `session_id`, `generation_name`, `tags`, `trace_user_id`, `trace_metadata` (see `docs/features/litellm-requests/tracing-contract.md`) | All required fields | Has trace_id but missing others | No metadata |
 
 ## D: Documentation
 

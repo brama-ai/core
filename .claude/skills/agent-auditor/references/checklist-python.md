@@ -63,8 +63,8 @@ Checks for agents built with Python + FastAPI.
 | O-07 | Error/warning paths include context | Grep app/ for `logger.warning` and `logger.error` calls; check they include relevant identifiers not just a bare string | All have context | Some bare | Majority bare |
 | O-08 | LLM calls log duration and model | If agent calls external LLM, grep for `duration` and `model` near LLM call code | Both logged | One of two | Neither |
 | O-09 | OpenSearch logging handler | Grep for OpenSearch or opensearch logging handler in app or config | Configured | — | Missing |
-| O-10 | LLM calls include `tags` field | If agent calls LLM, grep app/ for `"tags"` near LLM call code; must contain `agent:<name>` and `method:<feature>` | Both tags present | Partial | No tags |
-| O-11 | LLM calls include `metadata` with IDs | If agent calls LLM, grep app/ for `"metadata"` near LLM call code; must contain `request_id` and `trace_id` | Both present | One of two | Neither |
+| O-10 | LLM calls include `tags` field | If agent calls LLM, grep app/ for `"tags"` near LLM call code; must contain `agent:<name>` and `method:<feature>` (both in `extra_body.tags` and inside `metadata.tags`) | Both tags present | Partial | No tags |
+| O-11 | LLM metadata is Langfuse-compatible | If agent calls LLM, grep app/ for `"metadata"` near LLM call code; must contain `trace_id`, `trace_name`, `session_id`, `generation_name`, `tags`, `trace_user_id`, `trace_metadata` (see `docs/features/litellm-requests/tracing-contract.md`) | All required fields | Has trace_id but missing others | No metadata |
 
 ## D: Documentation
 

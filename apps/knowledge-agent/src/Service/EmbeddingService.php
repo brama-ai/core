@@ -58,11 +58,20 @@ final class EmbeddingService
                 'input' => $text,
                 'user' => $userTag,
                 'metadata' => [
-                    'request_id' => $requestId,
-                    'service_name' => self::SERVICE_NAME,
-                    'agent_name' => self::SERVICE_NAME,
-                    'feature_name' => $featureName,
                     'trace_id' => $traceId,
+                    'trace_name' => self::SERVICE_NAME.'.'.$featureName,
+                    'session_id' => $requestId,
+                    'generation_name' => $featureName,
+                    'tags' => [
+                        'agent:'.self::SERVICE_NAME,
+                        'method:'.$featureName,
+                    ],
+                    'trace_user_id' => $userTag,
+                    'trace_metadata' => [
+                        'request_id' => $requestId,
+                        'agent_name' => self::SERVICE_NAME,
+                        'feature_name' => $featureName,
+                    ],
                 ],
                 'tags' => [
                     'agent:'.self::SERVICE_NAME,

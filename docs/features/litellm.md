@@ -36,24 +36,23 @@
 Без валідного `OPENROUTER_API_KEY` LiteLLM не зможе виконувати completion/embed виклики до OpenRouter.
 Ключ читається з `.env.local` через `compose.yaml -> litellm.env_file`.
 
-## LLM Trace Context
+## LLM Trace Context & Langfuse
 
-Щоб у LiteLLM логах було видно корисний контекст, агенти додають у LLM-запити:
+LiteLLM proxy налаштовано на відправку LLM generation events у Langfuse через `success_callback` / `failure_callback`. Агенти передають Langfuse-сумісні metadata поля у кожному LLM-запиті.
 
-### Обов'язкові поля (MUST)
+Повна документація: [`docs/features/litellm-requests/`](litellm-requests/overview.md)
 
-- **`tags`** — масив рядків для фільтрації та групування у LiteLLM spend logs:
-  - `agent:<agent-name>` — ім'я агента (e.g. `agent:hello-agent`)
-  - `method:<feature-name>` — назва скіла/методу (e.g. `method:a2a.hello.greet`)
-- **`metadata`** — об'єкт з кореляційними ID:
-  - `request_id` — унікальний ID запиту
-  - `trace_id` — distributed trace ID
-  - `service_name`, `agent_name`, `feature_name` — контекст виклику
+### Обов'язкові metadata поля
 
-### Рекомендовані поля
-
-- **`user`** — рядок у форматі `service=<name>;feature=<feature>;request_id=<id>`
-- **HTTP заголовки**: `X-Request-Id`, `X-Service-Name`, `X-Agent-Name`, `X-Feature-Name`, `X-Trace-Id`
+| Поле | Опис |
+|------|------|
+| `trace_id` | ID одного orchestration run |
+| `trace_name` | `<agent>.<feature>` |
+| `session_id` | ID чату/треду |
+| `generation_name` | Назва конкретного LLM кроку |
+| `tags` | `["agent:<name>", "method:<feature>"]` |
+| `trace_user_id` | `service=...;feature=...;request_id=...` |
+| `trace_metadata` | `{request_id, agent_name, feature_name}` |
 
 ### Приклад payload
 
@@ -63,11 +62,17 @@
   "messages": [...],
   "tags": ["agent:hello-agent", "method:a2a.hello.greet"],
   "metadata": {
-    "request_id": "req_abc123",
-    "trace_id": "trace_def456",
-    "service_name": "hello-agent",
-    "agent_name": "hello-agent",
-    "feature_name": "a2a.hello.greet"
+    "trace_id": "a1b2c3d4e5f67890a1b2c3d4e5f67890",
+    "trace_name": "hello-agent.a2a.hello.greet",
+    "session_id": "req_abc123",
+    "generation_name": "a2a.hello.greet",
+    "tags": ["agent:hello-agent", "method:a2a.hello.greet"],
+    "trace_user_id": "service=hello-agent;feature=a2a.hello.greet;request_id=req_abc123",
+    "trace_metadata": {
+      "request_id": "req_abc123",
+      "agent_name": "hello-agent",
+      "feature_name": "a2a.hello.greet"
+    }
   },
   "user": "service=hello-agent;feature=a2a.hello.greet;request_id=req_abc123"
 }
@@ -75,14 +80,18 @@
 
 ### Реалізація по агентах
 
-| Агент | Мова | Як додати tags |
-|-------|------|----------------|
+| Агент | Мова | Реалізація |
+|-------|------|------------|
 | `core` | PHP | `LlmRequestContext` DTO → `LiteLlmClient::chatCompletion()` |
-| `hello-agent` | PHP | Вручну в `callLlm()` body |
+| `hello-agent` | PHP | Inline metadata у `callLlm()` |
 | `knowledge-agent` | PHP | `TracingHttpClient` декоратор (автоматично) |
-| `news-maker-agent` | Python | `extra_body={"tags": [...]}` в OpenAI client |
+| `news-maker-agent` | Python | `_trace_context()` helper → OpenAI client |
 
-Це застосовано для `core`, `hello-agent`, `knowledge-agent` і `news-maker-agent`.
+### Langfuse UI
+
+- URL: `http://localhost:8086`
+- Login: `admin@local.dev` / `test-password`
+- Дебаг: див. [langfuse-integration.md](litellm-requests/langfuse-integration.md)
 
 ### 3) LiteLLM DB (для `/ui/login`)
 

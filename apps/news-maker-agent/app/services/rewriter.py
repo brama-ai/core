@@ -23,10 +23,35 @@ def _get_client() -> OpenAI:
     )
 
 
-def _trace_context() -> tuple[str, str]:
-    request_id = request_id_var.get("") or f"llm-rewriter-{uuid.uuid4()}"
+def _trace_context(item_suffix: str = "") -> tuple[str, str, dict[str, str], str, dict[str, object]]:
+    base_request_id = request_id_var.get("") or f"llm-rewriter-{uuid.uuid4()}"
+    request_id = f"{base_request_id}:{item_suffix}" if item_suffix else base_request_id
     trace_id = trace_id_var.get("")
-    return request_id, trace_id
+    headers = {
+        "x-request-id": request_id,
+        "x-service-name": SERVICE_NAME,
+        "x-agent-name": SERVICE_NAME,
+        "x-feature-name": FEATURE_NAME,
+    }
+    if trace_id:
+        headers["x-trace-id"] = trace_id
+
+    user_tag = f"service={SERVICE_NAME};feature={FEATURE_NAME};request_id={request_id}"
+    metadata = {
+        "trace_id": trace_id,
+        "trace_name": f"{SERVICE_NAME}.{FEATURE_NAME}",
+        "session_id": base_request_id,
+        "generation_name": FEATURE_NAME,
+        "tags": [f"agent:{SERVICE_NAME}", f"method:{FEATURE_NAME}"],
+        "trace_user_id": user_tag,
+        "trace_metadata": {
+            "request_id": request_id,
+            "agent_name": SERVICE_NAME,
+            "feature_name": FEATURE_NAME,
+        },
+    }
+
+    return request_id, trace_id, headers, user_tag, metadata
 
 
 def _extract_domain(url: str | None) -> str | None:
@@ -59,7 +84,6 @@ def run_rewriting() -> int:
             return 0
 
         client = _get_client()
-        base_request_id, trace_id = _trace_context()
         system_prompt = f"{base_prompt}\n\n{guardrail}"
         ready_count = 0
 
@@ -82,24 +106,9 @@ def run_rewriting() -> int:
             )
 
             try:
-                llm_request_id = f"{base_request_id}:{item.id}"
-                llm_headers = {
-                    "x-request-id": llm_request_id,
-                    "x-service-name": SERVICE_NAME,
-                    "x-agent-name": SERVICE_NAME,
-                    "x-feature-name": FEATURE_NAME,
-                }
-                if trace_id:
-                    llm_headers["x-trace-id"] = trace_id
-
-                user_tag = f"service={SERVICE_NAME};feature={FEATURE_NAME};request_id={llm_request_id}"
-                metadata = {
-                    "request_id": llm_request_id,
-                    "service_name": SERVICE_NAME,
-                    "agent_name": SERVICE_NAME,
-                    "feature_name": FEATURE_NAME,
-                    "trace_id": trace_id,
-                }
+                llm_request_id, trace_id, llm_headers, user_tag, metadata = _trace_context(
+                    item_suffix=str(item.id),
+                )
                 response = client.chat.completions.create(
                     model=model,
                     messages=[

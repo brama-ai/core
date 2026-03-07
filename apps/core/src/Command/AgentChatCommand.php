@@ -107,6 +107,7 @@ final class AgentChatCommand extends Command
                 featureName: 'core.agent_chat',
                 requestId: 'chat_'.bin2hex(random_bytes(8)),
                 traceId: $traceId,
+                sessionId: $traceId,
             );
 
             try {
@@ -155,7 +156,7 @@ final class AgentChatCommand extends Command
                     $result = ['status' => 'failed', 'error' => $e->getMessage()];
                 }
 
-                $resultJson = json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+                $resultJson = json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 
                 $output->writeln(sprintf(
                     '<fg=yellow>  [result] %s</> <fg=gray>(%s)</>',
@@ -180,15 +181,13 @@ final class AgentChatCommand extends Command
 
     private function readUserInput(OutputInterface $output): ?string
     {
-        $output->write('<fg=green;options=bold>You:</> ');
-
-        $line = fgets(\STDIN);
+        $line = readline('You: ');
 
         if (false === $line) {
             return null;
         }
 
-        return rtrim($line, "\n\r");
+        return $line;
     }
 
     /**
@@ -266,7 +265,7 @@ final class AgentChatCommand extends Command
             Guidelines:
             - Use tools when the user's request matches a tool's capability.
             - When calling a tool, provide the required parameters as described in the tool's schema.
-            - After receiving tool results, summarize them clearly for the user.
+            - After receiving tool results, present them directly to the user without rephrasing or duplicating the content. Do not re-generate or paraphrase what the agent already produced.
             - If a tool call fails, explain the error and suggest alternatives.
             - Be concise and helpful.
             - Respond in the same language the user uses.

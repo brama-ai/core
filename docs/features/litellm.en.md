@@ -36,16 +36,40 @@ This key is used by local agents to call LiteLLM.
 Without a valid `OPENROUTER_API_KEY`, LiteLLM cannot execute completion/embedding requests against OpenRouter.
 The key is loaded from `.env.local` via `compose.yaml -> litellm.env_file`.
 
-## LLM Trace Context
+## LLM Trace Context & Langfuse
 
-To make LiteLLM logs useful for debugging, agents add this context to LLM calls:
+LiteLLM proxy is configured to send LLM generation events to Langfuse via `success_callback` / `failure_callback`. Agents pass Langfuse-compatible metadata fields in every LLM request.
 
-- headers: `X-Request-Id`, `X-Service-Name`, `X-Agent-Name`, `X-Feature-Name`
-- optional `X-Trace-Id` when trace context exists
-- `user` payload field with `service`, `feature`, and `request_id` tags
-- `metadata` field on chat completion calls (`request_id`, `service_name`, `agent_name`, `feature_name`, `trace_id`)
+Full documentation: [`docs/features/litellm-requests/`](litellm-requests/overview.md)
 
-This is applied in `hello-agent`, `knowledge-agent`, and `news-maker-agent`.
+### Required metadata fields
+
+| Field | Description |
+|-------|-------------|
+| `trace_id` | One orchestration run ID |
+| `trace_name` | `<agent>.<feature>` |
+| `session_id` | Chat/thread ID |
+| `generation_name` | Name of the specific LLM call step |
+| `tags` | `["agent:<name>", "method:<feature>"]` |
+| `trace_user_id` | `service=...;feature=...;request_id=...` |
+| `trace_metadata` | `{request_id, agent_name, feature_name}` |
+
+### Implementation per agent
+
+| Agent | Language | Implementation |
+|-------|----------|---------------|
+| `core` | PHP | `LlmRequestContext` DTO → `LiteLlmClient::chatCompletion()` |
+| `hello-agent` | PHP | Inline metadata in `callLlm()` |
+| `knowledge-agent` | PHP | `TracingHttpClient` decorator (automatic) |
+| `news-maker-agent` | Python | `_trace_context()` helper → OpenAI client |
+
+### Langfuse UI
+
+- URL: `http://localhost:8086`
+- Login: `admin@local.dev` / `test-password`
+- Debug: see [langfuse-integration.md](litellm-requests/langfuse-integration.md)
+
+This is applied in `core`, `hello-agent`, `knowledge-agent`, and `news-maker-agent`.
 
 ### 3) LiteLLM DB (for `/ui/login`)
 

@@ -89,18 +89,28 @@ final class TracingHttpClient implements HttpClientInterface
                 );
             }
 
-            $metadata = [];
-            if (isset($body['metadata']) && \is_array($body['metadata'])) {
-                $metadata = $body['metadata'];
-            }
+            $userTag = $body['user'] ?? \sprintf(
+                'service=%s;feature=%s;request_id=%s',
+                $this->serviceName,
+                $featureName,
+                $requestId,
+            );
 
             $body['metadata'] = [
-                ...$metadata,
-                'request_id' => $requestId,
-                'service_name' => $this->serviceName,
-                'agent_name' => $this->serviceName,
-                'feature_name' => $featureName,
                 'trace_id' => $traceId,
+                'trace_name' => $this->serviceName.'.'.$featureName,
+                'session_id' => $requestId,
+                'generation_name' => $featureName,
+                'tags' => [
+                    'agent:'.$this->serviceName,
+                    'method:'.$featureName,
+                ],
+                'trace_user_id' => $userTag,
+                'trace_metadata' => [
+                    'request_id' => $requestId,
+                    'agent_name' => $this->serviceName,
+                    'feature_name' => $featureName,
+                ],
             ];
 
             $body['tags'] = [

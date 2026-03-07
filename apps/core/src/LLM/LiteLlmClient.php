@@ -37,15 +37,10 @@ final class LiteLlmClient
         if (null !== $context) {
             $body['tags'] = $context->tags();
             $body['metadata'] = $context->metadata();
-            $body['user'] = \sprintf(
-                'service=%s;feature=%s;request_id=%s',
-                $context->agentName,
-                $context->featureName,
-                $context->requestId,
-            );
+            $body['user'] = $context->userTag();
         }
 
-        $json = json_encode($body, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $json = json_encode($body, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 
         $headers = [
             'Content-Type: application/json',
@@ -88,7 +83,7 @@ final class LiteLlmClient
         }
 
         // Sanitize potentially malformed UTF-8 from LLM response
-        $result = mb_convert_encoding($result, 'UTF-8', 'UTF-8');
+        $result = iconv('UTF-8', 'UTF-8//IGNORE', $result);
 
         /** @var array<string, mixed> $data */
         $data = json_decode($result, true, 512, JSON_THROW_ON_ERROR);
