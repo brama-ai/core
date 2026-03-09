@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { render, Box, Text, useApp, useInput, useStdout } from "ink";
 import { execSync } from "child_process";
 import { readdirSync, readFileSync, existsSync, writeFileSync, renameSync, mkdirSync } from "fs";
@@ -26,7 +26,7 @@ function findWorktreeBase() {
 
 const TASK_SOURCE = findTaskSource();
 const WORKTREE_BASE = findWorktreeBase();
-const LOG_DIR = join(REPO_ROOT, ".opencode/pipeline/logs");
+// Log dir used by actionRunTask via REPO_ROOT path
 
 function listMd(dir) {
   if (!existsSync(dir)) return [];
@@ -201,6 +201,33 @@ function actionStart() {
   }
 }
 
+function actionRunTask(taskFile) {
+  // Spawn an independent pipeline worker in its own worktree
+  const taskName = getTitle(taskFile);
+  const inProgressDir = join(TASK_SOURCE, "in-progress");
+  mkdirSync(inProgressDir, { recursive: true });
+
+  try {
+    // Move task to in-progress
+    const dest = join(inProgressDir, basename(taskFile));
+    renameSync(taskFile, dest);
+
+    const logFile = join(REPO_ROOT, `.opencode/pipeline/logs/adhoc-${Date.now()}.log`);
+    mkdirSync(dirname(logFile), { recursive: true });
+
+    execSync(
+      `caffeinate -s nohup "${REPO_ROOT}/scripts/pipeline-run-task.sh" "${dest}" > "${logFile}" 2>&1 &`,
+      { cwd: REPO_ROOT, shell: true }
+    );
+
+    return `Started: ${taskName}`;
+  } catch (e) {
+    // Move back to todo on failure
+    try { renameSync(join(inProgressDir, basename(taskFile)), taskFile); } catch {}
+    return `Failed to start: ${e.message}`;
+  }
+}
+
 function actionKill() {
   try {
     execSync("pkill -f pipeline-batch.sh 2>/dev/null; pkill -f 'opencode run --agent' 2>/dev/null", { shell: true });
@@ -338,7 +365,7 @@ function TabBar({ currentTab, workers }) {
   );
 }
 
-function TaskDetail({ file, onBack }) {
+function TaskDetail({ file }) {
   let content = "";
   try {
     content = readFileSync(file, "utf8")
@@ -405,7 +432,7 @@ function BottomMenu({ selectedState, batchRunning }) {
       break;
   }
 
-  const startLabel = batchRunning && selectedState === "todo" ? "[s] boost next" : "[s] start";
+  const startLabel = selectedState === "todo" ? "[s] run task" : (batchRunning ? "" : "[s] start batch");
 
   return React.createElement(
     Text,
@@ -524,18 +551,16 @@ function App() {
 
     // Global actions
     if (input === "s" || input === "S") {
-      // If a todo task is selected and batch is running, boost its priority to be next
-      if (tab === 1 && selectedTask?.state === "todo" && getBatchPid()) {
-        const allTasks = buildTaskList();
-        const maxPrio = Math.max(...allTasks.filter(t => t.state === "todo").map(t => t.priority || 1), 1);
-        setPriority(selectedTask.file, maxPrio + 1);
-        setActionMsg(`Boosted "${selectedTask.title}" → next in queue (#${maxPrio + 1})`);
-        const newTasks = buildTaskList();
-        const newIdx = newTasks.findIndex((t) => t.file === selectedTask.file);
-        if (newIdx >= 0) setSelectedIdx(newIdx);
+      if (tab === 1 && selectedTask?.state === "todo") {
+        // Start this specific task as an independent worker
+        setActionMsg(actionRunTask(selectedTask.file));
+        setTick((t) => t + 1);
+      } else if (!getBatchPid()) {
+        // No batch running — start the full batch
+        setActionMsg(actionStart());
         setTick((t) => t + 1);
       } else {
-        setActionMsg(actionStart());
+        setActionMsg("Batch running. Select a todo task and press S to run it.");
         setTick((t) => t + 1);
       }
     }
