@@ -50,7 +50,6 @@
 
 - `Traefik` як єдиний public entry layer
 - `core` як platform-owned HTTP surface на `http://localhost/`
-- `admin-stub` як технічну заглушку на `http://localhost:8081/`
 - `openclaw-stub` як окремий runtime placeholder на `http://localhost:8082/`
 - `Postgres` на `localhost:5432`
 - `Redis` на `localhost:6379`
