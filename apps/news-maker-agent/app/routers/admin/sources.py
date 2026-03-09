@@ -1,5 +1,5 @@
-import uuid
 import logging
+import uuid
 from typing import Annotated
 from urllib.parse import urlparse
 
@@ -25,11 +25,7 @@ def _is_valid_url(url: str) -> bool:
 
 @router.get("", response_class=HTMLResponse)
 def list_sources(request: Request, db: Annotated[Session, Depends(get_db)]):
-    sources = (
-        db.query(NewsSource)
-        .order_by(NewsSource.crawl_priority.desc(), NewsSource.name)
-        .all()
-    )
+    sources = db.query(NewsSource).order_by(NewsSource.crawl_priority.desc(), NewsSource.name).all()
     return templates.TemplateResponse(request, "admin/sources.html", {"sources": sources})
 
 
@@ -43,11 +39,7 @@ def create_source(
     crawl_priority: int = Form(5),
 ):
     if not _is_valid_url(base_url):
-        sources = (
-            db.query(NewsSource)
-            .order_by(NewsSource.crawl_priority.desc(), NewsSource.name)
-            .all()
-        )
+        sources = db.query(NewsSource).order_by(NewsSource.crawl_priority.desc(), NewsSource.name).all()
         return templates.TemplateResponse(
             request,
             "admin/sources.html",

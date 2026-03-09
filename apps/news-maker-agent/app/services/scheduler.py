@@ -1,4 +1,5 @@
 """APScheduler setup for crawl and cleanup jobs."""
+
 import logging
 import threading
 from datetime import datetime, timezone
@@ -20,9 +21,7 @@ def recover_interrupted_runs() -> int:
     db = SessionLocal()
     try:
         stale_runs = (
-            db.query(SchedulerRun)
-            .filter(SchedulerRun.status == "running", SchedulerRun.finished_at.is_(None))
-            .all()
+            db.query(SchedulerRun).filter(SchedulerRun.status == "running", SchedulerRun.finished_at.is_(None)).all()
         )
         if not stale_runs:
             return 0
@@ -71,6 +70,7 @@ def _run_crawl_pipeline() -> None:
 
 def _run_cleanup() -> None:
     from app.services.crawler import run_cleanup
+
     logger.info("Starting cleanup job")
     run_cleanup()
 
@@ -130,5 +130,6 @@ def trigger_crawl_now() -> bool:
 def trigger_cleanup_now() -> None:
     """Manually trigger cleanup immediately."""
     import threading
+
     threading.Thread(target=_run_cleanup, daemon=True, name="news-cleanup-manual").start()
     logger.info("Manual cleanup trigger accepted")
