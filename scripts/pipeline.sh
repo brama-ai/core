@@ -19,7 +19,8 @@
 #
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Allow override via env (used by pipeline-batch.sh worktree mode)
+REPO_ROOT="${PIPELINE_REPO_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 PIPELINE_DIR="$REPO_ROOT/.opencode/pipeline"
 LOG_DIR="$PIPELINE_DIR/logs"
 REPORT_DIR="$PIPELINE_DIR/reports"
@@ -40,7 +41,7 @@ NC='\033[0m'
 AGENTS=(architect coder validator tester documenter)
 
 # Timeouts per agent (seconds, override via env)
-PIPELINE_TIMEOUT_ARCHITECT="${PIPELINE_TIMEOUT_ARCHITECT:-1800}"   # 30 min
+PIPELINE_TIMEOUT_ARCHITECT="${PIPELINE_TIMEOUT_ARCHITECT:-2700}"   # 45 min
 PIPELINE_TIMEOUT_CODER="${PIPELINE_TIMEOUT_CODER:-3600}"           # 60 min
 PIPELINE_TIMEOUT_VALIDATOR="${PIPELINE_TIMEOUT_VALIDATOR:-1200}"   # 20 min
 PIPELINE_TIMEOUT_TESTER="${PIPELINE_TIMEOUT_TESTER:-1800}"         # 30 min
@@ -132,6 +133,7 @@ TASK_FILE=""
 WEBHOOK_URL=""
 ENABLE_AUDIT=false
 NO_COMMIT=false
+RESUME_MODE=false
 TELEGRAM_NOTIFY=false
 TELEGRAM_BOT_TOKEN="${PIPELINE_TELEGRAM_BOT_TOKEN:-}"
 TELEGRAM_CHAT_ID="${PIPELINE_TELEGRAM_CHAT_ID:-}"
@@ -165,6 +167,10 @@ while [[ $# -gt 0 ]]; do
     --task-file)
       TASK_FILE="$2"
       shift 2
+      ;;
+    --resume)
+      RESUME_MODE=true
+      shift
       ;;
     --no-commit)
       NO_COMMIT=true
@@ -311,7 +317,7 @@ setup_branch() {
     echo "$BRANCH_NAME"
   else
     local slug
-    slug=$(echo "$TASK_MESSAGE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | cut -c1-50)
+    slug=$(_task_slug "$TASK_MESSAGE")
     echo "pipeline/${slug}"
   fi
 }
@@ -358,6 +364,168 @@ commit_agent_work() {
     echo -e "  ${YELLOW}⚠ Commit failed (may have no changes)${NC}"
     return 0
   fi
+}
+
+# ── Checkpoint & Artifacts ────────────────────────────────────────────
+#
+# Each task gets an artifacts directory: tasks/artifacts/<task-slug>/
+# Inside:
+#   checkpoint.json  — tracks which agents completed successfully
+#   <agent>/         — agent-specific artifacts (logs, proposals, etc.)
+#
+# checkpoint.json format:
+# {
+#   "task": "...", "branch": "...", "started": "...",
+#   "agents": {
+#     "architect": {"status":"done","duration":123,"commit":"abc1234"},
+#     "coder": {"status":"done","duration":456,"commit":"def5678"}
+#   }
+# }
+
+ARTIFACTS_BASE="$REPO_ROOT/tasks/artifacts"
+
+# Generate slug from task message (first # title line only)
+_task_slug() {
+  local text="$1"
+  # Extract first # heading as title
+  local title
+  title=$(echo "$text" | grep -m1 '^# ' | sed 's/^# //')
+  if [[ -z "$title" ]]; then
+    # Fallback: first non-empty line
+    title=$(echo "$text" | grep -m1 '[^ ]')
+  fi
+  local slug
+  slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | cut -c1-50)
+  # If slug is empty (non-ASCII title), use task file basename
+  if [[ -z "$slug" && -n "$TASK_FILE" ]]; then
+    slug=$(basename "$TASK_FILE" .md)
+  fi
+  # Ultimate fallback
+  if [[ -z "$slug" ]]; then
+    slug="task-$(date +%s)"
+  fi
+  echo "$slug"
+}
+
+# Initialize artifacts directory for a task
+init_artifacts() {
+  local slug="$1"
+  local branch="$2"
+  ARTIFACTS_DIR="$ARTIFACTS_BASE/$slug"
+  CHECKPOINT_FILE="$ARTIFACTS_DIR/checkpoint.json"
+
+  mkdir -p "$ARTIFACTS_DIR"
+
+  # Only create new checkpoint if not resuming
+  if [[ "$RESUME_MODE" == true && -f "$CHECKPOINT_FILE" ]]; then
+    echo -e "${BLUE}Resuming from checkpoint: ${CHECKPOINT_FILE}${NC}"
+    return
+  fi
+
+  # Create fresh checkpoint
+  cat > "$CHECKPOINT_FILE" << CHECKPOINT_EOF
+{
+  "task": $(printf '%s' "$TASK_MESSAGE" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'),
+  "branch": "$branch",
+  "started": "$(date '+%Y-%m-%d %H:%M:%S')",
+  "agents": {}
+}
+CHECKPOINT_EOF
+}
+
+# Write checkpoint after agent completes
+write_checkpoint() {
+  local agent="$1"
+  local status="$2"
+  local duration="$3"
+  local commit_hash="${4:-}"
+
+  [[ -f "$CHECKPOINT_FILE" ]] || return 0
+
+  # Use python3 to safely update JSON
+  python3 -c "
+import json, sys
+with open('$CHECKPOINT_FILE', 'r') as f:
+    data = json.load(f)
+data['agents']['$agent'] = {
+    'status': '$status',
+    'duration': $duration,
+    'commit': '$commit_hash',
+    'finished': '$(date '+%Y-%m-%d %H:%M:%S')'
+}
+with open('$CHECKPOINT_FILE', 'w') as f:
+    json.dump(data, f, indent=2)
+" 2>/dev/null || true
+}
+
+# Copy agent log to artifacts
+save_agent_artifact() {
+  local agent="$1"
+  local log_file="$2"
+
+  [[ -d "$ARTIFACTS_DIR" ]] || return 0
+
+  local agent_dir="$ARTIFACTS_DIR/$agent"
+  mkdir -p "$agent_dir"
+
+  # Copy log file
+  if [[ -f "$log_file" ]]; then
+    cp "$log_file" "$agent_dir/$(basename "$log_file")"
+  fi
+
+  # Copy agent-created files (e.g., openspec proposals for architect)
+  if [[ "$agent" == "architect" ]]; then
+    # Copy any new openspec changes
+    local changes_dir="$REPO_ROOT/openspec/changes"
+    if [[ -d "$changes_dir" ]]; then
+      for d in "$changes_dir"/*/; do
+        [[ -d "$d" ]] || continue
+        # Only copy recently modified proposals (last 30 min)
+        if find "$d" -maxdepth 0 -mmin -30 -print -quit 2>/dev/null | grep -q .; then
+          cp -r "$d" "$agent_dir/" 2>/dev/null || true
+        fi
+      done
+    fi
+  fi
+}
+
+# Read checkpoint and determine which agent to resume from
+get_resume_agent() {
+  [[ -f "$CHECKPOINT_FILE" ]] || return
+
+  python3 -c "
+import json
+agents_order = ['architect', 'coder', 'validator', 'tester', 'documenter']
+with open('$CHECKPOINT_FILE', 'r') as f:
+    data = json.load(f)
+completed = data.get('agents', {})
+for agent in agents_order:
+    info = completed.get(agent, {})
+    if info.get('status') != 'done':
+        print(agent)
+        break
+" 2>/dev/null || true
+}
+
+# Print checkpoint summary
+print_checkpoint_summary() {
+  [[ -f "$CHECKPOINT_FILE" ]] || return
+
+  python3 -c "
+import json
+with open('$CHECKPOINT_FILE', 'r') as f:
+    data = json.load(f)
+agents = data.get('agents', {})
+if not agents:
+    print('  (no completed agents)')
+    exit()
+for name, info in agents.items():
+    status = info.get('status', '?')
+    dur = info.get('duration', 0)
+    commit = info.get('commit', '')
+    icon = '✓' if status == 'done' else '✗'
+    print(f'  {icon} {name}: {status} ({dur}s) {commit}')
+" 2>/dev/null || true
 }
 
 # ── Dev Reporter Agent integration ───────────────────────────────────
@@ -519,6 +687,45 @@ restore_agent_model() {
   fi
 }
 
+# ── Verify coder produced real code changes ──────────────────────────
+#
+# After the coder stage, check that actual source files were modified
+# (not just handoff.md or pipeline metadata). If coder produced nothing,
+# it likely hit a permission error (e.g. worktree external_directory rejection)
+# and downstream stages would run on unchanged code — a silent no-op.
+
+verify_coder_output() {
+  echo -e "  ${BLUE}Verifying coder produced code changes...${NC}"
+
+  # Get list of changed files (staged + unstaged + untracked), excluding pipeline metadata
+  local changed_files
+  changed_files=$(git -C "$REPO_ROOT" diff --name-only HEAD~1 2>/dev/null || echo "")
+
+  # Also check uncommitted changes
+  local uncommitted
+  uncommitted=$(git -C "$REPO_ROOT" diff --name-only 2>/dev/null || echo "")
+  local untracked
+  untracked=$(git -C "$REPO_ROOT" ls-files --others --exclude-standard 2>/dev/null || echo "")
+
+  local all_changes
+  all_changes=$(printf '%s\n%s\n%s' "$changed_files" "$uncommitted" "$untracked" | sort -u)
+
+  # Filter out pipeline metadata — only count real source files
+  local real_changes
+  real_changes=$(echo "$all_changes" | grep -vE '^\.opencode/|^\.pipeline-task|^handoff\.md$|^$' || true)
+
+  if [[ -z "$real_changes" ]]; then
+    echo -e "  ${RED}✗ Coder produced NO source file changes${NC}"
+    echo -e "  ${YELLOW}  Only pipeline metadata was modified. The coder agent likely failed silently.${NC}"
+    return 1
+  fi
+
+  local file_count
+  file_count=$(echo "$real_changes" | wc -l | tr -d ' ')
+  echo -e "  ${GREEN}✓ Coder modified ${file_count} source file(s)${NC}"
+  return 0
+}
+
 # ── Run a single agent with timeout and retry ─────────────────────────
 
 run_agent() {
@@ -567,18 +774,20 @@ run_agent() {
     fi
 
     # Run with timeout
+    # NOTE: We cd into REPO_ROOT instead of using --dir because opencode
+    # registers git worktrees as "sandboxes" with restricted permissions
+    # when passed via --dir. Running from CWD lets opencode detect the
+    # worktree as an independent project with full file access.
     local exit_code=0
     if command -v timeout &>/dev/null; then
-      timeout "$agent_timeout" opencode run \
+      (cd "$REPO_ROOT" && timeout "$agent_timeout" opencode run \
         --agent "$agent" \
-        --dir "$REPO_ROOT" \
-        "$message" \
+        "$message") \
         2>&1 | tee "$log_file" || exit_code=$?
     else
-      opencode run \
+      (cd "$REPO_ROOT" && opencode run \
         --agent "$agent" \
-        --dir "$REPO_ROOT" \
-        "$message" \
+        "$message") \
         2>&1 | tee "$log_file" || exit_code=$?
     fi
 
@@ -891,17 +1100,57 @@ main() {
   branch=$(setup_branch)
   echo -e "${BLUE}Branch:${NC} ${branch}"
 
-  # Create or switch to branch
-  if ! git -C "$REPO_ROOT" rev-parse --verify "$branch" &>/dev/null; then
-    git -C "$REPO_ROOT" checkout -b "$branch"
-    echo -e "${GREEN}Created branch: ${branch}${NC}"
-  else
-    git -C "$REPO_ROOT" checkout "$branch"
-    echo -e "${YELLOW}Switched to existing branch: ${branch}${NC}"
+  # Create or switch to branch (with retry for lock contention in parallel mode)
+  local branch_ok=false
+  for _try in 1 2 3 4 5; do
+    if git -C "$REPO_ROOT" rev-parse --verify "$branch" &>/dev/null; then
+      # Branch exists — re-create from current HEAD in worktree mode
+      if [[ -f "$REPO_ROOT/.git" ]]; then
+        git -C "$REPO_ROOT" branch -D "$branch" 2>/dev/null || true
+        if git -C "$REPO_ROOT" checkout -b "$branch" 2>/dev/null; then
+          echo -e "${YELLOW}Re-created branch (worktree re-run): ${branch}${NC}"
+          branch_ok=true; break
+        fi
+      else
+        if git -C "$REPO_ROOT" checkout "$branch" 2>/dev/null; then
+          echo -e "${YELLOW}Switched to existing branch: ${branch}${NC}"
+          branch_ok=true; break
+        fi
+      fi
+    else
+      if git -C "$REPO_ROOT" checkout -b "$branch" 2>/dev/null; then
+        echo -e "${GREEN}Created branch: ${branch}${NC}"
+        branch_ok=true; break
+      fi
+    fi
+    echo -e "${YELLOW}Git lock contention (attempt ${_try}/5), retrying in ${_try}s...${NC}"
+    sleep "$_try"
+  done
+  if [[ "$branch_ok" != true ]]; then
+    echo -e "${RED}Failed to create/switch branch after 5 attempts${NC}"
+    exit 1
   fi
 
   # Initialize handoff
   init_handoff
+
+  # Initialize artifacts & checkpoint
+  local slug
+  slug=$(_task_slug "$TASK_MESSAGE")
+  init_artifacts "$slug" "$branch"
+
+  # Auto-resume: if --resume and checkpoint exists, determine FROM_AGENT
+  if [[ "$RESUME_MODE" == true && -z "$FROM_AGENT" ]]; then
+    local resume_from
+    resume_from=$(get_resume_agent)
+    if [[ -n "$resume_from" && "$resume_from" != "architect" ]]; then
+      FROM_AGENT="$resume_from"
+      echo -e "${YELLOW}Auto-resuming from: ${FROM_AGENT}${NC}"
+      echo -e "${DIM}Checkpoint:${NC}"
+      print_checkpoint_summary
+      echo ""
+    fi
+  fi
 
   # Get agents to run
   local agents_to_run
@@ -936,6 +1185,9 @@ main() {
     local agent_start
     agent_start=$(date +%s)
 
+    # Log file for this agent run
+    local agent_log="$LOG_DIR/${TIMESTAMP}_${agent}.log"
+
     if run_agent "$agent" "$prompt"; then
       local agent_dur=$(( $(date +%s) - agent_start ))
       report_lines="${report_lines}| ${agent} | ✓ pass | ${agent_dur}s |
@@ -946,9 +1198,32 @@ main() {
 
       # Auto-commit after each successful agent
       commit_agent_work "$agent" "$task_slug"
+      local commit_hash
+      commit_hash=$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo "")
 
-      # Run migrations after coder (before validator)
+      # Save checkpoint & artifacts
+      write_checkpoint "$agent" "done" "$agent_dur" "$commit_hash"
+      save_agent_artifact "$agent" "$agent_log"
+
+      # Stage gate: verify coder produced actual code changes
       if [[ "$agent" == "coder" ]]; then
+        if ! verify_coder_output; then
+          local agent_dur_fail=$(( $(date +%s) - agent_start ))
+          report_lines="${report_lines}| ${agent} | ✗ no-code | ${agent_dur}s |
+"
+          write_checkpoint "$agent" "failed-no-code" "$agent_dur_fail" ""
+          failed=true
+          failed_agent="$agent (no code produced)"
+
+          send_telegram "❌ <b>${agent}</b> produced NO CODE CHANGES
+📋 <i>${TASK_MESSAGE}</i>
+⚠️ Coder stage ran but did not modify any source files. Check agent permissions/logs."
+
+          echo -e "${RED}Pipeline stopped: coder produced no code changes${NC}"
+          echo -e "${YELLOW}Check log for permission errors (e.g. worktree external_directory rejections)${NC}"
+          break
+        fi
+
         run_migrations
       fi
 
@@ -957,6 +1232,10 @@ main() {
       local agent_dur=$(( $(date +%s) - agent_start ))
       report_lines="${report_lines}| ${agent} | ✗ fail | ${agent_dur}s |
 "
+
+      # Save failed checkpoint & artifact
+      write_checkpoint "$agent" "failed" "$agent_dur" ""
+      save_agent_artifact "$agent" "$agent_log"
       failed=true
       failed_agent="$agent"
 

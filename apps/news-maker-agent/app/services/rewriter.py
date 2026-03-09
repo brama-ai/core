@@ -1,10 +1,11 @@
 """Agent 2: Rewriter/Translator — rewrites selected items to Ukrainian publication format."""
+
 import logging
 import re
 import uuid
+from urllib.parse import urlparse
 
 from openai import OpenAI
-from urllib.parse import urlparse
 
 from app.config import settings
 from app.database import SessionLocal
@@ -77,10 +78,7 @@ def run_rewriting() -> int:
         guardrail = agent_settings.rewriter_guardrail if agent_settings else ""
 
         selected_items = (
-            db.query(RawNewsItem)
-            .filter(RawNewsItem.status == "selected")
-            .filter(~RawNewsItem.curated_item.has())
-            .all()
+            db.query(RawNewsItem).filter(RawNewsItem.status == "selected").filter(~RawNewsItem.curated_item.has()).all()
         )
 
         if not selected_items:

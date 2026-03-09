@@ -7,4 +7,3 @@ namespace App\AgentAction;
 final class AgentActionException extends \RuntimeException
 {
 }
-

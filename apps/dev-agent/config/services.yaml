@@ -1,0 +1,57 @@
+parameters:
+    app.opensearch_url: '%env(OPENSEARCH_URL)%'
+    app.log_app_name: 'dev-agent'
+    app.internal_token: '%env(APP_INTERNAL_TOKEN)%'
+    app.admin_public_url: '%env(ADMIN_PUBLIC_URL)%'
+    app.platform_core_url: '%env(PLATFORM_CORE_URL)%'
+    app.litellm_base_url: '%env(LITELLM_BASE_URL)%'
+    app.litellm_api_key: '%env(LITELLM_API_KEY)%'
+    app.llm_model: '%env(LLM_MODEL)%'
+    app.repo_root: '%env(REPO_ROOT)%'
+    app.gh_token: '%env(GH_TOKEN)%'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Kernel.php'
+
+    App\Controller\Admin\TaskApiController: ~
+
+    App\Controller\Api\A2AController:
+        arguments:
+            $internalToken: '%app.internal_token%'
+
+    App\Controller\Api\ManifestController:
+        arguments:
+            $adminPublicUrl: '%app.admin_public_url%'
+
+    App\Service\LlmService:
+        arguments:
+            $liteLlmBaseUrl: '%app.litellm_base_url%'
+            $liteLlmApiKey: '%app.litellm_api_key%'
+            $llmModel: '%app.llm_model%'
+
+    App\Service\PipelineRunner:
+        arguments:
+            $repoRoot: '%app.repo_root%'
+
+    App\Service\GitHubService:
+        arguments:
+            $repoRoot: '%app.repo_root%'
+            $ghToken: '%app.gh_token%'
+
+    App\Logging\OpenSearchHandler:
+        arguments:
+            $opensearchUrl: '%app.opensearch_url%'
+
+    App\Logging\OpenSearchProcessor:
+        arguments:
+            $appName: '%app.log_app_name%'
+        tags:
+            - { name: monolog.processor }

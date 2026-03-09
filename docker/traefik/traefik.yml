@@ -19,6 +19,8 @@ entryPoints:
     address: ":8086"
   dev-reporter:
     address: ":8087"
+  dev-agent:
+    address: ":8088"
   wiki:
     address: ":8090"
 

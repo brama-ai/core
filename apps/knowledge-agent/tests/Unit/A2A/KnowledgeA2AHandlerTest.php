@@ -7,8 +7,8 @@ namespace App\Tests\Unit\A2A;
 use App\A2A\KnowledgeA2AHandler;
 use App\Logging\TraceContext;
 use App\OpenSearch\KnowledgeRepository;
-use App\Repository\SourceMessageRepository;
 use App\RabbitMQ\RabbitMQPublisher;
+use App\Repository\SourceMessageRepository;
 use App\Service\EmbeddingService;
 use App\Service\KnowledgeTreeBuilder;
 use App\Service\MessageChunker;
@@ -63,10 +63,10 @@ final class KnowledgeA2AHandlerTest extends Unit
             ->with(
                 $this->stringContains('INSERT INTO knowledge_source_messages'),
                 $this->callback(static function (array $params): bool {
-                    return $params['message_id'] === 'm-77'
-                        && $params['chat_id'] === '-100123'
-                        && $params['request_id'] === 'req-store-1'
-                        && $params['trace_id'] === 'trace-store-1';
+                    return 'm-77' === $params['message_id']
+                        && '-100123' === $params['chat_id']
+                        && 'req-store-1' === $params['request_id']
+                        && 'trace-store-1' === $params['trace_id'];
                 }),
             )
             ->willReturn('stored-id-1');

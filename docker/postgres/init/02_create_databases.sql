@@ -19,6 +19,12 @@ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'dev_reporter_agent')\
 
 GRANT ALL PRIVILEGES ON DATABASE dev_reporter_agent TO dev_reporter_agent;
 
+-- Dev Agent
+SELECT 'CREATE DATABASE dev_agent OWNER dev_agent'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'dev_agent')\gexec
+
+GRANT ALL PRIVILEGES ON DATABASE dev_agent TO dev_agent;
+
 -- LiteLLM
 SELECT 'CREATE DATABASE litellm'
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'litellm')\gexec

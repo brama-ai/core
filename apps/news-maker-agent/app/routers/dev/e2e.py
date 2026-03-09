@@ -37,4 +37,3 @@ def mock_article() -> str:
         "</article>"
         "</body></html>"
     )
-

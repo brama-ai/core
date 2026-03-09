@@ -101,4 +101,3 @@ final class AgentNewsCrawlController extends AbstractController
         return [];
     }
 }
-

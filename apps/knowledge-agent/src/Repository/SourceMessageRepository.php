@@ -146,7 +146,7 @@ final class SourceMessageRepository
 
     private function stringOrDefault(mixed $value, string $default): string
     {
-        if (!\is_string($value) && !\is_numeric($value)) {
+        if (!\is_string($value) && !is_numeric($value)) {
             return $default;
         }
 
@@ -157,7 +157,7 @@ final class SourceMessageRepository
 
     private function nullableString(mixed $value): ?string
     {
-        if (!\is_string($value) && !\is_numeric($value)) {
+        if (!\is_string($value) && !is_numeric($value)) {
             return null;
         }
 

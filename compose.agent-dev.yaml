@@ -1,0 +1,67 @@
+services:
+  dev-agent:
+    build:
+      context: .
+      dockerfile: docker/dev-agent/Dockerfile
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dev-agent.rule=PathPrefix(`/`)
+      - traefik.http.routers.dev-agent.entrypoints=dev-agent
+      - traefik.http.routers.dev-agent.middlewares=edge-auth@docker
+      - traefik.http.services.dev-agent.loadbalancer.server.port=80
+      - ai.platform.agent=true
+    environment:
+      MIGRATE_ON_START: "1"
+      DATABASE_URL: postgresql://dev_agent:dev_agent@postgres:5432/dev_agent?serverVersion=16&charset=utf8
+      OPENSEARCH_URL: http://opensearch:9200
+      APP_INTERNAL_TOKEN: dev-internal-token
+      PLATFORM_CORE_URL: http://core
+      ADMIN_PUBLIC_URL: http://localhost:8088/admin/tasks
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_API_KEY: dev-key
+      LLM_MODEL: claude-opus-4-6
+      REPO_ROOT: /repo
+      GH_TOKEN: "${GH_TOKEN:-}"
+      LANGFUSE_ENABLED: "0"
+      LANGFUSE_BASE_URL: http://langfuse-web:3000
+      LANGFUSE_PUBLIC_KEY: lf_pk_local_dev
+      LANGFUSE_SECRET_KEY: lf_sk_local_dev
+      LANGFUSE_ENV: local
+    volumes:
+      - ./apps/dev-agent:/var/www/html
+      - .:/repo:rw
+    depends_on:
+      - postgres
+      - opensearch
+      - litellm
+    networks:
+      - dev-edge
+
+  dev-agent-e2e:
+    profiles: [e2e]
+    build:
+      context: .
+      dockerfile: docker/dev-agent/Dockerfile
+    environment:
+      MIGRATE_ON_START: "1"
+      DATABASE_URL: postgresql://dev_agent:dev_agent@postgres:5432/dev_agent_test?serverVersion=16&charset=utf8
+      OPENSEARCH_URL: http://opensearch:9200
+      APP_INTERNAL_TOKEN: dev-internal-token
+      PLATFORM_CORE_URL: http://core-e2e
+      ADMIN_PUBLIC_URL: http://localhost:18088/admin/tasks
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_API_KEY: dev-key
+      LLM_MODEL: claude-opus-4-6
+      REPO_ROOT: /repo
+      GH_TOKEN: ""
+      LANGFUSE_ENABLED: "0"
+    ports:
+      - "18088:80"
+    volumes:
+      - ./apps/dev-agent:/var/www/html
+      - .:/repo:ro
+    depends_on:
+      - postgres
+      - opensearch
+    networks:
+      - dev-edge

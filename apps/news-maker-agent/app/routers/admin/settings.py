@@ -40,6 +40,8 @@ def update_settings(
     crawl_cron: str = Form(...),
     cleanup_cron: str = Form(...),
     raw_item_ttl_hours: int = Form(...),
+    crawl_max_depth: int = Form(...),
+    crawl_max_links_per_depth: int = Form(...),
     proxy_enabled: str = Form(""),
     proxy_url: str = Form(""),
     ranker_model: str = Form(...),
@@ -53,6 +55,8 @@ def update_settings(
     s.crawl_cron = crawl_cron
     s.cleanup_cron = cleanup_cron
     s.raw_item_ttl_hours = raw_item_ttl_hours
+    s.crawl_max_depth = max(1, min(2, crawl_max_depth))
+    s.crawl_max_links_per_depth = max(1, crawl_max_links_per_depth)
     s.proxy_enabled = proxy_enabled in ("true", "on", "1", "yes")
     s.proxy_url = proxy_url or None
     s.ranker_model = ranker_model
@@ -64,6 +68,7 @@ def update_settings(
 @router.post("/admin/trigger/crawl")
 def trigger_crawl():
     from app.services.scheduler import trigger_crawl_now
+
     logger.info("Received manual crawl trigger from admin")
     accepted = trigger_crawl_now()
     if not accepted:
@@ -74,6 +79,7 @@ def trigger_crawl():
 @router.post("/admin/trigger/cleanup")
 def trigger_cleanup():
     from app.services.scheduler import trigger_cleanup_now
+
     logger.info("Received manual cleanup trigger from admin")
     trigger_cleanup_now()
     return RedirectResponse("/admin/settings", status_code=303)

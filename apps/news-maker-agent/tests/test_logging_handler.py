@@ -83,4 +83,3 @@ def test_format_record_serializes_exception() -> None:
     assert payload["message"] == "failed"
     assert payload["exception"]["class"] == "ValueError"
     assert payload["exception"]["message"] == "boom"
-

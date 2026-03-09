@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dev Agent — Tasks</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-card: rgba(30,41,59,.7);
+            --bg-card-solid: #1e293b;
+            --bg-card-border: rgba(148,163,184,.15);
+            --bg-input: rgba(15,23,42,.6);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #22c55e;
+            --success-bg: rgba(34,197,94,.15);
+            --danger: #ef4444;
+            --danger-bg: rgba(239,68,68,.15);
+            --warning: #eab308;
+            --warning-bg: rgba(234,179,8,.15);
+            --info-bg: rgba(59,130,246,.15);
+            --radius: 8px;
+            --radius-sm: 4px;
+            --transition: .2s ease;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; color: var(--text-primary); background: var(--bg-primary); line-height: 1.5; }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .page-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--bg-card-border); display: flex; align-items: center; justify-content: space-between; }
+        .page-header h1 { margin: 0; font-size: 1.1rem; }
+
+        .btn { display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .9rem; border-radius: var(--radius-sm); font-size: .85rem; font-weight: 600; border: none; cursor: pointer; transition: all var(--transition); text-decoration: none; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-hover); text-decoration: none; }
+
+        .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: .75rem; padding: 1rem 1.5rem; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--bg-card-border); border-radius: var(--radius); padding: .75rem 1rem; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; }
+        .stat-label { color: var(--text-muted); font-size: .8rem; margin-top: .2rem; }
+
+        .filters { padding: .75rem 1.5rem; display: flex; gap: .5rem; align-items: center; }
+        .filter-btn { background: var(--bg-card); border: 1px solid var(--bg-card-border); border-radius: var(--radius-sm); color: var(--text-secondary); padding: .35rem .75rem; cursor: pointer; font-size: .85rem; text-decoration: none; transition: all var(--transition); }
+        .filter-btn:hover { color: var(--text-primary); border-color: var(--accent); text-decoration: none; }
+        .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+        .card { background: var(--bg-card); border: 1px solid var(--bg-card-border); border-radius: var(--radius); margin: 0 1.5rem 1.5rem; backdrop-filter: blur(12px); }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: .5rem .75rem; font-size: .8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--bg-card-border); }
+        td { padding: .6rem .75rem; border-bottom: 1px solid var(--bg-card-border); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(148,163,184,.05); }
+
+        .badge { display: inline-block; padding: .2rem .5rem; border-radius: var(--radius-sm); font-size: .75rem; font-weight: 600; }
+        .badge-success { background: var(--success-bg); color: var(--success); }
+        .badge-danger { background: var(--danger-bg); color: var(--danger); }
+        .badge-warning { background: var(--warning-bg); color: var(--warning); }
+        .badge-info { background: var(--info-bg); color: var(--accent); }
+        .badge-muted { background: rgba(148,163,184,.1); color: var(--text-muted); }
+
+        .text-muted { color: var(--text-muted); }
+        .text-sm { font-size: .85rem; }
+
+        @media (max-width: 768px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <h1>Dev Agent — Tasks</h1>
+        <a href="/admin/tasks/create" class="btn btn-primary">+ New Task</a>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total }}</div>
+            <div class="stat-label">Total (7d)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--warning);">{{ stats.running + stats.pending }}</div>
+            <div class="stat-label">Active</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--success);">{{ stats.success }}</div>
+            <div class="stat-label">Success</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--danger);">{{ stats.failed }}</div>
+            <div class="stat-label">Failed</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.draft }}</div>
+            <div class="stat-label">Draft</div>
+        </div>
+    </div>
+
+    <div class="filters">
+        <span class="text-muted text-sm" style="margin-right:.25rem;">Filter:</span>
+        <a href="/admin/tasks" class="filter-btn {{ status_filter is null ? 'active' : '' }}">All</a>
+        <a href="/admin/tasks?status=running" class="filter-btn {{ status_filter == 'running' ? 'active' : '' }}">Running</a>
+        <a href="/admin/tasks?status=success" class="filter-btn {{ status_filter == 'success' ? 'active' : '' }}">Success</a>
+        <a href="/admin/tasks?status=failed" class="filter-btn {{ status_filter == 'failed' ? 'active' : '' }}">Failed</a>
+        <a href="/admin/tasks?status=draft" class="filter-btn {{ status_filter == 'draft' ? 'active' : '' }}">Draft</a>
+    </div>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Branch</th>
+                    <th>Duration</th>
+                    <th>PR</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                    <tr>
+                        <td class="text-sm text-muted">{{ task.id }}</td>
+                        <td>
+                            <a href="/admin/tasks/{{ task.id }}">{{ task.title|slice(0, 60) }}{% if task.title|length > 60 %}…{% endif %}</a>
+                        </td>
+                        <td>
+                            {% if task.status == 'success' %}
+                                <span class="badge badge-success">success</span>
+                            {% elseif task.status == 'failed' %}
+                                <span class="badge badge-danger">failed</span>
+                            {% elseif task.status == 'running' %}
+                                <span class="badge badge-warning">running</span>
+                            {% elseif task.status == 'pending' %}
+                                <span class="badge badge-info">pending</span>
+                            {% else %}
+                                <span class="badge badge-muted">{{ task.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-sm text-muted">{{ task.branch|default('—')|slice(0, 40) }}</td>
+                        <td class="text-sm">
+                            {% if task.duration_seconds %}
+                                {{ (task.duration_seconds / 60)|round }}m
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td class="text-sm">
+                            {% if task.pr_url %}
+                                <a href="{{ task.pr_url }}" target="_blank">PR</a>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td class="text-sm text-muted">{{ task.created_at|date('Y-m-d H:i') }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align:center; color: var(--text-muted); padding: 2rem;">
+                            No tasks yet. <a href="/admin/tasks/create">Create one</a>.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

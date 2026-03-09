@@ -1,0 +1,24 @@
+monolog:
+    handlers:
+        opensearch:
+            type: service
+            id: App\Logging\OpenSearchHandler
+            channels: ['!event']
+            process_psr_3_messages:
+                enabled: true
+        stderr:
+            type: stream
+            path: 'php://stderr'
+            level: error
+            process_psr_3_messages:
+                enabled: true
+
+when@test:
+    monolog:
+        handlers:
+            opensearch:
+                type: 'null'
+            stderr:
+                type: stream
+                path: 'php://stderr'
+                level: error

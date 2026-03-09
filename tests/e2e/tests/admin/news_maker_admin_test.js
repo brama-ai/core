@@ -112,6 +112,31 @@ Scenario(
 ).tag('@admin').tag('@news-maker');
 
 Scenario(
+    'preserves iframe location in URL hash after page reload',
+    async ({ I }) => {
+        I.amOnPage('/admin/agents/news-maker-agent/settings');
+        await I.waitForElement('iframe', 10);
+
+        await I.switchTo('iframe');
+        I.click('Налаштування');
+        await I.waitForText('Налаштування агента', 10);
+        await I.switchTo();
+
+        const urlBeforeRefresh = await I.grabCurrentUrl();
+        assert.ok(
+            urlBeforeRefresh.includes('agent_admin_path='),
+            'parent URL must persist iframe path in hash',
+        );
+
+        I.refreshPage();
+        await I.waitForElement('iframe', 10);
+        await I.switchTo('iframe');
+        await I.waitForText('Налаштування агента', 10);
+        await I.switchTo();
+    },
+).tag('@admin').tag('@news-maker');
+
+Scenario(
     'can toggle source enabled/disabled',
     async ({ I }) => {
         await I.ensureEdgeAccess(`${NEWS_MAKER_URL}/admin/sources`);

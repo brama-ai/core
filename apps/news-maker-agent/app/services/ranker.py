@@ -1,4 +1,5 @@
 """Agent 1: Ranker — scores and selects up to 10 raw news items per run."""
+
 import json
 import logging
 import uuid
@@ -73,8 +74,7 @@ def run_ranking() -> int:
             return 0
 
         candidates = [
-            {"id": str(item.id), "title": item.title or "", "excerpt": item.excerpt or ""}
-            for item in new_items
+            {"id": str(item.id), "title": item.title or "", "excerpt": item.excerpt or ""} for item in new_items
         ]
 
         system_prompt = f"{base_prompt}\n\n{guardrail}"
@@ -82,7 +82,7 @@ def run_ranking() -> int:
             f"Here are {len(candidates)} news article candidates. "
             f"Score each from 0.0 to 1.0 for AI-relevance and quality. "
             f"Select at most {MAX_SELECTED} best ones.\n\n"
-            f"Respond with JSON: {{\"scored\": [{{\"id\": \"...\", \"score\": 0.0, \"selected\": true/false}}]}}\n\n"
+            f'Respond with JSON: {{"scored": [{{"id": "...", "score": 0.0, "selected": true/false}}]}}\n\n'
             f"Candidates:\n{json.dumps(candidates, ensure_ascii=False)}"
         )
 

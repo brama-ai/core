@@ -9,6 +9,17 @@ model_list:
       model: openrouter/minimax/minimax-m2.5
       api_key: os.environ/OPENROUTER_API_KEY
 
+  # ── Premium models (paid, >$1/1M tokens) ────────
+  # Claude Opus 4.6: top-tier reasoning model for task refinement
+  - model_name: claude-opus-4-6
+    litellm_params:
+      model: openrouter/anthropic/claude-opus-4-6
+      api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: premium/claude-opus
+    litellm_params:
+      model: openrouter/anthropic/claude-opus-4-6
+      api_key: os.environ/OPENROUTER_API_KEY
+
   # ── Cheap models (paid, <$1/1M total) ───────────
   # DeepSeek V3.2: $0.25 input / $0.40 output — best value 2026
   - model_name: cheap

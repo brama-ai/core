@@ -1,11 +1,14 @@
 """Crawler adapter: fetches source pages and extracts article candidates."""
+
 import hashlib
 import html
 import logging
 import re
 import uuid
+from collections import deque
 from datetime import datetime, timedelta, timezone
 from time import monotonic
+from typing import cast
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -21,11 +24,33 @@ CRAWL_TIMEOUT = 20
 USER_AGENT = "Mozilla/5.0 (compatible; AICommunityBot/1.0)"
 HREF_PATTERN = re.compile(r"""href=["']([^"']+)["']""", re.IGNORECASE)
 MAX_LINKS_PER_SOURCE = settings.crawl_max_links_per_source
+MAX_DEPTH = settings.crawl_max_depth
+MAX_LINKS_PER_DEPTH = settings.crawl_max_links_per_depth
 SOURCE_TIMEBOX_SECONDS = settings.crawl_source_timebox_seconds
 RUN_TIMEBOX_SECONDS = settings.crawl_run_timebox_seconds
 STATIC_EXTENSIONS = {
-    ".css", ".js", ".mjs", ".map", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico",
-    ".woff", ".woff2", ".ttf", ".otf", ".eot", ".pdf", ".zip", ".gz", ".mp4", ".mp3", ".json",
+    ".css",
+    ".js",
+    ".mjs",
+    ".map",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".svg",
+    ".ico",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".otf",
+    ".eot",
+    ".pdf",
+    ".zip",
+    ".gz",
+    ".mp4",
+    ".mp3",
+    ".json",
 }
 STATIC_PATH_MARKERS = ("/assets/", "/static/", "/images/", "/img/", "/css/", "/js/", "/fonts/")
 BLOCKED_HOST_MARKERS = ("redditstatic.com", "gstatic.com", "doubleclick.net", "googletagmanager.com")
@@ -161,6 +186,11 @@ def run_crawl() -> int:
         settings_row = db.query(AgentSettings).first()
         proxy_url = settings_row.proxy_url if settings_row and settings_row.proxy_enabled else None
         ttl_hours = settings_row.raw_item_ttl_hours if settings_row else 72
+        max_depth = max(1, min(2, settings_row.crawl_max_depth)) if settings_row else MAX_DEPTH
+        max_links_per_depth = settings_row.crawl_max_links_per_depth if settings_row else MAX_LINKS_PER_DEPTH
+        max_links_per_depth = max(1, max_links_per_depth)
+        source_timebox_seconds = SOURCE_TIMEBOX_SECONDS
+        effective_links_per_depth = max_links_per_depth if max_depth > 1 else MAX_LINKS_PER_SOURCE
         expires_at = datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
         run_deadline = monotonic() + RUN_TIMEBOX_SECONDS
 
@@ -171,11 +201,15 @@ def run_crawl() -> int:
             .all()
         )
         logger.info(
-            "Crawl run started: enabled_sources=%d ttl_hours=%d max_links_per_source=%d source_timebox=%ds run_timebox=%ds",
+            (
+                "Crawl run started: enabled_sources=%d ttl_hours=%d "
+                "max_depth=%d max_links_per_depth=%d source_timebox=%ds run_timebox=%ds"
+            ),
             len(sources),
             ttl_hours,
-            MAX_LINKS_PER_SOURCE,
-            SOURCE_TIMEBOX_SECONDS,
+            max_depth,
+            effective_links_per_depth,
+            source_timebox_seconds,
             RUN_TIMEBOX_SECONDS,
         )
 
@@ -188,17 +222,24 @@ def run_crawl() -> int:
                 break
 
             logger.info("Crawling source '%s' (%s)", source.name, source.base_url)
-            html = _fetch_html(source.base_url, proxy_url)
-            if not html:
+            source_html = _fetch_html(source.base_url, proxy_url)
+            if not source_html:
                 source.last_error_at = datetime.now(timezone.utc)
                 db.commit()
                 logger.warning("Source '%s' fetch failed", source.name)
                 continue
 
-            # Extract links from the source page
-            links, link_stats = _extract_links(html, source.base_url, with_stats=True)
+            links, link_stats = cast(
+                tuple[list[str], dict[str, int]],
+                _extract_links(source_html, source.base_url, with_stats=True),
+            )
+            links = links[:effective_links_per_depth]
             logger.info(
-                "Source '%s' produced %d candidate links (href=%d accepted=%d filtered=%d offsite=%d static=%d blocked=%d duplicate=%d invalid=%d)",
+                (
+                    "Source '%s' depth=1 produced %d candidate links "
+                    "(href=%d accepted=%d filtered=%d offsite=%d static=%d "
+                    "blocked=%d duplicate=%d invalid=%d)"
+                ),
                 source.name,
                 len(links),
                 link_stats["href_total"],
@@ -214,56 +255,114 @@ def run_crawl() -> int:
             source_existing = 0
             source_fetch_failed = 0
             source_extract_failed = 0
-            source_deadline = monotonic() + SOURCE_TIMEBOX_SECONDS
+            source_deadline = monotonic() + source_timebox_seconds
+            http_requests_by_depth: dict[int, int] = {0: 1}
+            processed_links_by_depth: dict[int, int] = {}
+            seen_links: set[str] = set()
+            queue: deque[tuple[str, int, str]] = deque()
 
             for link in links:
+                seen_links.add(link)
+                queue.append((link, 1, source.base_url))
+
+            while queue:
+                link, depth, discovered_from_url = queue.popleft()
+                if depth > max_depth:
+                    continue
+
+                processed_count = processed_links_by_depth.get(depth, 0)
+                if processed_count >= effective_links_per_depth:
+                    continue
+                processed_links_by_depth[depth] = processed_count + 1
+
                 if monotonic() > source_deadline:
-                    logger.warning("Source '%s' stopped by source timebox (%ds)", source.name, SOURCE_TIMEBOX_SECONDS)
+                    logger.warning("Source '%s' stopped by source timebox (%ds)", source.name, source_timebox_seconds)
                     break
 
                 dedup = _dedup_hash(link)
                 exists = db.query(RawNewsItem).filter(RawNewsItem.dedup_hash == dedup).first()
-                if exists:
+                if exists and depth >= max_depth:
                     source_existing += 1
                     continue
 
                 article_html = _fetch_html(link, proxy_url)
+                http_requests_by_depth[depth] = http_requests_by_depth.get(depth, 0) + 1
                 if not article_html:
                     source_fetch_failed += 1
                     continue
 
-                article = _extract_article(article_html, link)
-                if not article:
-                    source_extract_failed += 1
-                    continue
+                if exists:
+                    source_existing += 1
+                else:
+                    article = _extract_article(article_html, link)
+                    if not article:
+                        source_extract_failed += 1
+                    else:
+                        item = RawNewsItem(
+                            source_id=source.id,
+                            source_url=link,
+                            canonical_url=article["canonical_url"],
+                            title=article["title"],
+                            raw_text=article["raw_text"],
+                            excerpt=article["excerpt"],
+                            language=article["language"],
+                            published_at_source=article["published_at_source"],
+                            dedup_hash=dedup,
+                            crawl_depth=depth,
+                            discovered_from_url=discovered_from_url,
+                            crawl_run_id=crawl_run_id,
+                            expires_at=expires_at,
+                            status="new",
+                        )
+                        db.add(item)
+                        items_seen += 1
+                        source_added += 1
 
-                item = RawNewsItem(
-                    source_id=source.id,
-                    source_url=link,
-                    canonical_url=article["canonical_url"],
-                    title=article["title"],
-                    raw_text=article["raw_text"],
-                    excerpt=article["excerpt"],
-                    language=article["language"],
-                    published_at_source=article["published_at_source"],
-                    dedup_hash=dedup,
-                    crawl_run_id=crawl_run_id,
-                    expires_at=expires_at,
-                    status="new",
-                )
-                db.add(item)
-                items_seen += 1
-                source_added += 1
+                if depth < max_depth:
+                    nested_links, nested_stats = cast(
+                        tuple[list[str], dict[str, int]],
+                        _extract_links(
+                            article_html,
+                            link,
+                            scope_url=source.base_url,
+                            with_stats=True,
+                        ),
+                    )
+                    nested_links = nested_links[:effective_links_per_depth]
+                    logger.debug(
+                        (
+                            "Source '%s' depth=%d parent=%s produced %d candidate links "
+                            "(href=%d accepted=%d filtered=%d offsite=%d static=%d blocked=%d duplicate=%d invalid=%d)"
+                        ),
+                        source.name,
+                        depth + 1,
+                        link,
+                        len(nested_links),
+                        nested_stats["href_total"],
+                        nested_stats["accepted"],
+                        nested_stats["filtered"],
+                        nested_stats["offsite"],
+                        nested_stats["static"],
+                        nested_stats["blocked"],
+                        nested_stats["duplicate"],
+                        nested_stats["invalid"],
+                    )
+                    for nested_link in nested_links:
+                        if nested_link in seen_links:
+                            continue
+                        seen_links.add(nested_link)
+                        queue.append((nested_link, depth + 1, link))
 
             source.last_success_at = datetime.now(timezone.utc)
             db.commit()
             logger.info(
-                "Source '%s' done: added=%d existing=%d fetch_failed=%d extract_failed=%d",
+                ("Source '%s' done: added=%d existing=%d fetch_failed=%d extract_failed=%d requests_by_depth=%s"),
                 source.name,
                 source_added,
                 source_existing,
                 source_fetch_failed,
                 source_extract_failed,
+                http_requests_by_depth,
             )
 
         run.items_seen = items_seen
@@ -288,10 +387,12 @@ def _extract_links(
     html: str,
     base_url: str,
     *,
+    scope_url: str | None = None,
     with_stats: bool = False,
 ) -> list[str] | tuple[list[str], dict[str, int]]:
     """Extract article-like links from a source page."""
-    links_from_html, stats = _extract_links_from_html(html, base_url)
+    scope = scope_url or base_url
+    links_from_html, stats = _extract_links_from_html(html, base_url, scope)
     if links_from_html:
         result = links_from_html[:MAX_LINKS_PER_SOURCE]
         stats["accepted"] = len(result)
@@ -303,7 +404,7 @@ def _extract_links(
         _, links = focused_crawler(base_url, max_seen_urls=30, max_known_urls=50)
         filtered = []
         for link in list(links):
-            reason = _reject_reason(link, base_url)
+            reason = _reject_reason(link, scope)
             if reason:
                 stats["filtered"] += 1
                 if reason == "offsite":
@@ -322,7 +423,7 @@ def _extract_links(
         return ([], stats) if with_stats else []
 
 
-def _extract_links_from_html(page_html: str, base_url: str) -> tuple[list[str], dict[str, int]]:
+def _extract_links_from_html(page_html: str, page_url: str, scope_url: str) -> tuple[list[str], dict[str, int]]:
     links: list[str] = []
     seen: set[str] = set()
     stats = {
@@ -349,7 +450,7 @@ def _extract_links_from_html(page_html: str, base_url: str) -> tuple[list[str], 
             stats["invalid"] += 1
             continue
 
-        absolute = urljoin(base_url, href).split("#", 1)[0]
+        absolute = urljoin(page_url, href).split("#", 1)[0]
         parsed = urlparse(absolute)
         if parsed.scheme not in ("http", "https"):
             stats["invalid"] += 1
@@ -360,7 +461,7 @@ def _extract_links_from_html(page_html: str, base_url: str) -> tuple[list[str], 
             continue
         seen.add(absolute)
 
-        reason = _reject_reason(absolute, base_url)
+        reason = _reject_reason(absolute, scope_url)
         if reason:
             stats["filtered"] += 1
             if reason == "offsite":
