@@ -1,11 +1,27 @@
-# Welcome to [Slidev](https://github.com/slidevjs/slidev)!
+# Slidev Presentations
 
-To start the slide show:
+## Available Slides
 
-- `pnpm install`
-- `pnpm dev`
-- visit <http://localhost:3030>
+| File | URL | Description |
+|------|-----|-------------|
+| `main.md` | `/slides/slide/main/` | Main platform presentation |
+| `pages/adr.md` | `/slides/slide/adr/` | Architecture Decision Records |
+| `pages/hld.md` | `/slides/slide/hld/` | High-Level Design |
 
-Edit the [slides.md](./slides.md) to see the changes.
+## Development
 
-Learn more about Slidev at the [documentation](https://sli.dev/).
+```bash
+cd slides
+pnpm install
+pnpm dev
+# visit http://localhost:3030
+```
+
+## Build for Production
+
+```bash
+# Slides are built automatically via docker/slides/Dockerfile
+# Each .md file becomes /slides/slide/<name>/
+```
+
+Learn more about Slidev at [the documentation](https://sli.dev/).
