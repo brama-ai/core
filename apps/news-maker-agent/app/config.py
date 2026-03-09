@@ -13,7 +13,9 @@ class Settings(BaseSettings):
     admin_public_url: str = "http://localhost:8084/admin/sources"
     enable_test_endpoints: bool = False
     crawl_max_links_per_source: int = 20
-    crawl_source_timebox_seconds: int = 120
+    crawl_max_depth: int = 1
+    crawl_max_links_per_depth: int = 10
+    crawl_source_timebox_seconds: int = 240
     crawl_run_timebox_seconds: int = 900
 
     model_config = {"env_file": ".env"}
