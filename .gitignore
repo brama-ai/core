@@ -2,6 +2,9 @@
 vendor/
 node_modules/
 
+# Pipeline artifacts (checkpoints, agent outputs)
+tasks/artifacts/
+
 # Environment - only root-level .env; apps/core/.env is committed as Symfony dev defaults
 /.env
 .env.local

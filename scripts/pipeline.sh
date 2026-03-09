@@ -132,6 +132,7 @@ TASK_FILE=""
 WEBHOOK_URL=""
 ENABLE_AUDIT=false
 NO_COMMIT=false
+RESUME_MODE=false
 TELEGRAM_NOTIFY=false
 TELEGRAM_BOT_TOKEN="${PIPELINE_TELEGRAM_BOT_TOKEN:-}"
 TELEGRAM_CHAT_ID="${PIPELINE_TELEGRAM_CHAT_ID:-}"
@@ -165,6 +166,10 @@ while [[ $# -gt 0 ]]; do
     --task-file)
       TASK_FILE="$2"
       shift 2
+      ;;
+    --resume)
+      RESUME_MODE=true
+      shift
       ;;
     --no-commit)
       NO_COMMIT=true
@@ -358,6 +363,150 @@ commit_agent_work() {
     echo -e "  ${YELLOW}⚠ Commit failed (may have no changes)${NC}"
     return 0
   fi
+}
+
+# ── Checkpoint & Artifacts ────────────────────────────────────────────
+#
+# Each task gets an artifacts directory: tasks/artifacts/<task-slug>/
+# Inside:
+#   checkpoint.json  — tracks which agents completed successfully
+#   <agent>/         — agent-specific artifacts (logs, proposals, etc.)
+#
+# checkpoint.json format:
+# {
+#   "task": "...", "branch": "...", "started": "...",
+#   "agents": {
+#     "architect": {"status":"done","duration":123,"commit":"abc1234"},
+#     "coder": {"status":"done","duration":456,"commit":"def5678"}
+#   }
+# }
+
+ARTIFACTS_BASE="$REPO_ROOT/tasks/artifacts"
+
+# Generate slug from task message (same as pipeline-batch.sh)
+_task_slug() {
+  echo "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | cut -c1-50
+}
+
+# Initialize artifacts directory for a task
+init_artifacts() {
+  local slug="$1"
+  local branch="$2"
+  ARTIFACTS_DIR="$ARTIFACTS_BASE/$slug"
+  CHECKPOINT_FILE="$ARTIFACTS_DIR/checkpoint.json"
+
+  mkdir -p "$ARTIFACTS_DIR"
+
+  # Only create new checkpoint if not resuming
+  if [[ "$RESUME_MODE" == true && -f "$CHECKPOINT_FILE" ]]; then
+    echo -e "${BLUE}Resuming from checkpoint: ${CHECKPOINT_FILE}${NC}"
+    return
+  fi
+
+  # Create fresh checkpoint
+  cat > "$CHECKPOINT_FILE" << CHECKPOINT_EOF
+{
+  "task": $(printf '%s' "$TASK_MESSAGE" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'),
+  "branch": "$branch",
+  "started": "$(date '+%Y-%m-%d %H:%M:%S')",
+  "agents": {}
+}
+CHECKPOINT_EOF
+}
+
+# Write checkpoint after agent completes
+write_checkpoint() {
+  local agent="$1"
+  local status="$2"
+  local duration="$3"
+  local commit_hash="${4:-}"
+
+  [[ -f "$CHECKPOINT_FILE" ]] || return 0
+
+  # Use python3 to safely update JSON
+  python3 -c "
+import json, sys
+with open('$CHECKPOINT_FILE', 'r') as f:
+    data = json.load(f)
+data['agents']['$agent'] = {
+    'status': '$status',
+    'duration': $duration,
+    'commit': '$commit_hash',
+    'finished': '$(date '+%Y-%m-%d %H:%M:%S')'
+}
+with open('$CHECKPOINT_FILE', 'w') as f:
+    json.dump(data, f, indent=2)
+" 2>/dev/null || true
+}
+
+# Copy agent log to artifacts
+save_agent_artifact() {
+  local agent="$1"
+  local log_file="$2"
+
+  [[ -d "$ARTIFACTS_DIR" ]] || return 0
+
+  local agent_dir="$ARTIFACTS_DIR/$agent"
+  mkdir -p "$agent_dir"
+
+  # Copy log file
+  if [[ -f "$log_file" ]]; then
+    cp "$log_file" "$agent_dir/$(basename "$log_file")"
+  fi
+
+  # Copy agent-created files (e.g., openspec proposals for architect)
+  if [[ "$agent" == "architect" ]]; then
+    # Copy any new openspec changes
+    local changes_dir="$REPO_ROOT/openspec/changes"
+    if [[ -d "$changes_dir" ]]; then
+      for d in "$changes_dir"/*/; do
+        [[ -d "$d" ]] || continue
+        # Only copy recently modified proposals (last 30 min)
+        if find "$d" -maxdepth 0 -mmin -30 -print -quit 2>/dev/null | grep -q .; then
+          cp -r "$d" "$agent_dir/" 2>/dev/null || true
+        fi
+      done
+    fi
+  fi
+}
+
+# Read checkpoint and determine which agent to resume from
+get_resume_agent() {
+  [[ -f "$CHECKPOINT_FILE" ]] || return
+
+  python3 -c "
+import json
+agents_order = ['architect', 'coder', 'validator', 'tester', 'documenter']
+with open('$CHECKPOINT_FILE', 'r') as f:
+    data = json.load(f)
+completed = data.get('agents', {})
+for agent in agents_order:
+    info = completed.get(agent, {})
+    if info.get('status') != 'done':
+        print(agent)
+        break
+" 2>/dev/null || true
+}
+
+# Print checkpoint summary
+print_checkpoint_summary() {
+  [[ -f "$CHECKPOINT_FILE" ]] || return
+
+  python3 -c "
+import json
+with open('$CHECKPOINT_FILE', 'r') as f:
+    data = json.load(f)
+agents = data.get('agents', {})
+if not agents:
+    print('  (no completed agents)')
+    exit()
+for name, info in agents.items():
+    status = info.get('status', '?')
+    dur = info.get('duration', 0)
+    commit = info.get('commit', '')
+    icon = '✓' if status == 'done' else '✗'
+    print(f'  {icon} {name}: {status} ({dur}s) {commit}')
+" 2>/dev/null || true
 }
 
 # ── Dev Reporter Agent integration ───────────────────────────────────
@@ -911,6 +1060,24 @@ main() {
   # Initialize handoff
   init_handoff
 
+  # Initialize artifacts & checkpoint
+  local slug
+  slug=$(_task_slug "$TASK_MESSAGE")
+  init_artifacts "$slug" "$branch"
+
+  # Auto-resume: if --resume and checkpoint exists, determine FROM_AGENT
+  if [[ "$RESUME_MODE" == true && -z "$FROM_AGENT" ]]; then
+    local resume_from
+    resume_from=$(get_resume_agent)
+    if [[ -n "$resume_from" && "$resume_from" != "architect" ]]; then
+      FROM_AGENT="$resume_from"
+      echo -e "${YELLOW}Auto-resuming from: ${FROM_AGENT}${NC}"
+      echo -e "${DIM}Checkpoint:${NC}"
+      print_checkpoint_summary
+      echo ""
+    fi
+  fi
+
   # Get agents to run
   local agents_to_run
   agents_to_run=$(get_agents_to_run)
@@ -944,6 +1111,9 @@ main() {
     local agent_start
     agent_start=$(date +%s)
 
+    # Log file for this agent run
+    local agent_log="$LOG_DIR/${TIMESTAMP}_${agent}.log"
+
     if run_agent "$agent" "$prompt"; then
       local agent_dur=$(( $(date +%s) - agent_start ))
       report_lines="${report_lines}| ${agent} | ✓ pass | ${agent_dur}s |
@@ -954,6 +1124,12 @@ main() {
 
       # Auto-commit after each successful agent
       commit_agent_work "$agent" "$task_slug"
+      local commit_hash
+      commit_hash=$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo "")
+
+      # Save checkpoint & artifacts
+      write_checkpoint "$agent" "done" "$agent_dur" "$commit_hash"
+      save_agent_artifact "$agent" "$agent_log"
 
       # Run migrations after coder (before validator)
       if [[ "$agent" == "coder" ]]; then
@@ -965,6 +1141,10 @@ main() {
       local agent_dur=$(( $(date +%s) - agent_start ))
       report_lines="${report_lines}| ${agent} | ✗ fail | ${agent_dur}s |
 "
+
+      # Save failed checkpoint & artifact
+      write_checkpoint "$agent" "failed" "$agent_dur" ""
+      save_agent_artifact "$agent" "$agent_log"
       failed=true
       failed_agent="$agent"
 

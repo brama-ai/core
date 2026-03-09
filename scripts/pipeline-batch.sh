@@ -337,20 +337,18 @@ run_sequential() {
     # Ensure we start from the original branch for each task
     git -C "$REPO_ROOT" checkout "$ORIGINAL_BRANCH" 2>/dev/null || true
 
-    # Build pipeline command
-    local pipeline_cmd
-    if [[ -n "$active_file" ]]; then
-      # shellcheck disable=SC2086
-      pipeline_cmd="$SCRIPT_DIR/pipeline.sh --branch $task_branch --task-file $active_file $EXTRA_ARGS"
-    else
-      # shellcheck disable=SC2086
-      pipeline_cmd="$SCRIPT_DIR/pipeline.sh --branch $task_branch $EXTRA_ARGS"
+    # Check if checkpoint exists for auto-resume
+    local resume_flag=""
+    local task_slug_name
+    task_slug_name=$(task_slug "$task")
+    if [[ -f "$REPO_ROOT/tasks/artifacts/${task_slug_name}/checkpoint.json" ]]; then
+      resume_flag="--resume"
     fi
 
     # shellcheck disable=SC2086
     if [[ -n "$active_file" ]]; then
       # shellcheck disable=SC2086
-      if "$SCRIPT_DIR/pipeline.sh" --branch "$task_branch" --task-file "$active_file" $EXTRA_ARGS; then
+      if "$SCRIPT_DIR/pipeline.sh" --branch "$task_branch" --task-file "$active_file" $resume_flag $EXTRA_ARGS; then
         local end_time duration
         end_time=$(date +%s)
         duration=$(( end_time - start_time ))
@@ -379,7 +377,7 @@ run_sequential() {
     else
       # Text mode — task as positional argument
       # shellcheck disable=SC2086
-      if "$SCRIPT_DIR/pipeline.sh" --branch "$task_branch" $EXTRA_ARGS "$task"; then
+      if "$SCRIPT_DIR/pipeline.sh" --branch "$task_branch" $resume_flag $EXTRA_ARGS "$task"; then
         local end_time duration
         end_time=$(date +%s)
         duration=$(( end_time - start_time ))
@@ -440,6 +438,14 @@ setup_worktree_deps() {
   # Symlink .local/ if it exists (Docker volume mounts, local state)
   if [[ -d "$REPO_ROOT/.local" && ! -L "$wt/.local" ]]; then
     ln -s "$REPO_ROOT/.local" "$wt/.local"
+  fi
+
+  # Symlink tasks/artifacts/ so checkpoint data is shared across worktrees
+  local artifacts_dir="$REPO_ROOT/tasks/artifacts"
+  mkdir -p "$artifacts_dir"
+  if [[ ! -L "$wt/tasks/artifacts" ]]; then
+    mkdir -p "$wt/tasks"
+    ln -s "$artifacts_dir" "$wt/tasks/artifacts"
   fi
 }
 
@@ -532,14 +538,22 @@ run_parallel() {
         cp "$active_file" "$wt_task_file"
       fi
 
+      # Check if checkpoint exists for this task (enables auto-resume)
+      local resume_flag=""
+      local task_slug_name
+      task_slug_name=$(task_slug "$task")
+      if [[ -f "$REPO_ROOT/tasks/artifacts/${task_slug_name}/checkpoint.json" ]]; then
+        resume_flag="--resume"
+      fi
+
       local exit_code=0
       if [[ -n "$wt_task_file" ]]; then
         # shellcheck disable=SC2086
-        "$pipeline_script" --branch "$task_branch" --task-file "$wt_task_file" $EXTRA_ARGS \
+        "$pipeline_script" --branch "$task_branch" --task-file "$wt_task_file" $resume_flag $EXTRA_ARGS \
           > "$TASK_RESULT_DIR/task-${task_num}.log" 2>&1 || exit_code=$?
       else
         # shellcheck disable=SC2086
-        "$pipeline_script" --branch "$task_branch" $EXTRA_ARGS "$task" \
+        "$pipeline_script" --branch "$task_branch" $resume_flag $EXTRA_ARGS "$task" \
           > "$TASK_RESULT_DIR/task-${task_num}.log" 2>&1 || exit_code=$?
       fi
 
