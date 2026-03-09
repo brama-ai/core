@@ -12,7 +12,6 @@ services:
       - "8083:8083"
       - "8084:8084"
       - "8085:8085"
-      - "8086:8086"
       - "8087:8087"
       - "8088:8088"
       - "8090:8090"
@@ -21,11 +20,11 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
       - traefik.enable=true
-      - traefik.http.routers.traefik-dashboard.rule=PathPrefix(`/traefik`)
+      - traefik.docker.network=ai-community-platform_dev-edge
+      - traefik.http.routers.traefik-dashboard.rule=Host(`traefik.ai-community-platform.org`)
       - traefik.http.routers.traefik-dashboard.entrypoints=web
-      - traefik.http.routers.traefik-dashboard.middlewares=edge-auth@docker,traefik-stripprefix
+      - traefik.http.routers.traefik-dashboard.middlewares=edge-auth@docker
       - traefik.http.routers.traefik-dashboard.service=api@internal
-      - traefik.http.middlewares.traefik-stripprefix.stripprefix.prefixes=/traefik
     networks:
       - dev-edge
 
@@ -120,11 +119,11 @@ services:
       - "4000:4000"
     labels:
       - traefik.enable=true
-      - traefik.http.routers.litellm.rule=PathPrefix(`/litellm`)
+      - traefik.docker.network=ai-community-platform_dev-edge
+      - traefik.http.routers.litellm.rule=Host(`litellm.ai-community-platform.org`)
       - traefik.http.routers.litellm.entrypoints=web
-      - traefik.http.routers.litellm.middlewares=edge-auth@docker,litellm-stripprefix
+      - traefik.http.routers.litellm.middlewares=edge-auth@docker
       - traefik.http.routers.litellm.service=litellm
-      - traefik.http.middlewares.litellm-stripprefix.stripprefix.prefixes=/litellm
       - traefik.http.services.litellm.loadbalancer.server.port=4000
     volumes:
       - ./docker/litellm/config.yaml:/app/config.yaml:ro

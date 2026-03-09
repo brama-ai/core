@@ -12,7 +12,7 @@ services:
       SALT: 7f74f72f8c2a4ed7a9935726ff6f9b31
       ENCRYPTION_KEY: 5f246ea22fb645e2892eea4b6f9dc7445f246ea22fb645e2892eea4b6f9dc744
       NEXTAUTH_SECRET: 8f2e7c58ea8449f1a70e1e6c5ea53dcf
-      NEXTAUTH_URL: ${LANGFUSE_PUBLIC_URL:-http://localhost:8086}
+      NEXTAUTH_URL: ${LANGFUSE_PUBLIC_URL:-https://langfuse.ai-community-platform.org}
       TELEMETRY_ENABLED: "false"
       LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
       REDIS_CONNECTION_STRING: redis://langfuse-redis:6379
@@ -47,20 +47,10 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=ai-community-platform_dev-edge
-      - traefik.http.routers.langfuse-web.rule=Host(`langfuse.ai-community-platform.org`)
-      - traefik.http.routers.langfuse-web.entrypoints=web
-      - traefik.http.routers.langfuse-web.priority=100
-      - traefik.http.routers.langfuse-web.middlewares=edge-auth@docker
-      - traefik.http.routers.langfuse-web.service=langfuse
-      # Path-based routing for port 80 (web entrypoint)
-      - traefik.http.routers.langfuse-path.rule=PathPrefix(`/langfuse`)
-      - traefik.http.routers.langfuse-path.entrypoints=web
-      - traefik.http.routers.langfuse-path.middlewares=edge-auth@docker,langfuse-stripprefix
-      - traefik.http.routers.langfuse-path.service=langfuse
-      - traefik.http.middlewares.langfuse-stripprefix.stripprefix.prefixes=/langfuse
-      - traefik.http.routers.langfuse.rule=PathPrefix(`/`)
-      - traefik.http.routers.langfuse.entrypoints=langfuse
+      - traefik.http.routers.langfuse.rule=Host(`langfuse.ai-community-platform.org`)
+      - traefik.http.routers.langfuse.entrypoints=web
       - traefik.http.routers.langfuse.middlewares=edge-auth@docker
+      - traefik.http.routers.langfuse.service=langfuse
       - traefik.http.services.langfuse.loadbalancer.server.port=3000
     networks:
       - dev-edge
@@ -78,7 +68,7 @@ services:
       SALT: 7f74f72f8c2a4ed7a9935726ff6f9b31
       ENCRYPTION_KEY: 5f246ea22fb645e2892eea4b6f9dc7445f246ea22fb645e2892eea4b6f9dc744
       NEXTAUTH_SECRET: 8f2e7c58ea8449f1a70e1e6c5ea53dcf
-      NEXTAUTH_URL: ${LANGFUSE_PUBLIC_URL:-http://localhost:8086}
+      NEXTAUTH_URL: ${LANGFUSE_PUBLIC_URL:-https://langfuse.ai-community-platform.org}
       TELEMETRY_ENABLED: "false"
       LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
       REDIS_CONNECTION_STRING: redis://langfuse-redis:6379
