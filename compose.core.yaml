@@ -7,7 +7,7 @@ services:
       - ./docker/openclaw/.env
     labels:
       - traefik.enable=true
-      - traefik.http.routers.core.rule=Host(`ai-community-platform.org`)
+      - traefik.http.routers.core.rule=Host(`ai-community-platform.org`) || Host(`localhost`)
       - traefik.http.routers.core.entrypoints=web
       - traefik.http.services.core.loadbalancer.server.port=80
       - traefik.http.middlewares.edge-auth.forwardauth.address=http://core/edge/auth/verify
@@ -19,10 +19,10 @@ services:
       LANGFUSE_PUBLIC_KEY: lf_pk_local_dev
       LANGFUSE_SECRET_KEY: lf_sk_local_dev
       LANGFUSE_ENV: local
-      ADMIN_OPENCLAW_URL: https://openclaw.ai-community-platform.org/
-      ADMIN_LANGFUSE_URL: https://langfuse.ai-community-platform.org/
-      ADMIN_TRAEFIK_URL: https://traefik.ai-community-platform.org/dashboard/
-      ADMIN_LITELLM_URL: https://litellm.ai-community-platform.org/
+      ADMIN_OPENCLAW_URL: http://openclaw.localhost/
+      ADMIN_LANGFUSE_URL: http://langfuse.localhost/
+      ADMIN_TRAEFIK_URL: http://traefik.localhost/dashboard/
+      ADMIN_LITELLM_URL: http://litellm.localhost/
       EDGE_AUTH_JWT_SECRET: dev-edge-auth-secret-change-me
       EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
       EDGE_AUTH_TOKEN_TTL: 43200

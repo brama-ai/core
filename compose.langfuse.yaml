@@ -47,7 +47,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=ai-community-platform_dev-edge
-      - traefik.http.routers.langfuse.rule=Host(`langfuse.ai-community-platform.org`)
+      - traefik.http.routers.langfuse.rule=Host(`langfuse.ai-community-platform.org`) || Host(`langfuse.localhost`)
       - traefik.http.routers.langfuse.entrypoints=web
       - traefik.http.routers.langfuse.middlewares=edge-auth@docker
       - traefik.http.routers.langfuse.service=langfuse
