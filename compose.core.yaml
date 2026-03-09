@@ -19,14 +19,14 @@ services:
       LANGFUSE_PUBLIC_KEY: lf_pk_local_dev
       LANGFUSE_SECRET_KEY: lf_sk_local_dev
       LANGFUSE_ENV: local
-      ADMIN_OPENCLAW_URL: http://localhost:8082
-      ADMIN_LANGFUSE_URL: http://localhost:8086
-      ADMIN_TRAEFIK_URL: http://localhost:8080/dashboard/
-      ADMIN_LITELLM_URL: http://localhost:4000
+      ADMIN_OPENCLAW_URL: /openclaw/
+      ADMIN_LANGFUSE_URL: /langfuse/
+      ADMIN_TRAEFIK_URL: /traefik/dashboard/
+      ADMIN_LITELLM_URL: /litellm/
       EDGE_AUTH_JWT_SECRET: dev-edge-auth-secret-change-me
       EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
       EDGE_AUTH_TOKEN_TTL: 43200
-      EDGE_AUTH_LOGIN_BASE_URL: http://localhost
+      EDGE_AUTH_LOGIN_BASE_URL: ""
     volumes:
       - ./apps/core:/var/www/html
     networks:
