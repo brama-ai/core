@@ -1,3 +1,4 @@
+<!-- batch: 20260309_153535 | status: fail | duration: 2144s | branch: pipeline/adr-architecture-decision-records-slidev -->
 <!-- priority: 6 -->
 # ADR — Architecture Decision Records (Slidev презентація)
 

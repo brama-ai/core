@@ -1,9 +1,112 @@
 # Pipeline Handoff
 
-- **Task**: Implement openspec change add-dev-reporter-agent
-- **Started**: 2026-03-08 02:06:58
-- **Branch**: pipeline/implement-openspec-change-add-dev-reporter-agent
-- **Pipeline ID**: 20260308_020657
+- **Task**: # ADR — Architecture Decision Records (Slidev презентація)
+
+Створити Slidev-презентацію з Architecture Decision Records для курсу навчання з побудови AI-агентів. Презентація повинна бути окремим файлом `slides/pages/adr.md` (або `slides/adr-slides.md`) з можливістю запуску як standalone Slidev deck.
+
+## Контекст
+
+AI Community Platform має десятки архітектурних рішень, які не задокументовані в зручному для навчання форматі. Для курсу потрібна презентація, що пояснює **чому** прийняті ті чи інші рішення, які альтернативи розглядались, та які trade-off.
+
+## Формат кожного ADR-слайду
+
+Кожне рішення — 2-3 слайди:
+1. **Контекст + проблема** (що вирішуємо)
+2. **Рішення + обґрунтування** (що обрали і чому)
+3. **Альтернативи + trade-off** (що відкинули і що втратили)
+
+## Обов'язкові ADR (ключові архітектурні вузли)
+
+### ADR-01: A2A Gateway як центральний хаб
+- Чому всі виклики між агентами йдуть через core, а не напряму?
+- Переваги: єдина точка трейсингу, авторизації, rate limiting
+- Альтернатива: mesh-мережа між агентами
+- Trade-off: single point of failure, додаткова латентність
+
+### ADR-02: Мультимовний стек (PHP core + Python agents)
+- Чому PHP/Symfony для core і knowledge-agent, а Python/FastAPI для news-maker?
+- Переваги: best tool for the job, спільний A2A протокол
+- Альтернатива: monostack (все на Python або все на PHP)
+- Trade-off: складніший DevOps, різні тулчейни
+
+### ADR-03: Doctrine DBAL без ORM
+- Чому відмовились від Doctrine ORM на користь чистого DBAL?
+- Переваги: контроль над SQL, відсутність N+1, менше магії
+- Альтернатива: повний ORM з entities/repositories
+- Trade-off: більше boilerplate, ручні міграції
+
+### ADR-04: OpenSearch замість Elasticsearch
+- Чому OpenSearch 2.11, а не Elasticsearch?
+- Переваги: відкрита ліцензія, сумісний API, community-driven
+- Альтернатива: Elasticsearch, pgvector, Meilisearch
+
+### ADR-05: LiteLLM як єдиний LLM gateway
+- Чому проксі через LiteLLM замість прямих API-викликів?
+- Переваги: єдиний інтерфейс, ротація моделей, cost tracking
+- Альтернатива: прямі SDK-виклики (openai, anthropic)
+- Trade-off: додатковий hop, залежність від LiteLLM
+
+### ADR-06: Agent Card + Manifest для discovery
+- Чому manifest-first підхід замість service registry?
+- Переваги: self-describing agents, runtime discovery, version-aware
+- Альтернатива: Consul/etcd, hardcoded routing table
+- Trade-off: cold start при першому sync
+
+### ADR-07: RabbitMQ для async workflows
+- Чому RabbitMQ, а не Redis Streams або Kafka?
+- Переваги: routing, dead letter queues, low-ops
+- Альтернатива: Redis Streams (вже є Redis), Kafka (overkill)
+- Trade-off: ще один сервіс у compose
+
+### ADR-08: Traefik як reverse proxy + edge router
+- Чому Traefik замість Nginx/HAProxy?
+- Переваги: Docker-native label routing, автоматичний discovery, middleware chain
+- Альтернатива: Nginx з ручним конфігом
+- Trade-off: менший контроль, YAML-first конфігурація
+
+### ADR-09: OpenSpec для управління змінами
+- Чому формальний spec-first процес замість вільного кодування?
+- Переваги: аудитабельність, multi-agent review, version history
+- Альтернатива: GitHub Issues + PRs, ADR-only
+- Trade-off: overhead на малих змінах
+
+### ADR-10: Convention tests для агентів
+- Чому окрема тест-суїта для перевірки конвенцій?
+- Переваги: гарантія сумісності нових агентів, автоматичний compliance
+- Альтернатива: ручний review, integration tests only
+- Trade-off: додаткова підтримка тестів
+
+## Вимоги до презентації
+
+1. Slidev формат (markdown з frontmatter `---` між слайдами)
+2. Використовувати theme: seriph (як основна презентація)
+3. Мова: українська
+4. Кожен ADR має code snippets або діаграми де доречно (mermaid diagrams)
+5. Speaker notes (`<!-- ... -->`) з поясненнями для доповідача
+6. Перший слайд — титульний "Architecture Decision Records — AI Community Platform"
+7. Останній слайд — summary таблиця всіх ADR з verdict
+8. Реальні приклади коду з кодової бази (не вигадані!)
+
+## Джерела даних
+
+- `docs/decisions/adr_0002_openclaw_role.md` — існуючий ADR
+- `compose.yaml`, `compose.*.yaml` — інфраструктурні рішення
+- `apps/core/src/A2AGateway/` — A2A gateway патерн
+- `apps/core/src/LLM/LiteLlmClient.php` — LLM інтеграція
+- `docker/litellm/config.yaml` — LiteLLM конфігурація
+- `openspec/project.md` — конвенції проекту
+- `tests/agent-conventions/` — convention tests
+- Agent manifests в кожному агенті
+
+## Валідація
+
+- Презентація має бути синтаксично валідним Slidev markdown
+- Всі code snippets мають відповідати реальному коду
+- Mermaid діаграми повинні рендеритись
+- ~30-40 слайдів загалом
+- **Started**: 2026-03-09 14:41:44
+- **Branch**: pipeline/adr-architecture-decision-records-slidev
+- **Pipeline ID**: 20260309_144142
 
 ---
 
@@ -17,76 +120,28 @@
 
 ## Coder
 
-- **Status**: done
-- **Files modified**:
-  - `apps/dev-reporter-agent/` — full new agent (all files)
-  - `apps/dev-reporter-agent/src/Repository/PipelineRunRepository.php` — fixed `insert()` to use `RETURNING id` (PostgreSQL DBAL 4 compatible)
-  - `apps/dev-reporter-agent/src/Controller/Admin/PipelineAdminController.php` — decode `agent_results` in controller, pass `agent_results_count` to template
-  - `apps/dev-reporter-agent/templates/admin/pipeline/index.html.twig` — removed non-existent `|json_decode` filter, use `run.agent_results_count`
-  - `apps/dev-reporter-agent/tests/Unit/Repository/PipelineRunRepositoryTest.php` — new unit test (6 cases)
-  - `docker/dev-reporter-agent/Dockerfile`
-  - `docker/dev-reporter-agent/entrypoint.sh`
-  - `docker/postgres/init/01_create_roles.sql` — added `dev_reporter_agent` role
-  - `docker/postgres/init/02_create_databases.sql` — added `dev_reporter_agent` DB
-  - `docker/postgres/init/03_create_test_databases.sql` — added `dev_reporter_agent_test` DB
-  - `compose.agent-dev-reporter.yaml` — new compose file (port 8087, Traefik labels)
-  - `compose.yaml` — exposed port `8087:8087`
-  - `docker/traefik/traefik.yml` — added `dev-reporter` entrypoint on `:8087`
-  - `Makefile` — added all `dev-reporter-*` targets
-  - `scripts/pipeline.sh` — added `send_report_to_agent()` + call at completion
-  - `docs/agents/en/dev-reporter-agent.md` — new English doc
-  - `docs/agents/ua/dev-reporter-agent.md` — new Ukrainian doc
-  - `docs/local-dev.md` — added dev-reporter topology entry + Makefile commands section
-  - `openspec/changes/add-dev-reporter-agent/tasks.md` — all tasks marked done (except quality checks requiring running stack)
-- **Migrations created**: `apps/dev-reporter-agent/migrations/Version20260308000001.php`
-- **Deviations**:
-  - `bootstrap.sh` not modified — `dev-reporter-setup` is already included in `make setup` target chain in Makefile; bootstrap.sh is OpenClaw-config-only and doesn't need per-agent changes
-  - Quality checks (Task 9) left unchecked — require running Docker stack (`composer install` + live DB); to be run by Validator/Tester agents
+- **Status**: pending
+- **Files modified**: —
+- **Migrations created**: —
+- **Deviations**: —
 
 ## Validator
 
-- **Status**: done
-- **PHPStan**:
-  - `apps/dev-reporter-agent/`: pass
-- **CS-check**:
-  - `apps/dev-reporter-agent/`: pass
-- **Files fixed**:
-  - `Makefile`
-  - `apps/dev-reporter-agent/src/A2A/DevReporterA2AHandler.php`
-  - `apps/dev-reporter-agent/src/Controller/Admin/PipelineAdminController.php`
-  - `apps/dev-reporter-agent/tests/_support/FunctionalTester.php`
-  - `apps/dev-reporter-agent/tests/_support/UnitTester.php`
+- **Status**: pending
+- **PHPStan**: —
+- **CS-check**: —
+- **Files fixed**: —
 
 ## Tester
 
-- **Status**: done
-- **Test results**:
-  - `make dev-reporter-test` (final run): **passed** — 26 tests, 101 assertions (Unit: 17 passed; Functional: 9 passed)
-  - `conventions-test` equivalent for changed agent config: **passed** via `AGENT_URL=http://localhost:18087 npx codeceptjs run --steps` — 17 passed
-- **New tests written**: none
-- **Tests updated and why**:
-  - `apps/dev-reporter-agent/tests/Unit/A2A/DevReporterA2AHandlerTest.php` — replaced direct mock of final `PipelineRunRepository` with `Doctrine\\DBAL\\Connection` mock + real repository instance to avoid `ClassIsFinalException` and keep intent behavior assertions intact.
-  - `apps/dev-reporter-agent/public/.htaccess` — added Apache rewrite rules so HTTP convention checks (`/health`, `/api/v1/manifest`) resolve through Symfony front controller instead of Apache 404.
-- **Environment fixes applied for local stack testability** (no repo code contract changes):
-  - Created missing PostgreSQL role/database in running container: `dev_reporter_agent`, `dev_reporter_agent`, `dev_reporter_agent_test`
-  - Ran `make dev-reporter-migrate` to ensure `pipeline_runs` exists before functional suite
+- **Status**: pending
+- **Test results**: —
+- **New tests written**: —
 
 ## Documenter
 
-- **Status**: done
-- **Docs created/updated**:
-  - `docs/agents/en/dev-reporter-agent.md` — reviewed; already complete (created by Coder)
-  - `docs/agents/ua/dev-reporter-agent.md` — added missing `devreporter.status` response section to match EN structure
-  - `docs/local-dev.md` — reviewed; already updated with topology entry and Makefile commands (created by Coder)
-  - `INDEX.md` — added `docs/agents/en/dev-reporter-agent.md` entry under Agent PRDs
-- **Validation**:
-  - No `.md` files in intermediate directories (`docs/agents/` contains only `en/` and `ua/` subdirs)
-  - Both `ua/` and `en/` versions exist with identical section structure
-  - `INDEX.md` updated with new entry
-- **Final status**: PIPELINE COMPLETE
+- **Status**: pending
+- **Docs created/updated**: —
 
 ---
-- **Commit (coder)**: 8be54d9
-- **Commit (validator)**: e5d8f5f
-- **Commit (tester)**: 8166815
-- **Commit (documenter)**: 8f3f9c7
+

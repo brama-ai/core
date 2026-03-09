@@ -227,13 +227,71 @@
 
 <script>
     (function () {
+        function isEmbedded() {
+            try {
+                return window.self !== window.top;
+            } catch (e) {
+                return true;
+            }
+        }
+
         try {
-            if (window.self !== window.top) {
+            if (isEmbedded()) {
                 document.body.dataset.embedded = "1";
             }
         } catch (e) {
             document.body.dataset.embedded = "1";
         }
+
+        if (!isEmbedded()) {
+            return;
+        }
+
+        function currentPath() {
+            return window.location.pathname + window.location.search + window.location.hash;
+        }
+
+        function reportPath(path) {
+            try {
+                window.parent.postMessage(
+                    { type: "agent-admin:location", path: path || currentPath() },
+                    "*"
+                );
+            } catch (e) {
+                // no-op
+            }
+        }
+
+        reportPath();
+        window.addEventListener("pageshow", function () { reportPath(); });
+        window.addEventListener("popstate", function () { reportPath(); });
+        window.addEventListener("hashchange", function () { reportPath(); });
+        document.addEventListener("DOMContentLoaded", function () { reportPath(); });
+
+        document.addEventListener("click", function (event) {
+            var link = event.target.closest("a[href]");
+            if (!link) {
+                return;
+            }
+            if (link.target && link.target !== "_self") {
+                return;
+            }
+
+            var href = link.getAttribute("href");
+            if (!href || href.startsWith("#") || href.startsWith("javascript:")) {
+                return;
+            }
+
+            try {
+                var url = new URL(href, window.location.origin);
+                if (url.origin !== window.location.origin) {
+                    return;
+                }
+                reportPath(url.pathname + url.search + url.hash);
+            } catch (e) {
+                // no-op
+            }
+        }, true);
     })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

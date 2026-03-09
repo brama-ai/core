@@ -106,7 +106,12 @@
                 <h2 style="margin:0;">Панель агента</h2>
             </div>
             <div class="iframe-container">
-                <iframe src="{{ iframe_url }}" title="Панель {{ agent_name }}"></iframe>
+                <iframe
+                    id="agentAdminFrame"
+                    src="{{ iframe_url }}"
+                    title="Панель {{ agent_name }}"
+                    data-admin-url="{{ admin_url|e('html_attr') }}"
+                ></iframe>
             </div>
         </div>
     {% endif %}
@@ -191,5 +196,97 @@ function triggerNewsCrawl() {
         btn.textContent = 'Запустити парсинг новин';
     });
 }
+
+(function () {
+    var iframe = document.getElementById('agentAdminFrame');
+    if (!iframe) {
+        return;
+    }
+
+    var HASH_KEY = 'agent_admin_path';
+    var adminUrl = iframe.dataset.adminUrl || iframe.src;
+    var adminOrigin = null;
+
+    try {
+        adminOrigin = new URL(adminUrl).origin;
+    } catch (e) {
+        return;
+    }
+
+    function getHashPath() {
+        var hash = window.location.hash ? window.location.hash.slice(1) : '';
+        if (!hash) {
+            return null;
+        }
+        var params = new URLSearchParams(hash);
+        return params.get(HASH_KEY);
+    }
+
+    function setHashPath(path) {
+        if (!path || path.charAt(0) !== '/') {
+            return;
+        }
+
+        var params = new URLSearchParams(window.location.hash ? window.location.hash.slice(1) : '');
+        params.set(HASH_KEY, path);
+        var nextHash = params.toString();
+        if (window.location.hash !== ('#' + nextHash)) {
+            history.replaceState({}, '', window.location.pathname + window.location.search + '#' + nextHash);
+        }
+    }
+
+    function normalizePath(rawPath) {
+        if (!rawPath) {
+            return null;
+        }
+
+        try {
+            var url = new URL(rawPath, adminOrigin);
+            if (url.origin !== adminOrigin) {
+                return null;
+            }
+            url.searchParams.delete('embedded');
+            var qs = url.searchParams.toString();
+            return url.pathname + (qs ? ('?' + qs) : '') + url.hash;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function buildEmbeddedUrl(path) {
+        var normalized = normalizePath(path);
+        if (!normalized) {
+            return null;
+        }
+
+        var target = new URL(normalized, adminOrigin);
+        target.searchParams.set('embedded', '1');
+        return target.toString();
+    }
+
+    var hashPath = getHashPath();
+    if (hashPath) {
+        var restoredUrl = buildEmbeddedUrl(hashPath);
+        if (restoredUrl) {
+            iframe.src = restoredUrl;
+        }
+    }
+
+    window.addEventListener('message', function (event) {
+        if (!event.data || event.data.type !== 'agent-admin:location') {
+            return;
+        }
+        if (event.origin !== adminOrigin) {
+            return;
+        }
+
+        var normalized = normalizePath(event.data.path);
+        if (!normalized) {
+            return;
+        }
+
+        setHashPath(normalized);
+    });
+})();
 </script>
 {% endblock %}

@@ -64,4 +64,3 @@ final class AgentConventionVerifierTest extends Unit
         $this->assertSame([], $result->violations);
     }
 }
-

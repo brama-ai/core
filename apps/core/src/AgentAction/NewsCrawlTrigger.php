@@ -107,4 +107,3 @@ final class NewsCrawlTrigger
         return null;
     }
 }
-

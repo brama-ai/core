@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\A2A;
 
 use App\OpenSearch\KnowledgeRepository;
-use App\Repository\SourceMessageRepository;
 use App\RabbitMQ\RabbitMQPublisher;
+use App\Repository\SourceMessageRepository;
 use App\Service\EmbeddingService;
 use App\Service\KnowledgeTreeBuilder;
 use App\Service\MessageChunker;
