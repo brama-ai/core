@@ -582,6 +582,27 @@ a:hover { text-decoration: underline; }
 .chat-tool-payload pre { font-size: .72rem; margin-top: .25rem; background: rgba(15, 23, 42, .5); padding: .5rem; border-radius: var(--radius-sm); overflow: auto; max-height: 200px; border: 1px solid var(--bg-card-border); color: var(--text-secondary); }
 
 /* ==========================================================================
+   Tool cards (dashboard)
+   ========================================================================== */
+.tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .75rem; }
+.tool-card { display: flex; align-items: flex-start; gap: .85rem; padding: 1rem 1.15rem; background: var(--bg-card); border: 1px solid var(--bg-card-border); border-radius: var(--radius); backdrop-filter: blur(12px); transition: border-color var(--transition), background var(--transition), transform .15s ease; text-decoration: none; }
+.tool-card:hover { border-color: rgba(148, 163, 184, .35); background: rgba(30, 41, 59, .85); transform: translateY(-1px); text-decoration: none; }
+.tool-card-icon { flex-shrink: 0; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: rgba(255, 255, 255, .06); }
+.tool-card-icon svg { width: 20px; height: 20px; }
+.tool-card-body { min-width: 0; }
+.tool-card-name { font-size: .9rem; font-weight: 600; color: var(--text-primary); margin-bottom: .25rem; }
+.tool-card-arrow { color: var(--text-muted); transition: transform var(--transition), color var(--transition); display: inline-block; }
+.tool-card:hover .tool-card-arrow { transform: translateX(3px); color: var(--accent); }
+.tool-card-desc { font-size: .8rem; color: var(--text-secondary); line-height: 1.45; }
+
+/* Quickstart section */
+.quickstart-grid { display: flex; flex-direction: column; gap: .85rem; }
+.quickstart-item { display: flex; align-items: flex-start; gap: .85rem; }
+.quickstart-item strong { display: block; font-size: .9rem; color: var(--text-primary); margin-bottom: .15rem; }
+.quickstart-item p { margin: 0; font-size: .85rem; color: var(--text-secondary); line-height: 1.5; }
+.quickstart-step { flex-shrink: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(59, 130, 246, .15); color: var(--accent); font-size: .8rem; font-weight: 700; border: 1px solid rgba(59, 130, 246, .3); }
+
+/* ==========================================================================
    Responsive: sidebar collapse below 768px
    ========================================================================== */
 @media (max-width: 768px) {

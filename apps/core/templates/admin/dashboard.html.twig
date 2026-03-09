@@ -1,15 +1,9 @@
 {% extends 'admin/layout.html.twig' %}
 
-{% block title %}Статистика — Admin{% endblock %}
-{% block page_title %}Статистика{% endblock %}
+{% block title %}Панель керування — Admin{% endblock %}
+{% block page_title %}Панель керування{% endblock %}
 
 {% block content %}
-    {% set is_local_host = app.request.host in ['localhost', '127.0.0.1'] %}
-    {% set show_langfuse = is_local_host or ('localhost' not in admin_langfuse_url and '127.0.0.1' not in admin_langfuse_url) %}
-    {% set show_litellm = is_local_host or ('localhost' not in admin_litellm_url and '127.0.0.1' not in admin_litellm_url) %}
-    {% set show_openclaw = is_local_host or ('localhost' not in admin_openclaw_url and '127.0.0.1' not in admin_openclaw_url) %}
-    {% set show_traefik = is_local_host or ('localhost' not in admin_traefik_url and '127.0.0.1' not in admin_traefik_url) %}
-
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-label">Всього агентів</div>
@@ -25,27 +19,102 @@
         </div>
     </div>
 
-    <div class="glass-card">
+    <div class="glass-card" style="margin-bottom:1.25rem;">
         <h2>Ласкаво просимо, {{ username }}</h2>
-        <p>Це панель адміністрування AI Community Platform. Використовуйте навігацію зліва для управління системою.</p>
-        <div style="margin-top:1rem;display:flex;gap:.6rem;flex-wrap:wrap;">
-            {% if show_langfuse %}
-                <a class="btn btn-primary" href="{{ admin_langfuse_url }}">Відкрити Langfuse</a>
+        <p>Це панель адміністрування AI Community Platform. Використовуйте навігацію зліва для управління агентами, чатами, логами та налаштуваннями.</p>
+    </div>
+
+    <h2 style="font-size:.95rem;margin:0 0 .75rem;color:var(--text-secondary);font-weight:600;letter-spacing:.04em;text-transform:uppercase;">Інструменти платформи</h2>
+
+    {% set is_local_host = app.request.host in ['localhost', '127.0.0.1'] or '.localhost' in app.request.host %}
+
+    {% set tools = [
+        {
+            name: 'OpenClaw UI',
+            desc: 'Інтерфейс оркестрації агентів. Тестування скілів, перегляд A2A-комунікації, налаштування gateway.',
+            url: admin_openclaw_url ~ '?token=' ~ openclaw_gateway_token,
+            icon: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 002 2h7v-2H5V5h14v14h-7v2h7a2 2 0 002-2V5c0-1.1-.9-2-2-2zM11 15l-1.41-1.41L13.17 10H7V8h6.17L9.59 4.41 11 3l6 6-6 6z"/>',
+            color: '#60a5fa',
+            target: '_blank',
+            show: is_local_host or ('localhost' not in admin_openclaw_url and '127.0.0.1' not in admin_openclaw_url)
+        },
+        {
+            name: 'Langfuse',
+            desc: 'Observability для LLM. Трейси запитів, метрики вартості та латенсі, аналіз промптів.',
+            url: admin_langfuse_url,
+            icon: '<path d="M3 5h18v2H3V5zm0 6h12v2H3v-2zm0 6h18v2H3v-2z"/>',
+            color: '#f97316',
+            target: '',
+            show: is_local_host or ('localhost' not in admin_langfuse_url and '127.0.0.1' not in admin_langfuse_url)
+        },
+        {
+            name: 'LiteLLM',
+            desc: 'Unified LLM proxy. Маршрутизація між моделями, бюджети, rate limits, API-ключі.',
+            url: admin_litellm_url,
+            icon: '<path d="M5 4h14v4H5V4zm0 6h14v4H5v-4zm0 6h14v4H5v-4z"/>',
+            color: '#a78bfa',
+            target: '',
+            show: is_local_host or ('localhost' not in admin_litellm_url and '127.0.0.1' not in admin_litellm_url)
+        },
+        {
+            name: 'Traefik',
+            desc: 'Reverse proxy та edge router. Маршрутизація сервісів, middlewares, health checks.',
+            url: admin_traefik_url,
+            icon: '<path d="M12 2l9 5v10l-9 5-9-5V7l9-5zm0 2.18L5 8v8l7 3.82L19 16V8l-7-3.82zM8 10h8v2H8v-2zm0 4h8v2H8v-2z"/>',
+            color: '#22d3ee',
+            target: '',
+            show: is_local_host or ('localhost' not in admin_traefik_url and '127.0.0.1' not in admin_traefik_url)
+        }
+    ] %}
+
+    <div class="tools-grid">
+        {% for tool in tools %}
+            {% if tool.show %}
+                <a href="{{ tool.url }}" class="tool-card" {% if tool.target %}target="{{ tool.target }}"{% endif %}>
+                    <div class="tool-card-icon" style="color:{{ tool.color }};">
+                        <svg viewBox="0 0 24 24" fill="currentColor">{{ tool.icon|raw }}</svg>
+                    </div>
+                    <div class="tool-card-body">
+                        <div class="tool-card-name">{{ tool.name }} <span class="tool-card-arrow">&rarr;</span></div>
+                        <div class="tool-card-desc">{{ tool.desc }}</div>
+                    </div>
+                </a>
             {% endif %}
-            {% if show_litellm %}
-                <a class="btn btn-settings" href="{{ admin_litellm_url }}">Відкрити LiteLLM</a>
-            {% endif %}
-            {% if show_openclaw %}
-                <a class="btn btn-settings" href="{{ admin_openclaw_url }}?token={{ openclaw_gateway_token }}" target="_blank">Відкрити OpenClaw UI</a>
-            {% endif %}
-            {% if show_traefik %}
-                <a class="btn btn-settings" href="{{ admin_traefik_url }}">Відкрити Traefik</a>
-            {% endif %}
+        {% endfor %}
+    </div>
+
+    {% set hidden_count = tools|filter(t => not t.show)|length %}
+    {% if hidden_count > 0 %}
+        <p style="margin-top:.75rem;color:var(--text-muted);font-size:.8rem;">
+            {{ hidden_count }} інструмент{{ hidden_count > 1 ? 'ів приховано' : ' приховано' }} — для цього середовища {{ hidden_count > 1 ? 'вони' : 'він' }} налаштован{{ hidden_count > 1 ? 'і' : 'ий' }} на <code>localhost</code>.
+        </p>
+    {% endif %}
+
+    <h2 style="font-size:.95rem;margin:1.5rem 0 .75rem;color:var(--text-secondary);font-weight:600;letter-spacing:.04em;text-transform:uppercase;">Швидкий старт</h2>
+
+    <div class="glass-card">
+        <div class="quickstart-grid">
+            <div class="quickstart-item">
+                <div class="quickstart-step">1</div>
+                <div>
+                    <strong>Агенти</strong>
+                    <p>Відкрийте <a href="{{ path('admin_agents') }}">Управління агентами</a> — запустіть discovery, встановіть та увімкніть потрібних агентів.</p>
+                </div>
+            </div>
+            <div class="quickstart-item">
+                <div class="quickstart-step">2</div>
+                <div>
+                    <strong>Чати</strong>
+                    <p>Перевірте роботу агентів через <a href="{{ path('admin_chats') }}">Управління чатами</a> — слідкуйте за сесіями в реальному часі.</p>
+                </div>
+            </div>
+            <div class="quickstart-item">
+                <div class="quickstart-step">3</div>
+                <div>
+                    <strong>Логи</strong>
+                    <p>Діагностуйте проблеми в <a href="{{ path('admin_logs') }}">Логах</a> — фільтруйте за рівнем, агентом, категорією.</p>
+                </div>
+            </div>
         </div>
-        {% if not is_local_host and (not show_langfuse or not show_litellm or not show_openclaw or not show_traefik) %}
-            <p style="margin-top:1rem;color:var(--text-secondary);">
-                Частина tool-посилань прихована, бо для цього середовища вони все ще налаштовані на <code>localhost</code>.
-            </p>
-        {% endif %}
     </div>
 {% endblock %}

@@ -81,30 +81,7 @@ public function upsert(array $payload, string $requestId): string
 
 ---
 
-# ADR-04: OpenSearch замість Elasticsearch
-
-## Контекст
-- Потрібен search-engine для knowledge і log use-cases
-- Важлива сумісність API і простий локальний запуск
-- Потрібна відкрита модель ліцензування
-
-## Рішення
-```yaml
-# compose.yaml
-opensearch:
-  image: opensearchproject/opensearch:2.11.1
-  environment:
-    discovery.type: single-node
-    DISABLE_SECURITY_PLUGIN: "true"
-```
-
-## Trade-off
-- Плюси: open source, сумісний API, community-driven
-- Мінуси: окремий сервіс і додаткове адміністрування
-
----
-
-# ADR-05: LiteLLM як єдиний LLM gateway
+# ADR-04: LiteLLM як єдиний LLM gateway
 
 ## Контекст
 - Різні агенти мають звертатись до LLM однаково
@@ -126,7 +103,7 @@ $headers = [
 
 ---
 
-# ADR-06: Agent Card + Manifest для discovery
+# ADR-05: Agent Card + Manifest для discovery
 
 ## Контекст
 - Потрібен runtime-discovery без жорсткого hardcode
@@ -151,7 +128,7 @@ return $this->json([
 
 ---
 
-# ADR-07: RabbitMQ для async workflows
+# ADR-06: RabbitMQ для async workflows
 
 ## Контекст
 - Knowledge extraction не повинен блокувати синхронний A2A-response
@@ -171,27 +148,31 @@ $channel->queue_declare('knowledge.chunks', false, true, false, false, false, [
 
 ---
 
-# ADR-08: Traefik як reverse proxy + edge router
+# ADR-07: Traefik як reverse proxy + edge router
 
 ## Контекст
 - Потрібно маршрутизувати багато сервісів через єдину edge-точку
 - Потрібний Docker-native discovery і middleware chain
+- **Всі інструменти мають бути захищені** — без логіну в адмінку нікуди не пускає
 
 ## Рішення
 ```yaml
-# compose.core.yaml
+# compose.core.yaml — edge-auth middleware
 labels:
-  - traefik.http.routers.core.entrypoints=web
   - traefik.http.middlewares.edge-auth.forwardauth.address=http://core/edge/auth/verify
 ```
 
+Кожен сервіс підключає `edge-auth@docker`:
+- Traefik Dashboard, LiteLLM, агентські admin UI
+- Без авторизованої сесії → 401/302 redirect на логін
+
 ## Trade-off
-- Плюси: labels, автодискавері, менше ручної підтримки
-- Мінуси: менше low-level контролю
+- Плюси: labels, автодискавері, єдина точка авторизації для всіх інструментів
+- Мінуси: менше low-level контролю, залежність від Core для auth
 
 ---
 
-# ADR-09: OpenSpec + Convention Tests
+# ADR-08: OpenSpec + Convention Tests
 
 ## OpenSpec: управління змінами
 
@@ -225,12 +206,11 @@ assert.ok(/^[a-z][a-z0-9-]*$/.test(res.data.name));
 | ADR-01 | Core як A2A Gateway | ✅ Accepted |
 | ADR-02 | Polyglot stack | ✅ Accepted |
 | ADR-03 | Doctrine DBAL без ORM | ✅ Accepted |
-| ADR-04 | OpenSearch 2.11 | ✅ Accepted |
-| ADR-05 | LiteLLM gateway | ✅ Accepted |
-| ADR-06 | Manifest-first discovery | ✅ Accepted |
-| ADR-07 | RabbitMQ async | ✅ Accepted |
-| ADR-08 | Traefik edge routing | ✅ Accepted |
-| ADR-09 | OpenSpec change management | ✅ Accepted |
-| ADR-10 | Agent convention tests | ✅ Accepted |
+| ADR-04 | LiteLLM gateway | ✅ Accepted |
+| ADR-05 | Manifest-first discovery | ✅ Accepted |
+| ADR-06 | RabbitMQ async | ✅ Accepted |
+| ADR-07 | Traefik edge routing + auth | ✅ Accepted |
+| ADR-08 | OpenSpec change management | ✅ Accepted |
+| ADR-09 | Agent convention tests | ✅ Accepted |
 
 <!-- Висновок: архітектура тримається на явних контрактах і централізованій спостережуваності -->

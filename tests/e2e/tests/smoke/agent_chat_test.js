@@ -13,7 +13,7 @@ const PROJECT_ROOT = path.resolve(__dirname, '../../../..');
  */
 function runAgentChat(input, timeoutMs = 60_000) {
     return execSync(
-        `echo "${input}" | docker compose --profile e2e exec -T core-e2e php bin/console agent:chat`,
+        `echo "${input}" | docker compose --profile e2e exec -T core-e2e php bin/console agent:chat --username=e2e --language=uk`,
         { cwd: PROJECT_ROOT, timeout: timeoutMs, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
     );
 }
@@ -39,7 +39,7 @@ Scenario('invokes hello.greet tool when asked to greet', async () => {
     const output = runAgentChat('привітай користувача E2EBot\\nexit');
 
     assert.ok(output.includes('[tool] hello.greet'), 'must call hello.greet tool');
-    assert.ok(output.includes('[result] completed'), 'tool result must be completed');
+    assert.ok(output.includes('[completed]'), 'tool result must be completed');
     assert.ok(output.includes('Assistant:'), 'must print final assistant response');
 }).tag('@smoke').tag('@agent-chat').tag('@p1');
 
