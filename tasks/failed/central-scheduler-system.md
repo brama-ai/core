@@ -1,3 +1,4 @@
+<!-- batch: 20260309_153535 | status: fail | duration: 2703s | branch: pipeline/central-cron-scheduler-system-for-the-platform -->
 # Central cron/scheduler system for the platform
 
 Зараз news-maker використовує вбудований APScheduler, а інші агенти не мають механізму планування задач. Потрібна централізована система розкладу, яка дозволяє будь-якому агенту реєструвати періодичні та разові задачі.

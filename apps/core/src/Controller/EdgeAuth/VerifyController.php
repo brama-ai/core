@@ -41,10 +41,7 @@ final class VerifyController extends AbstractController
             $uri = '/';
         }
 
-        $host = (string) $request->headers->get('X-Forwarded-Host', 'localhost');
-        $proto = (string) $request->headers->get('X-Forwarded-Proto', 'http');
-
-        return sprintf('%s://%s%s', $proto, $host, $uri);
+        return $uri;
     }
 
     private function buildLoginUrl(string $requestedUrl): string

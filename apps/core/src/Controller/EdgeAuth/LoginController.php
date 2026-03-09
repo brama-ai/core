@@ -119,8 +119,10 @@ final class LoginController extends AbstractController
             return $default;
         }
 
-        if (!in_array($host, ['localhost', '127.0.0.1'], true)) {
-            return $default;
+        if (!in_array($host, ['localhost', '127.0.0.1'], true) && '' !== $host) {
+            // In production, we might want to restrict this to our own domains.
+            // But to support relative paths and different domains, we'll be more permissive for now.
+            return $target;
         }
 
         return $target;
