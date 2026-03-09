@@ -13,18 +13,36 @@
 #   ...
 #
 # Keys:
-#   1-9       Switch tabs
-#   q/Ctrl-C  Quit
-#   r         Refresh (Overview tab)
-#   s         Start batch (run todo tasks with caffeinate)
-#   f         Retry failed (move failed→todo, delete branches, start)
-#   k         Kill running batch
+#   ←/→ or 1-9  Switch tabs
+#   ↑/↓         Select task (Overview tab)
+#   Enter       View selected task detail
+#   Esc/Bksp    Back to task list
+#   s           Start batch (run todo tasks with caffeinate)
+#   f           Retry failed (move failed→todo, delete branches, start)
+#   k           Kill running batch
+#   x           Stop selected in-progress task
+#   p           Promote selected todo task (increase priority)
+#   d           Demote selected todo task (decrease priority)
+#   r           Refresh
+#   q/Ctrl-C    Quit
+#
+# Task priority:
+#   Tasks in todo/ are sorted by priority. Priority is set via a comment
+#   in the first line of the .md file:
+#     <!-- priority: 5 -->
+#   Higher number = higher priority. Default priority = 1.
+#   Use [p] and [d] keys to adjust priority of the selected todo task.
 #
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TASK_SOURCE="${1:-$REPO_ROOT/tasks}"
-WORKTREE_BASE="$REPO_ROOT/.opencode/pipeline/worktrees"
+# Support both old and new worktree locations
+if [[ -d "$REPO_ROOT/.pipeline-worktrees" ]]; then
+  WORKTREE_BASE="$REPO_ROOT/.pipeline-worktrees"
+else
+  WORKTREE_BASE="$REPO_ROOT/.opencode/pipeline/worktrees"
+fi
 LOG_DIR="$REPO_ROOT/.opencode/pipeline/logs"
 REPORT_DIR="$REPO_ROOT/.opencode/pipeline/reports"
 
@@ -40,13 +58,53 @@ if command -v tput &>/dev/null && [[ -t 1 ]]; then
   BLUE=$(tput setaf 4)
   CYAN=$(tput setaf 6)
   WHITE=$(tput setaf 7)
+  MAGENTA=$(tput setaf 5)
 else
   BOLD='' DIM='' REV='' RESET=''
-  RED='' GREEN='' YELLOW='' BLUE='' CYAN='' WHITE=''
+  RED='' GREEN='' YELLOW='' BLUE='' CYAN='' WHITE='' MAGENTA=''
 fi
 
 CURRENT_TAB=1
-MAX_TABS=1  # will be updated based on active workers
+MAX_TABS=1  # updated based on active workers
+SELECTED_IDX=0  # cursor position in task list
+DETAIL_MODE=false  # true = viewing task detail
+DETAIL_FILE=""  # file path of task being viewed
+
+# ---------------------------------------------------------------------------
+# Flicker-free rendering — buffer then blit
+# ---------------------------------------------------------------------------
+# ESC and CLR are real escape characters, not string literals
+ESC=$'\033'
+CLR="${ESC}[2K"
+
+RENDER_BUF=""
+PREV_LINE_COUNT=0
+
+buf_reset() { RENDER_BUF=""; }
+buf_line()  { RENDER_BUF+="${CLR}${1}"$'\n'; }
+buf_flush() {
+  local cur_lines
+  cur_lines=$(echo "$RENDER_BUF" | wc -l | tr -d ' ')
+
+  # Move cursor to top-left
+  printf '%s[H' "$ESC"
+
+  # Write the buffered content
+  printf '%s' "$RENDER_BUF"
+
+  # Erase leftover lines from previous frame
+  local i
+  for ((i=cur_lines; i<PREV_LINE_COUNT; i++)); do
+    printf '%s\n' "$CLR"
+  done
+
+  # Move cursor back after clearing old lines
+  if [[ $cur_lines -lt $PREV_LINE_COUNT ]]; then
+    printf '%s[%dA' "$ESC" "$((PREV_LINE_COUNT - cur_lines))"
+  fi
+
+  PREV_LINE_COUNT=$cur_lines
+}
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -66,14 +124,12 @@ get_terminal_size() {
   TERM_COLS=$(tput cols 2>/dev/null || echo 80)
 }
 
-# Draw a horizontal line
 hline() {
   local ch="${1:-─}"
   printf '%*s' "$TERM_COLS" '' | tr ' ' "$ch"
 }
 
-# Draw progress bar
-progress_bar() {
+progress_bar_str() {
   local done="$1"
   local total="$2"
   local width=$((TERM_COLS - 20))
@@ -93,7 +149,6 @@ progress_bar() {
   printf "]${RESET} %d/%d" "$done" "$total"
 }
 
-# Format seconds to human-readable
 format_duration() {
   local secs="$1"
   if [[ $secs -ge 3600 ]]; then
@@ -105,7 +160,61 @@ format_duration() {
   fi
 }
 
-# Detect active workers
+# ---------------------------------------------------------------------------
+# Priority system
+# ---------------------------------------------------------------------------
+
+# Extract priority from task file. Looks for <!-- priority: N --> in first line.
+# Default = 1
+get_priority() {
+  local file="$1"
+  local prio
+  prio=$(head -1 "$file" 2>/dev/null | sed -n 's/.*<!-- *priority: *\([0-9]*\) *-->.*/\1/p')
+  echo "${prio:-1}"
+}
+
+# Set priority on a task file
+set_priority() {
+  local file="$1"
+  local prio="$2"
+  local first_line
+  first_line=$(head -1 "$file" 2>/dev/null)
+
+  if [[ "$first_line" =~ \<!--\ *priority: ]]; then
+    # Replace existing priority
+    sed -i.bak "1s/<!-- *priority: *[0-9]* *-->/<!-- priority: ${prio} -->/" "$file"
+    rm -f "${file}.bak"
+  else
+    # Prepend priority line
+    local tmp
+    tmp=$(mktemp)
+    echo "<!-- priority: ${prio} -->" > "$tmp"
+    cat "$file" >> "$tmp"
+    mv "$tmp" "$file"
+  fi
+}
+
+# List todo files sorted by priority (highest first), then by name
+list_todo_sorted() {
+  local todo_dir="$TASK_SOURCE/todo"
+  [[ -d "$todo_dir" ]] || return
+
+  local entries=()
+  while IFS= read -r f; do
+    [[ -f "$f" ]] || continue
+    local prio
+    prio=$(get_priority "$f")
+    entries+=("$(printf '%03d|%s' "$prio" "$f")")
+  done < <(find "$todo_dir" -maxdepth 1 -name '*.md' 2>/dev/null | sort)
+
+  # Sort by priority descending (higher = first)
+  printf '%s\n' "${entries[@]}" | sort -t'|' -k1 -rn | cut -d'|' -f2
+}
+
+# ---------------------------------------------------------------------------
+# Worker detection — distinguish active vs queued
+# ---------------------------------------------------------------------------
+
 detect_workers() {
   local workers=()
   if [[ -d "$WORKTREE_BASE" ]]; then
@@ -116,34 +225,146 @@ detect_workers() {
   echo "${workers[@]:-}"
 }
 
-# Find the most recent log file for a worker
+# Get the task a specific worker is currently running (from opencode process)
+get_worker_active_task() {
+  local worker="$1"
+  local wt_path="$WORKTREE_BASE/$worker"
+
+  # Check if pipeline.sh is running in this worktree
+  local pid
+  pid=$(pgrep -f "pipeline.sh.*${worker}" 2>/dev/null | head -1 || true)
+  if [[ -z "$pid" ]]; then
+    # Try matching by worktree path in process args
+    pid=$(pgrep -f "${wt_path}" 2>/dev/null | head -1 || true)
+  fi
+
+  if [[ -n "$pid" ]]; then
+    # Find the task file being processed
+    local task_file
+    task_file=$(ps -o args= -p "$pid" 2>/dev/null | grep -oE '\-\-task-file [^ ]+' | awk '{print $2}')
+    if [[ -n "$task_file" && -f "$task_file" ]]; then
+      grep -m1 '^# ' "$task_file" 2>/dev/null | sed 's/^# //'
+      return
+    fi
+  fi
+
+  # Fallback: check latest log in worktree
+  local wt_log_dir="$wt_path/.opencode/pipeline/logs"
+  local log_file=""
+  if [[ -d "$wt_log_dir" ]]; then
+    log_file=$(ls -t "$wt_log_dir"/*.log 2>/dev/null | head -1 || true)
+  fi
+
+  if [[ -n "$log_file" ]]; then
+    local agent_name
+    agent_name=$(basename "$log_file" .log | sed 's/^[0-9_]*//')
+    echo "[${agent_name}]"
+  fi
+}
+
 find_worker_log() {
   local worker="$1"
   local wt_log_dir="$WORKTREE_BASE/$worker/.opencode/pipeline/logs"
 
-  # Check worktree-local logs first
   if [[ -d "$wt_log_dir" ]]; then
     ls -t "$wt_log_dir"/*.log 2>/dev/null | head -1
     return
   fi
 
-  # Fallback to main repo logs
   ls -t "$LOG_DIR"/*.log 2>/dev/null | head -1
 }
 
-# Get task currently in a worker's pipeline.sh (from the log filename or process)
-get_worker_task() {
-  local worker="$1"
-  local log_file
-  log_file=$(find_worker_log "$worker")
+# Build arrays of all tasks for cursor navigation
+# Sets: ALL_TASKS_FILES[], ALL_TASKS_TITLES[], ALL_TASKS_STATES[], ALL_TASKS_COUNT
+build_task_list() {
+  ALL_TASKS_FILES=()
+  ALL_TASKS_TITLES=()
+  ALL_TASKS_STATES=()
 
-  if [[ -n "$log_file" ]]; then
-    # Log filename format: TIMESTAMP_AGENT.log
-    local agent
-    agent=$(basename "$log_file" .log | sed 's/^[0-9_]*//')
-    # Get the task from in-progress folder or process
-    echo "$agent"
+  # In-progress
+  if [[ -d "$TASK_SOURCE/in-progress" ]]; then
+    while IFS= read -r f; do
+      [[ -f "$f" ]] || continue
+      ALL_TASKS_FILES+=("$f")
+      ALL_TASKS_TITLES+=("$(grep -m1 '^# ' "$f" 2>/dev/null | sed 's/^# //' || basename "$f" .md)")
+      ALL_TASKS_STATES+=("in-progress")
+    done < <(find "$TASK_SOURCE/in-progress" -maxdepth 1 -name '*.md' 2>/dev/null | sort)
   fi
+
+  # Done
+  if [[ -d "$TASK_SOURCE/done" ]]; then
+    while IFS= read -r f; do
+      [[ -f "$f" ]] || continue
+      ALL_TASKS_FILES+=("$f")
+      ALL_TASKS_TITLES+=("$(grep -m1 '^# ' "$f" 2>/dev/null | sed 's/^# //' || basename "$f" .md)")
+      ALL_TASKS_STATES+=("done")
+    done < <(find "$TASK_SOURCE/done" -maxdepth 1 -name '*.md' 2>/dev/null | sort)
+  fi
+
+  # Failed
+  if [[ -d "$TASK_SOURCE/failed" ]]; then
+    while IFS= read -r f; do
+      [[ -f "$f" ]] || continue
+      ALL_TASKS_FILES+=("$f")
+      ALL_TASKS_TITLES+=("$(grep -m1 '^# ' "$f" 2>/dev/null | sed 's/^# //' || basename "$f" .md)")
+      ALL_TASKS_STATES+=("failed")
+    done < <(find "$TASK_SOURCE/failed" -maxdepth 1 -name '*.md' 2>/dev/null | sort)
+  fi
+
+  # Todo (sorted by priority)
+  while IFS= read -r f; do
+    [[ -f "$f" ]] || continue
+    local prio
+    prio=$(get_priority "$f")
+    local title
+    title=$(grep -m1 '^# ' "$f" 2>/dev/null | sed 's/^# //' || basename "$f" .md)
+    ALL_TASKS_FILES+=("$f")
+    ALL_TASKS_TITLES+=("${title}")
+    ALL_TASKS_STATES+=("todo:${prio}")
+  done < <(list_todo_sorted)
+
+  ALL_TASKS_COUNT=${#ALL_TASKS_FILES[@]}
+
+  # Clamp selected index
+  if [[ $SELECTED_IDX -ge $ALL_TASKS_COUNT ]]; then
+    SELECTED_IDX=$((ALL_TASKS_COUNT > 0 ? ALL_TASKS_COUNT - 1 : 0))
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Tab bar with arrow key support
+# ---------------------------------------------------------------------------
+render_tabs_str() {
+  local workers=()
+  local raw
+  raw=$(detect_workers)
+  [[ -n "$raw" ]] && read -ra workers <<< "$raw"
+  MAX_TABS=$((1 + ${#workers[@]}))
+
+  local out="  "
+
+  if [[ $CURRENT_TAB -eq 1 ]]; then
+    out+="${REV}${BOLD} 1:Overview ${RESET}"
+  else
+    out+="${DIM} 1:Overview ${RESET}"
+  fi
+
+  local idx=2
+  for w in "${workers[@]}"; do
+    local task_hint
+    task_hint=$(get_worker_active_task "$w")
+    local label="${idx}:${w}"
+    [[ -n "$task_hint" ]] && label="${idx}:${w} ${task_hint}"
+
+    if [[ $CURRENT_TAB -eq $idx ]]; then
+      out+="${REV}${BOLD} ${label} ${RESET}"
+    else
+      out+="${DIM} ${label} ${RESET}"
+    fi
+    idx=$((idx + 1))
+  done
+
+  printf '%s' "$out"
 }
 
 # ---------------------------------------------------------------------------
@@ -151,7 +372,9 @@ get_worker_task() {
 # ---------------------------------------------------------------------------
 render_overview() {
   get_terminal_size
-  clear
+  buf_reset
+
+  build_task_list
 
   local todo_count in_progress_count done_count failed_count total
   todo_count=$(count_files "$TASK_SOURCE/todo")
@@ -162,27 +385,27 @@ render_overview() {
   local completed=$((done_count + failed_count))
 
   # Header
-  echo "${CYAN}${BOLD}  Pipeline Monitor${RESET}  $(date '+%H:%M:%S')"
-  echo "${DIM}$(hline)${RESET}"
+  buf_line "${CYAN}${BOLD}  Pipeline Monitor${RESET}  $(date '+%H:%M:%S')"
+  buf_line "${DIM}$(hline)${RESET}"
 
-  # Tab bar
-  render_tabs
+  buf_line "$(render_tabs_str)"
 
-  echo ""
+  buf_line ""
+
+  # If in detail mode, render task detail instead
+  if [[ "$DETAIL_MODE" == true && -n "$DETAIL_FILE" && -f "$DETAIL_FILE" ]]; then
+    render_task_detail_buf
+    buf_flush
+    return
+  fi
 
   # Progress bar
-  printf "  "
-  progress_bar "$completed" "$total"
-  echo ""
-  echo ""
+  buf_line "  $(progress_bar_str "$completed" "$total")"
+  buf_line ""
 
   # Status cards
-  printf "  ${BLUE}${BOLD}⏳ Todo:${RESET}        %-4d" "$todo_count"
-  printf "  ${YELLOW}${BOLD}🔄 In Progress:${RESET} %-4d" "$in_progress_count"
-  printf "  ${GREEN}${BOLD}✓ Done:${RESET}        %-4d" "$done_count"
-  printf "  ${RED}${BOLD}✗ Failed:${RESET}      %-4d" "$failed_count"
-  echo ""
-  echo ""
+  buf_line "$(printf "  ${BLUE}${BOLD}⏳ Todo:${RESET}        %-4d  ${YELLOW}${BOLD}🔄 In Progress:${RESET} %-4d  ${GREEN}${BOLD}✓ Done:${RESET}        %-4d  ${RED}${BOLD}✗ Failed:${RESET}      %-4d" "$todo_count" "$in_progress_count" "$done_count" "$failed_count")"
+  buf_line ""
 
   # Batch timing
   local batch_pid
@@ -194,106 +417,162 @@ render_overview() {
       local now elapsed
       now=$(date +%s)
       elapsed=$((now - batch_start))
-      echo "  ${BOLD}Status:${RESET} ${GREEN}Running${RESET}  ($(format_duration "$elapsed") elapsed, PID $batch_pid)"
+      buf_line "  ${BOLD}Status:${RESET} ${GREEN}Running${RESET}  ($(format_duration "$elapsed") elapsed, PID $batch_pid)"
     else
-      echo "  ${BOLD}Status:${RESET} ${GREEN}Running${RESET}  (PID $batch_pid)"
+      buf_line "  ${BOLD}Status:${RESET} ${GREEN}Running${RESET}  (PID $batch_pid)"
     fi
   else
-    echo "  ${BOLD}Status:${RESET} ${DIM}Not running${RESET}"
+    buf_line "  ${BOLD}Status:${RESET} ${DIM}Not running${RESET}"
   fi
-  echo ""
+  buf_line ""
 
-  echo "${DIM}$(hline)${RESET}"
+  buf_line "${DIM}$(hline)${RESET}"
 
-  # In-progress tasks detail
-  if [[ -d "$TASK_SOURCE/in-progress" ]]; then
-    local ip_files
-    ip_files=$(find "$TASK_SOURCE/in-progress" -maxdepth 1 -name '*.md' 2>/dev/null)
-    if [[ -n "$ip_files" ]]; then
-      echo "  ${YELLOW}${BOLD}In Progress:${RESET}"
-      while IFS= read -r f; do
-        local title
-        title=$(grep -m1 '^# ' "$f" 2>/dev/null | sed 's/^# //' || basename "$f" .md)
-        # Check which stage is running from logs
+  # Render task list with cursor
+  local available_lines=$((TERM_ROWS - 18))
+  [[ $available_lines -lt 5 ]] && available_lines=5
+
+  # Calculate scroll window
+  local scroll_start=0
+  if [[ $SELECTED_IDX -ge $available_lines ]]; then
+    scroll_start=$((SELECTED_IDX - available_lines + 1))
+  fi
+
+  local prev_state=""
+
+  for ((i=0; i<ALL_TASKS_COUNT; i++)); do
+    if [[ $i -lt $scroll_start ]]; then
+      continue
+    fi
+    if [[ $((i - scroll_start)) -ge $available_lines ]]; then
+      buf_line "  ${DIM}  ... $((ALL_TASKS_COUNT - i)) more${RESET}"
+      break
+    fi
+
+    local state="${ALL_TASKS_STATES[$i]}"
+    local title="${ALL_TASKS_TITLES[$i]}"
+    local file="${ALL_TASKS_FILES[$i]}"
+
+    local state_base="${state%%:*}"
+    if [[ "$state_base" != "$prev_state" ]]; then
+      case "$state_base" in
+        in-progress) buf_line "  ${YELLOW}${BOLD}In Progress:${RESET}" ;;
+        done)        buf_line "  ${GREEN}${BOLD}Completed:${RESET}" ;;
+        failed)      buf_line "  ${RED}${BOLD}Failed:${RESET}" ;;
+        todo)        buf_line "  ${BLUE}${BOLD}Waiting:${RESET} ${DIM}(priority order)${RESET}" ;;
+      esac
+      prev_state="$state_base"
+    fi
+
+    local cursor="  "
+    if [[ $i -eq $SELECTED_IDX ]]; then
+      cursor="${CYAN}▶${RESET} "
+    fi
+
+    case "$state_base" in
+      in-progress)
         local stage="..."
         local fname
-        fname=$(basename "$f" .md)
+        fname=$(basename "$file" .md)
         local latest_log
         latest_log=$(ls -t "$LOG_DIR"/*"${fname}"* "$WORKTREE_BASE"/worker-*/.opencode/pipeline/logs/* 2>/dev/null | head -1 || true)
         if [[ -n "$latest_log" ]]; then
           stage=$(basename "$latest_log" .log | sed 's/^[0-9_]*//')
         fi
-        echo "    ${YELLOW}▸${RESET} $title ${DIM}[$stage]${RESET}"
-      done <<< "$ip_files"
-      echo ""
-    fi
-  fi
-
-  # Done tasks
-  if [[ -d "$TASK_SOURCE/done" ]]; then
-    local done_files
-    done_files=$(find "$TASK_SOURCE/done" -maxdepth 1 -name '*.md' 2>/dev/null)
-    if [[ -n "$done_files" ]]; then
-      echo "  ${GREEN}${BOLD}Completed:${RESET}"
-      while IFS= read -r f; do
-        local title duration branch
-        title=$(grep -m1 '^# ' "$f" 2>/dev/null | sed 's/^# //' || basename "$f" .md)
-        duration=$(grep -m1 '<!-- batch:' "$f" 2>/dev/null | sed 's/.*duration: \([0-9]*\)s.*/\1/' || echo "?")
-        branch=$(grep -m1 '<!-- batch:' "$f" 2>/dev/null | sed 's/.*branch: \([^ ]*\) -->.*/\1/' || echo "?")
+        buf_line "  ${cursor}  ${YELLOW}▸${RESET} $title ${DIM}[$stage]${RESET}"
+        ;;
+      done)
+        local duration branch
+        duration=$(grep -m1 '<!-- batch:' "$file" 2>/dev/null | sed 's/.*duration: \([0-9]*\)s.*/\1/' || echo "?")
+        branch=$(grep -m1 '<!-- batch:' "$file" 2>/dev/null | sed 's/.*branch: \([^ ]*\) -->.*/\1/' || echo "?")
         if [[ "$duration" =~ ^[0-9]+$ ]]; then
-          echo "    ${GREEN}✓${RESET} $title ${DIM}($(format_duration "$duration"), $branch)${RESET}"
+          buf_line "  ${cursor}  ${GREEN}✓${RESET} $title ${DIM}($(format_duration "$duration"), $branch)${RESET}"
         else
-          echo "    ${GREEN}✓${RESET} $title"
+          buf_line "  ${cursor}  ${GREEN}✓${RESET} $title"
         fi
-      done <<< "$done_files"
-      echo ""
-    fi
-  fi
-
-  # Failed tasks
-  if [[ -d "$TASK_SOURCE/failed" ]]; then
-    local fail_files
-    fail_files=$(find "$TASK_SOURCE/failed" -maxdepth 1 -name '*.md' 2>/dev/null)
-    if [[ -n "$fail_files" ]]; then
-      echo "  ${RED}${BOLD}Failed:${RESET}"
-      while IFS= read -r f; do
-        local title duration
-        title=$(grep -m1 '^# ' "$f" 2>/dev/null | sed 's/^# //' || basename "$f" .md)
-        duration=$(grep -m1 '<!-- batch:' "$f" 2>/dev/null | sed 's/.*duration: \([0-9]*\)s.*/\1/' || echo "?")
+        ;;
+      failed)
+        local duration
+        duration=$(grep -m1 '<!-- batch:' "$file" 2>/dev/null | sed 's/.*duration: \([0-9]*\)s.*/\1/' || echo "?")
         if [[ "$duration" =~ ^[0-9]+$ ]]; then
-          echo "    ${RED}✗${RESET} $title ${DIM}($(format_duration "$duration"))${RESET}"
+          buf_line "  ${cursor}  ${RED}✗${RESET} $title ${DIM}($(format_duration "$duration"))${RESET}"
         else
-          echo "    ${RED}✗${RESET} $title"
+          buf_line "  ${cursor}  ${RED}✗${RESET} $title"
         fi
-      done <<< "$fail_files"
-      echo ""
-    fi
-  fi
+        ;;
+      todo)
+        local prio="${state#todo:}"
+        local prio_label=""
+        if [[ "$prio" -gt 1 ]]; then
+          prio_label=" ${MAGENTA}#${prio}${RESET}"
+        fi
+        buf_line "  ${cursor}  ${DIM}○${RESET} ${title}${prio_label}"
+        ;;
+    esac
+  done
 
-  # Todo tasks
-  if [[ -d "$TASK_SOURCE/todo" ]]; then
-    local todo_files
-    todo_files=$(find "$TASK_SOURCE/todo" -maxdepth 1 -name '*.md' 2>/dev/null)
-    if [[ -n "$todo_files" ]]; then
-      echo "  ${BLUE}${BOLD}Waiting:${RESET}"
-      while IFS= read -r f; do
-        local title
-        title=$(grep -m1 '^# ' "$f" 2>/dev/null | sed 's/^# //' || basename "$f" .md)
-        echo "    ${DIM}○${RESET} $title"
-      done <<< "$todo_files"
-      echo ""
-    fi
-  fi
+  buf_line ""
+  buf_line "${DIM}$(hline)${RESET}"
 
-  echo "${DIM}$(hline)${RESET}"
-
-  # Action message (shown for one refresh cycle)
   if [[ -n "$ACTION_MSG" ]]; then
-    echo "  $ACTION_MSG"
+    buf_line "  $ACTION_MSG"
     ACTION_MSG=""
   fi
 
-  echo "  ${DIM}Keys: [1-$MAX_TABS] tabs  [s] start  [f] retry failed  [k] kill  [r] refresh  [q] quit${RESET}"
+  render_bottom_menu_buf
+  buf_flush
+}
+
+# ---------------------------------------------------------------------------
+# Context-aware bottom menu
+# ---------------------------------------------------------------------------
+render_bottom_menu_buf() {
+  local state=""
+  if [[ $ALL_TASKS_COUNT -gt 0 && $SELECTED_IDX -lt $ALL_TASKS_COUNT ]]; then
+    state="${ALL_TASKS_STATES[$SELECTED_IDX]%%:*}"
+  fi
+
+  local keys="  ${DIM}←/→ tabs  ↑/↓ select  Enter detail"
+
+  case "$state" in
+    in-progress)
+      keys="$keys  ${WHITE}[x]${DIM} stop task"
+      ;;
+    failed)
+      keys="$keys  ${WHITE}[f]${DIM} retry failed"
+      ;;
+    todo)
+      keys="$keys  ${WHITE}[p]${DIM} priority+  ${WHITE}[d]${DIM} priority-"
+      ;;
+  esac
+
+  keys="$keys  ${WHITE}[s]${DIM} start  ${WHITE}[k]${DIM} kill  ${WHITE}[q]${DIM} quit${RESET}"
+  buf_line "$keys"
+}
+
+# ---------------------------------------------------------------------------
+# Task detail view
+# ---------------------------------------------------------------------------
+render_task_detail_buf() {
+  buf_line ""
+  buf_line "  ${BOLD}Task Detail${RESET}  ${DIM}(Esc to go back)${RESET}"
+  buf_line ""
+
+  local title
+  title=$(grep -m1 '^# ' "$DETAIL_FILE" 2>/dev/null | sed 's/^# //' || basename "$DETAIL_FILE" .md)
+  buf_line "  ${BOLD}$title${RESET}"
+  buf_line ""
+
+  local available_lines=$((TERM_ROWS - 14))
+  [[ $available_lines -lt 5 ]] && available_lines=5
+
+  while IFS= read -r line; do
+    buf_line "  $line"
+  done < <(grep -v '^<!-- priority:' "$DETAIL_FILE" 2>/dev/null | grep -v '^<!-- batch:' | head -n "$available_lines")
+
+  buf_line ""
+  buf_line "${DIM}$(hline)${RESET}"
+  buf_line "  ${DIM}Esc back  [q] quit${RESET}"
 }
 
 # ---------------------------------------------------------------------------
@@ -304,16 +583,15 @@ render_worker_tab() {
   local worker_name="worker-${worker_id}"
 
   get_terminal_size
-  clear
+  buf_reset
 
-  echo "${CYAN}${BOLD}  Pipeline Monitor${RESET}  ${DIM}$worker_name${RESET}  $(date '+%H:%M:%S')"
-  echo "${DIM}$(hline)${RESET}"
+  buf_line "${CYAN}${BOLD}  Pipeline Monitor${RESET}  ${DIM}$worker_name${RESET}  $(date '+%H:%M:%S')"
+  buf_line "${DIM}$(hline)${RESET}"
 
-  render_tabs
+  buf_line "$(render_tabs_str)"
 
-  echo ""
+  buf_line ""
 
-  # Find the most recent log for this worker
   local wt_log_dir="$WORKTREE_BASE/$worker_name/.opencode/pipeline/logs"
   local log_file=""
 
@@ -322,12 +600,13 @@ render_worker_tab() {
   fi
 
   if [[ -z "$log_file" ]]; then
-    echo "  ${DIM}No active log found for $worker_name${RESET}"
-    echo ""
-    echo "  ${DIM}Log directory: $wt_log_dir${RESET}"
-    echo ""
-    echo "${DIM}$(hline)${RESET}"
-    echo "  ${DIM}Keys: [1-$MAX_TABS] switch tab  [r] refresh  [q] quit${RESET}"
+    buf_line "  ${DIM}No active log found for $worker_name${RESET}"
+    buf_line ""
+    buf_line "  ${DIM}Log directory: $wt_log_dir${RESET}"
+    buf_line ""
+    buf_line "${DIM}$(hline)${RESET}"
+    buf_line "  ${DIM}←/→ tabs  [s] start  [k] kill  [q] quit${RESET}"
+    buf_flush
     return
   fi
 
@@ -336,34 +615,32 @@ render_worker_tab() {
   local log_size
   log_size=$(wc -c < "$log_file" | tr -d ' ')
 
-  echo "  ${BOLD}Agent:${RESET} ${YELLOW}$agent_name${RESET}    ${BOLD}Log:${RESET} ${DIM}$(basename "$log_file")${RESET}    ${BOLD}Size:${RESET} ${DIM}$(( log_size / 1024 ))KB${RESET}"
-  echo "${DIM}$(hline)${RESET}"
+  buf_line "  ${BOLD}Agent:${RESET} ${YELLOW}$agent_name${RESET}    ${BOLD}Log:${RESET} ${DIM}$(basename "$log_file")${RESET}    ${BOLD}Size:${RESET} ${DIM}$(( log_size / 1024 ))KB${RESET}"
+  buf_line "${DIM}$(hline)${RESET}"
 
-  # Show last N lines of log
   local available_lines=$((TERM_ROWS - 8))
   [[ $available_lines -lt 5 ]] && available_lines=5
 
-  tail -n "$available_lines" "$log_file" 2>/dev/null | while IFS= read -r line; do
-    # Colorize common patterns
-    if [[ "$line" == *"error"* || "$line" == *"Error"* || "$line" == *"FAIL"* ]]; then
-      echo "  ${RED}$line${RESET}"
+  while IFS= read -r line; do
+    if [[ "$line" == *"error"* || "$line" == *"Error"* || "$line" == *"FAIL"* || "$line" == *"auto-rejecting"* ]]; then
+      buf_line "  ${RED}$line${RESET}"
     elif [[ "$line" == *"✓"* || "$line" == *"PASS"* || "$line" == *"success"* ]]; then
-      echo "  ${GREEN}$line${RESET}"
+      buf_line "  ${GREEN}$line${RESET}"
     elif [[ "$line" == *"──"* || "$line" == *"═══"* ]]; then
-      echo "  ${CYAN}$line${RESET}"
+      buf_line "  ${CYAN}$line${RESET}"
     else
-      echo "  $line"
+      buf_line "  $line"
     fi
-  done
+  done < <(tail -n "$available_lines" "$log_file" 2>/dev/null)
 
-  # Position cursor at bottom
-  echo ""
-  echo "${DIM}$(hline)${RESET}"
-  echo "  ${DIM}Keys: [1-$MAX_TABS] tabs  [s] start  [f] retry failed  [k] kill  [q] quit  (auto-refresh 3s)${RESET}"
+  buf_line ""
+  buf_line "${DIM}$(hline)${RESET}"
+  buf_line "  ${DIM}←/→ tabs  [s] start  [k] kill  [q] quit  (auto-refresh 3s)${RESET}"
+  buf_flush
 }
 
 # ---------------------------------------------------------------------------
-# Actions: start, retry, kill
+# Actions
 # ---------------------------------------------------------------------------
 
 WORKERS="${MONITOR_WORKERS:-2}"
@@ -412,14 +689,12 @@ action_retry_failed() {
   for f in "$fail_dir"/*.md; do
     [[ -f "$f" ]] || continue
 
-    # Delete the corresponding pipeline branch
-    local title
-    title=$(grep -m1 '<!-- batch:' "$f" 2>/dev/null | sed 's/.*branch: \([^ ]*\) -->.*/\1/' || true)
-    if [[ -n "$title" && "$title" != "$(cat "$f")" ]]; then
-      git -C "$REPO_ROOT" branch -D "$title" 2>/dev/null || true
+    local branch_name
+    branch_name=$(grep -m1 '<!-- batch:' "$f" 2>/dev/null | sed 's/.*branch: \([^ ]*\) -->.*/\1/' || true)
+    if [[ -n "$branch_name" && "$branch_name" != "$(cat "$f")" ]]; then
+      git -C "$REPO_ROOT" branch -D "$branch_name" 2>/dev/null || true
     fi
 
-    # Strip batch metadata and move to todo
     sed '/^<!-- batch:.*-->$/d' "$f" > "$todo_dir/$(basename "$f")"
     rm -f "$f"
     count=$((count + 1))
@@ -430,7 +705,6 @@ action_retry_failed() {
     return
   fi
 
-  # Auto-start
   action_start
   ACTION_MSG="${GREEN}Moved $count failed→todo and started batch${RESET}"
 }
@@ -443,44 +717,72 @@ action_kill() {
     return
   fi
 
-  # Kill batch and all child opencode processes
   pkill -f 'pipeline-batch.sh' 2>/dev/null || true
   pkill -f 'opencode run --agent' 2>/dev/null || true
   ACTION_MSG="${RED}Killed batch processes${RESET}"
 }
 
-ACTION_MSG=""
-
-# ---------------------------------------------------------------------------
-# Tab bar
-# ---------------------------------------------------------------------------
-render_tabs() {
-  local workers
-  workers=($(detect_workers))
-  MAX_TABS=$((1 + ${#workers[@]}))
-
-  printf "  "
-
-  # Tab 1: Overview
-  if [[ $CURRENT_TAB -eq 1 ]]; then
-    printf "${REV}${BOLD} 1:Overview ${RESET}"
-  else
-    printf "${DIM} 1:Overview ${RESET}"
+action_stop_task() {
+  if [[ $ALL_TASKS_COUNT -eq 0 || $SELECTED_IDX -ge $ALL_TASKS_COUNT ]]; then
+    return
   fi
 
-  # Worker tabs
-  local idx=2
-  for w in "${workers[@]}"; do
-    if [[ $CURRENT_TAB -eq $idx ]]; then
-      printf "${REV}${BOLD} ${idx}:${w} ${RESET}"
-    else
-      printf "${DIM} ${idx}:${w} ${RESET}"
-    fi
-    idx=$((idx + 1))
-  done
+  local state="${ALL_TASKS_STATES[$SELECTED_IDX]%%:*}"
+  if [[ "$state" != "in-progress" ]]; then
+    ACTION_MSG="${YELLOW}Can only stop in-progress tasks${RESET}"
+    return
+  fi
 
-  echo ""
+  local file="${ALL_TASKS_FILES[$SELECTED_IDX]}"
+  local title="${ALL_TASKS_TITLES[$SELECTED_IDX]}"
+
+  # Move back to todo
+  mkdir -p "$TASK_SOURCE/todo"
+  sed '/^<!-- batch:.*-->$/d' "$file" > "$TASK_SOURCE/todo/$(basename "$file")"
+  rm -f "$file"
+
+  ACTION_MSG="${YELLOW}Stopped: ${title} → moved to todo${RESET}"
 }
+
+action_promote() {
+  if [[ $ALL_TASKS_COUNT -eq 0 || $SELECTED_IDX -ge $ALL_TASKS_COUNT ]]; then
+    return
+  fi
+
+  local state="${ALL_TASKS_STATES[$SELECTED_IDX]%%:*}"
+  if [[ "$state" != "todo" ]]; then
+    ACTION_MSG="${YELLOW}Can only change priority of todo tasks${RESET}"
+    return
+  fi
+
+  local file="${ALL_TASKS_FILES[$SELECTED_IDX]}"
+  local current_prio
+  current_prio=$(get_priority "$file")
+  local new_prio=$((current_prio + 1))
+  set_priority "$file" "$new_prio"
+  ACTION_MSG="${MAGENTA}Priority → #${new_prio}${RESET}"
+}
+
+action_demote() {
+  if [[ $ALL_TASKS_COUNT -eq 0 || $SELECTED_IDX -ge $ALL_TASKS_COUNT ]]; then
+    return
+  fi
+
+  local state="${ALL_TASKS_STATES[$SELECTED_IDX]%%:*}"
+  if [[ "$state" != "todo" ]]; then
+    ACTION_MSG="${YELLOW}Can only change priority of todo tasks${RESET}"
+    return
+  fi
+
+  local file="${ALL_TASKS_FILES[$SELECTED_IDX]}"
+  local current_prio
+  current_prio=$(get_priority "$file")
+  local new_prio=$((current_prio > 1 ? current_prio - 1 : 1))
+  set_priority "$file" "$new_prio"
+  ACTION_MSG="${MAGENTA}Priority → #${new_prio}${RESET}"
+}
+
+ACTION_MSG=""
 
 # ---------------------------------------------------------------------------
 # Main render
@@ -489,11 +791,12 @@ render() {
   if [[ $CURRENT_TAB -eq 1 ]]; then
     render_overview
   else
-    local workers
-    workers=($(detect_workers))
+    local workers=()
+    local raw
+    raw=$(detect_workers)
+    [[ -n "$raw" ]] && read -ra workers <<< "$raw"
     local worker_idx=$((CURRENT_TAB - 1))
     if [[ $worker_idx -le ${#workers[@]} ]]; then
-      # Extract worker number from worker name (e.g., worker-2 → 2)
       local worker_num
       worker_num=$(echo "${workers[$((worker_idx - 1))]}" | sed 's/worker-//')
       render_worker_tab "$worker_num"
@@ -505,47 +808,118 @@ render() {
 }
 
 # ---------------------------------------------------------------------------
+# Input handling — no subshell, global variable
+# ---------------------------------------------------------------------------
+LAST_KEY=""
+
+read_key() {
+  LAST_KEY="_timeout_"
+  local key=""
+  if read -rsn1 -t "$REFRESH_INTERVAL" key; then
+    if [[ "$key" == $'\x1b' ]]; then
+      # Read the rest of the escape sequence in one shot (2 bytes: [ + letter)
+      local rest=""
+      read -rsn2 -t 0.05 rest || true
+      case "$rest" in
+        "[A") LAST_KEY="UP" ;;
+        "[B") LAST_KEY="DOWN" ;;
+        "[C") LAST_KEY="RIGHT" ;;
+        "[D") LAST_KEY="LEFT" ;;
+        *)    LAST_KEY="ESC" ;;
+      esac
+      return
+    fi
+    # Enter key produces empty string
+    if [[ -z "$key" ]]; then
+      LAST_KEY="ENTER"
+    else
+      LAST_KEY="$key"
+    fi
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
 main() {
-  # Hide cursor
+  # Use alternate screen buffer for clean entry/exit
+  printf '\033[?1049h'
   tput civis 2>/dev/null || true
+  trap 'tput cnorm 2>/dev/null; printf "\033[?1049l"; exit 0' EXIT INT TERM
 
-  # Restore cursor on exit
-  trap 'tput cnorm 2>/dev/null; echo ""; exit 0' EXIT INT TERM
-
-  # Auto-refresh interval (seconds)
-  local REFRESH_INTERVAL=3
+  REFRESH_INTERVAL=3
 
   while true; do
     render
 
-    # Wait for keypress or timeout
-    local key=""
-    if read -rsn1 -t "$REFRESH_INTERVAL" key 2>/dev/null; then
-      case "$key" in
-        q|Q)
-          exit 0
-          ;;
-        r|R)
-          continue
-          ;;
-        s|S)
-          action_start
-          ;;
-        f|F)
-          action_retry_failed
-          ;;
-        k|K)
-          action_kill
-          ;;
-        [1-9])
-          if [[ "$key" -le $MAX_TABS ]]; then
-            CURRENT_TAB=$key
-          fi
-          ;;
-      esac
-    fi
+    read_key
+
+    case "$LAST_KEY" in
+      q|Q)
+        exit 0
+        ;;
+      r|R)
+        continue
+        ;;
+      s|S)
+        action_start
+        ;;
+      f|F)
+        action_retry_failed
+        ;;
+      k|K)
+        action_kill
+        ;;
+      x|X)
+        action_stop_task
+        ;;
+      p|P)
+        action_promote
+        ;;
+      d|D)
+        action_demote
+        ;;
+      UP)
+        if [[ $SELECTED_IDX -gt 0 ]]; then
+          SELECTED_IDX=$((SELECTED_IDX - 1))
+        fi
+        DETAIL_MODE=false
+        ;;
+      DOWN)
+        if [[ $SELECTED_IDX -lt $((ALL_TASKS_COUNT - 1)) ]]; then
+          SELECTED_IDX=$((SELECTED_IDX + 1))
+        fi
+        DETAIL_MODE=false
+        ;;
+      LEFT)
+        if [[ $CURRENT_TAB -gt 1 ]]; then
+          CURRENT_TAB=$((CURRENT_TAB - 1))
+        fi
+        DETAIL_MODE=false
+        ;;
+      RIGHT)
+        if [[ $CURRENT_TAB -lt $MAX_TABS ]]; then
+          CURRENT_TAB=$((CURRENT_TAB + 1))
+        fi
+        DETAIL_MODE=false
+        ;;
+      ESC|$'\x7f')  # Esc or Backspace
+        DETAIL_MODE=false
+        DETAIL_FILE=""
+        ;;
+      ENTER)
+        if [[ $CURRENT_TAB -eq 1 && $ALL_TASKS_COUNT -gt 0 && $SELECTED_IDX -lt $ALL_TASKS_COUNT ]]; then
+          DETAIL_MODE=true
+          DETAIL_FILE="${ALL_TASKS_FILES[$SELECTED_IDX]}"
+        fi
+        ;;
+      [1-9])
+        if [[ "$LAST_KEY" -le $MAX_TABS ]]; then
+          CURRENT_TAB=$LAST_KEY
+          DETAIL_MODE=false
+        fi
+        ;;
+    esac
   done
 }
 

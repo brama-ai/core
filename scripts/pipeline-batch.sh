@@ -40,11 +40,17 @@ WEBHOOK_URL=""
 WORKERS=1
 WATCH_MODE=false
 WATCH_INTERVAL=15  # seconds between polls for new tasks
+AUTO_FIX=false
+MAX_AUTO_FIX_RETRIES="${PIPELINE_MAX_RETRIES:-10}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-stop-on-failure)
       STOP_ON_FAILURE=false
+      shift
+      ;;
+    --auto-fix)
+      AUTO_FIX=true
       shift
       ;;
     --watch)
@@ -212,8 +218,24 @@ PASSED=0
 FAILED=0
 STOPPED=false
 
-# Save starting branch
+# Save starting branch and ensure we're on it (recover from previous crash)
 ORIGINAL_BRANCH=$(git -C "$REPO_ROOT" branch --show-current)
+EXPECTED_BRANCH="${PIPELINE_MAIN_BRANCH:-main}"
+if [[ "$ORIGINAL_BRANCH" != "$EXPECTED_BRANCH" ]]; then
+  echo -e "${YELLOW}Warning: repo is on '${ORIGINAL_BRANCH}' instead of '${EXPECTED_BRANCH}' (likely crashed pipeline)${NC}"
+  echo -e "${YELLOW}Switching back to '${EXPECTED_BRANCH}'...${NC}"
+  git -C "$REPO_ROOT" stash --include-untracked -m "pipeline-batch: auto-stash before branch recovery" 2>/dev/null || true
+  git -C "$REPO_ROOT" checkout "$EXPECTED_BRANCH" 2>/dev/null || true
+  ORIGINAL_BRANCH="$EXPECTED_BRANCH"
+fi
+
+# Prune stale worktrees from crashed previous runs
+git -C "$REPO_ROOT" worktree prune 2>/dev/null || true
+if [[ -d "$REPO_ROOT/.pipeline-worktrees" ]]; then
+  echo -e "${YELLOW}Cleaning up stale worktrees from previous run...${NC}"
+  rm -rf "$REPO_ROOT/.pipeline-worktrees"
+  git -C "$REPO_ROOT" worktree prune 2>/dev/null || true
+fi
 
 # Display mode
 if $FOLDER_MODE; then
@@ -231,6 +253,7 @@ echo -e "${BLUE}Source:${NC}           ${SOURCE_LABEL}"
 echo -e "${BLUE}Total tasks:${NC}      ${TOTAL}"
 echo -e "${BLUE}Workers:${NC}          ${WORKERS}"
 echo -e "${BLUE}Stop on failure:${NC}  ${STOP_ON_FAILURE}"
+echo -e "${BLUE}Auto-fix retry:${NC}  ${AUTO_FIX} (max ${MAX_AUTO_FIX_RETRIES})"
 echo -e "${BLUE}Watch mode:${NC}       ${WATCH_MODE}"
 echo -e "${BLUE}Extra args:${NC}       ${EXTRA_ARGS:-none}"
 echo -e "${BLUE}Original branch:${NC}  ${ORIGINAL_BRANCH}"
@@ -301,12 +324,138 @@ move_to_failed() {
   local src="$1"
   local task_branch="$2"
   local duration="$3"
+  local log_file="${4:-}"  # optional: task log for auto-fix analysis
   local dest="${TASK_SOURCE}/failed/$(basename "$src")"
   {
     echo "<!-- batch: ${BATCH_TIMESTAMP} | status: fail | duration: ${duration}s | branch: ${task_branch} -->"
     cat "$src"
   } > "$dest"
   rm -f "$src"
+
+  # Auto-fix retry: ask AI to analyze failure and potentially retry
+  if [[ "$AUTO_FIX" == true ]]; then
+    auto_fix_and_retry "$dest" "$task_branch" "$log_file" &
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Auto-fix retry system
+# Max MAX_AUTO_FIX_RETRIES attempts per task. AI analyzes the failure log,
+# and if it finds a fixable issue, moves the task back to todo/.
+# ---------------------------------------------------------------------------
+
+get_retry_count() {
+  local file="$1"
+  local count
+  count=$(grep -c '<!-- batch:.*status: fail' "$file" 2>/dev/null || echo "0")
+  echo "$count"
+}
+
+auto_fix_and_retry() {
+  local failed_file="$1"
+  local task_branch="$2"
+  local log_file="$3"
+  local task_name
+  task_name=$(grep -m1 '^# ' "$failed_file" 2>/dev/null | sed 's/^# //')
+
+  local retries
+  retries=$(get_retry_count "$failed_file")
+
+  if [[ $retries -ge $MAX_AUTO_FIX_RETRIES ]]; then
+    echo -e "${RED}[auto-fix] ${task_name}: max retries ($MAX_AUTO_FIX_RETRIES) reached, giving up${NC}"
+    return 1
+  fi
+
+  echo -e "${YELLOW}[auto-fix] Analyzing failure for: ${task_name} (attempt ${retries}/${MAX_AUTO_FIX_RETRIES})${NC}"
+
+  # Build context for the AI agent
+  local log_tail=""
+  if [[ -n "$log_file" && -f "$log_file" ]]; then
+    log_tail=$(tail -100 "$log_file" 2>/dev/null)
+  fi
+
+  local analysis_prompt="A pipeline task failed. Analyze the error and decide if it's auto-fixable.
+
+Task: ${task_name}
+Branch: ${task_branch}
+Retry count: ${retries}/${MAX_AUTO_FIX_RETRIES}
+
+Error log (last 100 lines):
+\`\`\`
+${log_tail}
+\`\`\`
+
+Respond ONLY with one of:
+1. RETRY - if the error is transient (timeout, rate limit, network) and retrying might help
+2. FIX:<description> - if you can identify a specific fix needed in the pipeline/config
+3. SKIP - if the error is fundamental and retrying won't help
+
+Be concise. One line response."
+
+  local ai_response=""
+
+  # Try claude first, then opencode
+  if command -v claude &>/dev/null; then
+    ai_response=$(echo "$analysis_prompt" | claude --print 2>/dev/null | head -5 || true)
+  elif command -v opencode &>/dev/null; then
+    ai_response=$(cd "$REPO_ROOT" && opencode run --agent coder "$analysis_prompt" 2>/dev/null | tail -5 || true)
+  fi
+
+  if [[ -z "$ai_response" ]]; then
+    echo -e "${BLUE}[auto-fix] No AI available, checking log patterns...${NC}"
+    # Fallback: simple pattern matching
+    if [[ -n "$log_tail" ]]; then
+      if echo "$log_tail" | grep -qiE 'rate.limit|429|quota|throttl'; then
+        ai_response="RETRY"
+      elif echo "$log_tail" | grep -qiE 'timeout|timed.out|exit code: 124'; then
+        ai_response="RETRY"
+      elif echo "$log_tail" | grep -qiE 'auto-rejecting|external_directory|permission'; then
+        ai_response="FIX:worktree permission issue"
+      elif echo "$log_tail" | grep -qiE 'ENOENT|not found|no such file'; then
+        ai_response="RETRY"
+      fi
+    fi
+    # If the task failed in <10s, it's likely a setup issue worth retrying
+    local dur
+    dur=$(grep -m1 '<!-- batch:' "$failed_file" 2>/dev/null | sed 's/.*duration: \([0-9]*\)s.*/\1/' || echo "0")
+    if [[ "$dur" -lt 10 && -z "$ai_response" ]]; then
+      ai_response="RETRY"
+    fi
+  fi
+
+  echo -e "${BLUE}[auto-fix] AI says: ${ai_response}${NC}"
+
+  case "$ai_response" in
+    RETRY*|retry*)
+      echo -e "${GREEN}[auto-fix] Requeueing: ${task_name}${NC}"
+      # Move back to todo (strip batch metadata to avoid accumulation)
+      local todo_dest="${TASK_SOURCE}/todo/$(basename "$failed_file")"
+      grep -v '^<!-- batch:' "$failed_file" > "$todo_dest"
+      # Preserve retry count as a comment
+      sed -i.bak "1i\\
+<!-- retries: ${retries} -->" "$todo_dest"
+      rm -f "${todo_dest}.bak"
+      rm -f "$failed_file"
+      # Delete the stale branch so it gets recreated fresh
+      git -C "$REPO_ROOT" branch -D "$task_branch" 2>/dev/null || true
+      ;;
+    FIX:*|fix:*)
+      local fix_desc="${ai_response#*:}"
+      echo -e "${YELLOW}[auto-fix] Fix needed: ${fix_desc}${NC}"
+      echo -e "${YELLOW}[auto-fix] Requeueing with fix note${NC}"
+      local todo_dest="${TASK_SOURCE}/todo/$(basename "$failed_file")"
+      {
+        echo "<!-- retries: ${retries} -->"
+        echo "<!-- auto-fix-note: ${fix_desc} -->"
+        grep -v '^<!-- batch:' "$failed_file"
+      } > "$todo_dest"
+      rm -f "$failed_file"
+      git -C "$REPO_ROOT" branch -D "$task_branch" 2>/dev/null || true
+      ;;
+    *)
+      echo -e "${RED}[auto-fix] Skipping: ${task_name} (not auto-fixable)${NC}"
+      ;;
+  esac
 }
 
 # ---------------------------------------------------------------------------
@@ -328,8 +477,38 @@ pipeline_args() {
 
 # ---------------------------------------------------------------------------
 # Sequential mode (--workers 1, default)
+#
+# Always uses a single git worktree to avoid polluting the main repo's branch.
 # ---------------------------------------------------------------------------
 run_sequential() {
+  local WORKTREE_BASE="$REPO_ROOT/.pipeline-worktrees"
+  local wt="$WORKTREE_BASE/worker-1"
+
+  # Cleanup on exit
+  cleanup_sequential() {
+    if [[ -d "$wt" ]]; then
+      git -C "$REPO_ROOT" worktree remove --force "$wt" 2>/dev/null || rm -rf "$wt"
+    fi
+    rmdir "$WORKTREE_BASE" 2>/dev/null || true
+    # Safety: ensure main repo is on original branch
+    git -C "$REPO_ROOT" checkout "$ORIGINAL_BRANCH" 2>/dev/null || true
+  }
+  trap cleanup_sequential EXIT
+
+  # Create single worktree
+  echo -e "${BLUE}Creating worktree for sequential worker...${NC}"
+  git -C "$REPO_ROOT" worktree prune 2>/dev/null || true
+  mkdir -p "$WORKTREE_BASE"
+  if [[ -d "$wt" ]]; then
+    git -C "$REPO_ROOT" worktree remove --force "$wt" 2>/dev/null || rm -rf "$wt"
+  fi
+  git -C "$REPO_ROOT" worktree add --detach "$wt" HEAD
+  setup_worktree_deps "$wt"
+  echo -e "  ${GREEN}worker-1${NC} → ${wt}"
+  echo ""
+
+  local pipeline_script="$wt/scripts/pipeline.sh"
+
   for i in "${!TASK_NAMES[@]}"; do
     local task="${TASK_NAMES[$i]}"
     local task_file="${TASK_FPATHS[$i]}"
@@ -349,8 +528,16 @@ run_sequential() {
       active_file=$(move_to_in_progress "$task_file")
     fi
 
-    # Ensure we start from the original branch for each task
-    git -C "$REPO_ROOT" checkout "$ORIGINAL_BRANCH" 2>/dev/null || true
+    # Reset worktree to HEAD before each task (clean slate)
+    git -C "$wt" checkout --detach HEAD 2>/dev/null || true
+    git -C "$wt" clean -fd 2>/dev/null || true
+
+    # Copy task file into worktree if needed
+    local wt_task_file=""
+    if [[ -n "$active_file" ]]; then
+      wt_task_file="$wt/.pipeline-task-${task_num}.md"
+      cp "$active_file" "$wt_task_file"
+    fi
 
     # Check if checkpoint exists for auto-resume
     local resume_flag=""
@@ -360,65 +547,50 @@ run_sequential() {
       resume_flag="--resume"
     fi
 
-    # shellcheck disable=SC2086
-    if [[ -n "$active_file" ]]; then
-      # shellcheck disable=SC2086
-      if "$SCRIPT_DIR/pipeline.sh" --branch "$task_branch" --task-file "$active_file" $resume_flag $EXTRA_ARGS; then
-        local end_time duration
-        end_time=$(date +%s)
-        duration=$(( end_time - start_time ))
-        PASSED=$((PASSED + 1))
-        echo "| ${task_num} | ${task} | ✓ PASS | ${duration}s | \`${task_branch}\` |" >> "$RESULTS_FILE"
-        echo -e "${GREEN}Task ${task_num} PASSED (${duration}s)${NC}"
-        $FOLDER_MODE && move_to_done "$active_file" "$task_branch" "$duration"
-      else
-        local end_time duration
-        end_time=$(date +%s)
-        duration=$(( end_time - start_time ))
-        FAILED=$((FAILED + 1))
-        echo "| ${task_num} | ${task} | ✗ FAIL | ${duration}s | \`${task_branch}\` |" >> "$RESULTS_FILE"
-        echo -e "${RED}Task ${task_num} FAILED (${duration}s)${NC}"
-        $FOLDER_MODE && move_to_failed "$active_file" "$task_branch" "$duration"
+    local exit_code=0
+    local log_file="$REPO_ROOT/.opencode/pipeline/logs/seq-task-${task_num}.log"
+    mkdir -p "$(dirname "$log_file")"
 
-        if [[ "$STOP_ON_FAILURE" == true ]]; then
-          echo -e "${YELLOW}Stopping batch (--no-stop-on-failure to continue)${NC}"
-          STOPPED=true
-          for j in $(seq $((i + 1)) $((TOTAL - 1))); do
-            echo "| $((j + 1)) | ${TASK_NAMES[$j]} | — SKIP | — | — |" >> "$RESULTS_FILE"
-          done
-          break
-        fi
+    # shellcheck disable=SC2086
+    if [[ -n "$wt_task_file" ]]; then
+      "$pipeline_script" --branch "$task_branch" --task-file "$wt_task_file" $resume_flag $EXTRA_ARGS \
+        > "$log_file" 2>&1 || exit_code=$?
+    else
+      "$pipeline_script" --branch "$task_branch" $resume_flag $EXTRA_ARGS "$task" \
+        > "$log_file" 2>&1 || exit_code=$?
+    fi
+
+    rm -f "$wt_task_file"
+
+    local end_time duration
+    end_time=$(date +%s)
+    duration=$(( end_time - start_time ))
+
+    if [[ $exit_code -eq 0 ]]; then
+      PASSED=$((PASSED + 1))
+      echo "| ${task_num} | ${task} | ✓ PASS | ${duration}s | \`${task_branch}\` |" >> "$RESULTS_FILE"
+      echo -e "${GREEN}Task ${task_num} PASSED (${duration}s)${NC}"
+      if $FOLDER_MODE && [[ -n "$active_file" ]]; then
+        move_to_done "$active_file" "$task_branch" "$duration"
       fi
     else
-      # Text mode — task as positional argument
-      # shellcheck disable=SC2086
-      if "$SCRIPT_DIR/pipeline.sh" --branch "$task_branch" $resume_flag $EXTRA_ARGS "$task"; then
-        local end_time duration
-        end_time=$(date +%s)
-        duration=$(( end_time - start_time ))
-        PASSED=$((PASSED + 1))
-        echo "| ${task_num} | ${task} | ✓ PASS | ${duration}s | \`${task_branch}\` |" >> "$RESULTS_FILE"
-        echo -e "${GREEN}Task ${task_num} PASSED (${duration}s)${NC}"
-      else
-        local end_time duration
-        end_time=$(date +%s)
-        duration=$(( end_time - start_time ))
-        FAILED=$((FAILED + 1))
-        echo "| ${task_num} | ${task} | ✗ FAIL | ${duration}s | \`${task_branch}\` |" >> "$RESULTS_FILE"
-        echo -e "${RED}Task ${task_num} FAILED (${duration}s)${NC}"
+      FAILED=$((FAILED + 1))
+      echo "| ${task_num} | ${task} | ✗ FAIL | ${duration}s | \`${task_branch}\` |" >> "$RESULTS_FILE"
+      echo -e "${RED}Task ${task_num} FAILED (${duration}s)${NC}"
+      if $FOLDER_MODE && [[ -n "$active_file" ]]; then
+        move_to_failed "$active_file" "$task_branch" "$duration" "$log_file"
+      fi
 
-        if [[ "$STOP_ON_FAILURE" == true ]]; then
-          echo -e "${YELLOW}Stopping batch (--no-stop-on-failure to continue)${NC}"
-          STOPPED=true
-          for j in $(seq $((i + 1)) $((TOTAL - 1))); do
-            echo "| $((j + 1)) | ${TASK_NAMES[$j]} | — SKIP | — | — |" >> "$RESULTS_FILE"
-          done
-          break
-        fi
+      if [[ "$STOP_ON_FAILURE" == true ]]; then
+        echo -e "${YELLOW}Stopping batch (--no-stop-on-failure to continue)${NC}"
+        STOPPED=true
+        for j in $(seq $((i + 1)) $((TOTAL - 1))); do
+          echo "| $((j + 1)) | ${TASK_NAMES[$j]} | — SKIP | — | — |" >> "$RESULTS_FILE"
+        done
+        break
       fi
     fi
 
-    git -C "$REPO_ROOT" checkout "$ORIGINAL_BRANCH" 2>/dev/null || true
     echo ""
   done
 }
@@ -480,7 +652,10 @@ setup_worktree_deps() {
 # A FIFO-based semaphore controls how many workers run concurrently.
 # ---------------------------------------------------------------------------
 run_parallel() {
-  local WORKTREE_BASE="$REPO_ROOT/.opencode/pipeline/worktrees"
+  # IMPORTANT: Worktrees MUST be outside .opencode/ — opencode treats paths
+  # inside .opencode/ as sandbox directories with restricted file permissions,
+  # causing "external_directory; auto-rejecting" errors for all agent file reads.
+  local WORKTREE_BASE="$REPO_ROOT/.pipeline-worktrees"
   local TASK_RESULT_DIR
   TASK_RESULT_DIR="$(mktemp -d)"
 
@@ -500,10 +675,12 @@ run_parallel() {
     for ((w=1; w<=WORKERS; w++)); do
       local wt="$WORKTREE_BASE/worker-${w}"
       if [[ -d "$wt" ]]; then
-        git -C "$REPO_ROOT" worktree remove --force "$wt" 2>/dev/null || true
+        git -C "$REPO_ROOT" worktree remove --force "$wt" 2>/dev/null || rm -rf "$wt"
       fi
     done
     rmdir "$WORKTREE_BASE" 2>/dev/null || true
+    # Safety: ensure main repo stays on original branch
+    git -C "$REPO_ROOT" checkout "$ORIGINAL_BRANCH" 2>/dev/null || true
   }
   trap cleanup_parallel EXIT
 
@@ -512,14 +689,20 @@ run_parallel() {
   fi
 
   echo -e "${BLUE}Creating ${WORKERS} git worktrees...${NC}"
+
+  # Prune stale worktree refs left from crashed runs
+  git -C "$REPO_ROOT" worktree prune 2>/dev/null || true
+
   mkdir -p "$WORKTREE_BASE"
 
   for ((w=1; w<=WORKERS; w++)); do
     local wt="$WORKTREE_BASE/worker-${w}"
+    # Force-remove old worktree (directory + git ref)
     if [[ -d "$wt" ]]; then
-      git -C "$REPO_ROOT" worktree remove --force "$wt" 2>/dev/null || true
+      git -C "$REPO_ROOT" worktree remove --force "$wt" 2>/dev/null || rm -rf "$wt"
     fi
-    git -C "$REPO_ROOT" worktree add --detach "$wt" HEAD 2>/dev/null
+    # Create fresh worktree from current HEAD — do NOT suppress errors
+    git -C "$REPO_ROOT" worktree add --detach "$wt" HEAD
     setup_worktree_deps "$wt"
     echo -e "  ${GREEN}worker-${w}${NC} → ${wt}"
     echo "worker-${w}" >&3
@@ -597,9 +780,9 @@ run_parallel() {
       else
         echo "FAIL|${task_num}|${task}|${duration}|${task_branch}" > "$TASK_RESULT_DIR/task-${task_num}.result"
         echo -e "${RED}[${worker_id}] Task ${task_num} FAILED (${duration}s)${NC}"
-        # Folder lifecycle — move to failed
+        # Folder lifecycle — move to failed (pass log for auto-fix analysis)
         if [[ -n "$active_file" && -f "$active_file" ]]; then
-          move_to_failed "$active_file" "$task_branch" "$duration"
+          move_to_failed "$active_file" "$task_branch" "$duration" "$TASK_RESULT_DIR/task-${task_num}.log"
         fi
       fi
 

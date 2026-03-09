@@ -1100,21 +1100,35 @@ main() {
   branch=$(setup_branch)
   echo -e "${BLUE}Branch:${NC} ${branch}"
 
-  # Create or switch to branch
-  if ! git -C "$REPO_ROOT" rev-parse --verify "$branch" &>/dev/null; then
-    git -C "$REPO_ROOT" checkout -b "$branch"
-    echo -e "${GREEN}Created branch: ${branch}${NC}"
-  else
-    # In worktree mode, re-create the branch from current HEAD to avoid
-    # "already checked out" errors from a previous failed run
-    if [[ -f "$REPO_ROOT/.git" ]]; then
-      git -C "$REPO_ROOT" branch -D "$branch" 2>/dev/null || true
-      git -C "$REPO_ROOT" checkout -b "$branch"
-      echo -e "${YELLOW}Re-created branch (worktree re-run): ${branch}${NC}"
+  # Create or switch to branch (with retry for lock contention in parallel mode)
+  local branch_ok=false
+  for _try in 1 2 3 4 5; do
+    if git -C "$REPO_ROOT" rev-parse --verify "$branch" &>/dev/null; then
+      # Branch exists — re-create from current HEAD in worktree mode
+      if [[ -f "$REPO_ROOT/.git" ]]; then
+        git -C "$REPO_ROOT" branch -D "$branch" 2>/dev/null || true
+        if git -C "$REPO_ROOT" checkout -b "$branch" 2>/dev/null; then
+          echo -e "${YELLOW}Re-created branch (worktree re-run): ${branch}${NC}"
+          branch_ok=true; break
+        fi
+      else
+        if git -C "$REPO_ROOT" checkout "$branch" 2>/dev/null; then
+          echo -e "${YELLOW}Switched to existing branch: ${branch}${NC}"
+          branch_ok=true; break
+        fi
+      fi
     else
-      git -C "$REPO_ROOT" checkout "$branch"
-      echo -e "${YELLOW}Switched to existing branch: ${branch}${NC}"
+      if git -C "$REPO_ROOT" checkout -b "$branch" 2>/dev/null; then
+        echo -e "${GREEN}Created branch: ${branch}${NC}"
+        branch_ok=true; break
+      fi
     fi
+    echo -e "${YELLOW}Git lock contention (attempt ${_try}/5), retrying in ${_try}s...${NC}"
+    sleep "$_try"
+  done
+  if [[ "$branch_ok" != true ]]; then
+    echo -e "${RED}Failed to create/switch branch after 5 attempts${NC}"
+    exit 1
   fi
 
   # Initialize handoff
