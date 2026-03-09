@@ -1,0 +1,17 @@
+services:
+  slides:
+    build:
+      context: .
+      dockerfile: docker/slides/Dockerfile
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.slides.rule=PathPrefix(`/slides/slide/`)
+      - traefik.http.routers.slides.entrypoints=web
+      - traefik.http.services.slides.loadbalancer.server.port=80
+    networks:
+      - dev-edge
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

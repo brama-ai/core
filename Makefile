@@ -4,6 +4,7 @@ OVERRIDE_COMPOSE := $(if $(OVERRIDE_FILE),-f $(OVERRIDE_FILE),)
 COMPOSE_FILES := -f compose.yaml -f compose.core.yaml \
         $(addprefix -f ,$(AGENT_FILES)) \
         -f compose.langfuse.yaml -f compose.openclaw.yaml \
+        -f compose.slides.yaml \
         $(OVERRIDE_COMPOSE)
 COMPOSE ?= docker compose $(COMPOSE_FILES)
 E2E_COMPOSE ?= docker compose $(COMPOSE_FILES) --profile e2e
@@ -84,7 +85,7 @@ bootstrap:
 openclaw-frontdesk-sync:
 	@./scripts/sync-openclaw-frontdesk.sh
 
-setup: infra-setup core-setup knowledge-setup hello-setup news-setup dev-reporter-setup dev-agent-setup claw-setup
+setup: infra-setup core-setup knowledge-setup hello-setup news-setup dev-reporter-setup dev-agent-setup claw-setup slides-setup
 	@echo "Local development dependencies are prepared."
 
 infra-setup:
@@ -122,6 +123,9 @@ news-setup:
 claw-setup:
 	mkdir -p .local/openclaw/state .local/openclaw/e2e-state
 	$(COMPOSE) pull openclaw-gateway openclaw-cli
+
+slides-setup:
+	$(COMPOSE) build slides
 
 install:
 	$(COMPOSE) run --rm core composer install
