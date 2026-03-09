@@ -183,6 +183,8 @@ function readLogTail(file, lines = 30) {
 // Actions
 // ---------------------------------------------------------------------------
 
+const BATCH_WORKERS = parseInt(process.env.PIPELINE_WORKERS || "1", 10);
+
 function actionStart() {
   const pid = getBatchPid();
   if (pid) return "Batch already running";
@@ -190,10 +192,10 @@ function actionStart() {
   if (todoCount === 0) return "No tasks in todo/";
   try {
     execSync(
-      `caffeinate -s nohup ${REPO_ROOT}/scripts/pipeline-batch.sh --workers 1 --no-stop-on-failure --auto-fix --watch ${TASK_SOURCE} > ${REPO_ROOT}/batch.log 2>&1 &`,
+      `caffeinate -s nohup ${REPO_ROOT}/scripts/pipeline-batch.sh --workers ${BATCH_WORKERS} --no-stop-on-failure --auto-fix --watch ${TASK_SOURCE} > ${REPO_ROOT}/batch.log 2>&1 &`,
       { cwd: REPO_ROOT, shell: true }
     );
-    return `Started batch (${todoCount} tasks)`;
+    return `Started batch (${todoCount} tasks, ${BATCH_WORKERS} workers)`;
   } catch (e) {
     return `Start failed: ${e.message}`;
   }
@@ -389,7 +391,7 @@ function WorkerTab({ workerName }) {
   );
 }
 
-function BottomMenu({ selectedState }) {
+function BottomMenu({ selectedState, batchRunning }) {
   let contextKeys = "";
   switch (selectedState) {
     case "in-progress":
@@ -399,14 +401,16 @@ function BottomMenu({ selectedState }) {
       contextKeys = " [f] retry";
       break;
     case "todo":
-      contextKeys = " [p] priority+  [d] priority-";
+      contextKeys = " [+] priority+  [-] priority-";
       break;
   }
+
+  const startLabel = batchRunning && selectedState === "todo" ? "[s] boost next" : "[s] start";
 
   return React.createElement(
     Text,
     { dimColor: true },
-    `  ←/→ tabs  ↑/↓ select  Enter detail${contextKeys}  [s] start  [k] kill  [q] quit`
+    `  ←/→ tabs  ↑/↓ select  Enter detail${contextKeys}  ${startLabel}  [k] kill  [q] quit`
   );
 }
 
@@ -481,18 +485,26 @@ function App() {
       if (key.downArrow) return setSelectedIdx((i) => Math.min(tasks.length - 1, i + 1));
       if (key.return && selectedTask) return setDetailFile(selectedTask.file);
 
-      // Priority
-      if ((input === "p" || input === "P") && selectedTask?.state === "todo") {
-        setPriority(selectedTask.file, (selectedTask.priority || 1) + 1);
-        setActionMsg(`Priority -> #${(selectedTask.priority || 1) + 1}`);
+      // Priority (+/-)  — cursor follows the task after reorder
+      if ((input === "+" || input === "=") && selectedTask?.state === "todo") {
+        const newP = (selectedTask.priority || 1) + 1;
+        setPriority(selectedTask.file, newP);
+        setActionMsg(`Priority -> #${newP}`);
         setTick((t) => t + 1);
+        // Find new index after re-sort: task moves up in the todo section
+        const newTasks = buildTaskList();
+        const newIdx = newTasks.findIndex((t) => t.file === selectedTask.file);
+        if (newIdx >= 0) setSelectedIdx(newIdx);
         return;
       }
-      if ((input === "d" || input === "D") && selectedTask?.state === "todo") {
+      if (input === "-" && selectedTask?.state === "todo") {
         const newP = Math.max(1, (selectedTask.priority || 1) - 1);
         setPriority(selectedTask.file, newP);
         setActionMsg(`Priority -> #${newP}`);
         setTick((t) => t + 1);
+        const newTasks = buildTaskList();
+        const newIdx = newTasks.findIndex((t) => t.file === selectedTask.file);
+        if (newIdx >= 0) setSelectedIdx(newIdx);
         return;
       }
 
@@ -512,8 +524,20 @@ function App() {
 
     // Global actions
     if (input === "s" || input === "S") {
-      setActionMsg(actionStart());
-      setTick((t) => t + 1);
+      // If a todo task is selected and batch is running, boost its priority to be next
+      if (tab === 1 && selectedTask?.state === "todo" && getBatchPid()) {
+        const allTasks = buildTaskList();
+        const maxPrio = Math.max(...allTasks.filter(t => t.state === "todo").map(t => t.priority || 1), 1);
+        setPriority(selectedTask.file, maxPrio + 1);
+        setActionMsg(`Boosted "${selectedTask.title}" → next in queue (#${maxPrio + 1})`);
+        const newTasks = buildTaskList();
+        const newIdx = newTasks.findIndex((t) => t.file === selectedTask.file);
+        if (newIdx >= 0) setSelectedIdx(newIdx);
+        setTick((t) => t + 1);
+      } else {
+        setActionMsg(actionStart());
+        setTick((t) => t + 1);
+      }
     }
     if (input === "k" || input === "K") {
       setActionMsg(actionKill());
@@ -641,7 +665,7 @@ function App() {
     React.createElement(
       Box,
       { paddingLeft: 1 },
-      React.createElement(BottomMenu, { selectedState: selectedTask?.state })
+      React.createElement(BottomMenu, { selectedState: selectedTask?.state, batchRunning: !!batchPid })
     )
   );
 }
