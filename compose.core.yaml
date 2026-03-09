@@ -13,6 +13,11 @@ services:
       - traefik.http.middlewares.edge-auth.forwardauth.address=http://core/edge/auth/verify
       - traefik.http.middlewares.edge-auth.forwardauth.trustForwardHeader=true
       - traefik.http.middlewares.edge-auth.forwardauth.authResponseHeaders=X-Forwarded-User
+      # Route /edge/auth/ on any subdomain to core WITHOUT edge-auth (login must work on the subdomain itself)
+      - traefik.http.routers.edge-auth-subdomain.rule=PathPrefix(`/edge/auth/`)
+      - traefik.http.routers.edge-auth-subdomain.entrypoints=web
+      - traefik.http.routers.edge-auth-subdomain.priority=300
+      - traefik.http.routers.edge-auth-subdomain.service=core
     environment:
       LANGFUSE_ENABLED: "true"
       LANGFUSE_BASE_URL: http://langfuse-web:3000
@@ -22,11 +27,12 @@ services:
       ADMIN_OPENCLAW_URL: http://openclaw.localhost/
       ADMIN_LANGFUSE_URL: http://langfuse.localhost/
       ADMIN_TRAEFIK_URL: http://traefik.localhost/dashboard/
-      ADMIN_LITELLM_URL: http://litellm.localhost/
+      ADMIN_LITELLM_URL: http://litellm.localhost/ui/
       EDGE_AUTH_JWT_SECRET: dev-edge-auth-secret-change-me
       EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
       EDGE_AUTH_TOKEN_TTL: 43200
-      EDGE_AUTH_LOGIN_BASE_URL: ""
+      EDGE_AUTH_LOGIN_BASE_URL: http://localhost
+      EDGE_AUTH_COOKIE_DOMAIN: localhost
     volumes:
       - ./apps/core:/var/www/html
     networks:
@@ -47,10 +53,11 @@ services:
       EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
       EDGE_AUTH_TOKEN_TTL: 43200
       EDGE_AUTH_LOGIN_BASE_URL: http://localhost:18080
+      EDGE_AUTH_COOKIE_DOMAIN: localhost
       ADMIN_OPENCLAW_URL: http://openclaw.localhost/
       ADMIN_LANGFUSE_URL: http://langfuse.localhost/
       ADMIN_TRAEFIK_URL: http://traefik.localhost/dashboard/
-      ADMIN_LITELLM_URL: http://litellm.localhost/
+      ADMIN_LITELLM_URL: http://litellm.localhost/ui/
     ports:
       - "18080:80"
     volumes:

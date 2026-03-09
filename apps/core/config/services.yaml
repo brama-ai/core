@@ -20,6 +20,7 @@ parameters:
     app.edge_auth_cookie_name: '%env(EDGE_AUTH_COOKIE_NAME)%'
     app.edge_auth_token_ttl: '%env(int:EDGE_AUTH_TOKEN_TTL)%'
     app.edge_auth_login_base_url: '%env(EDGE_AUTH_LOGIN_BASE_URL)%'
+    app.edge_auth_cookie_domain: '%env(EDGE_AUTH_COOKIE_DOMAIN)%'
     app.litellm_base_url: '%env(LITELLM_BASE_URL)%'
     app.litellm_api_key: '%env(LITELLM_API_KEY)%'
     app.llm_model: '%env(LLM_MODEL)%'

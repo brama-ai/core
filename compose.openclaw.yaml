@@ -24,6 +24,11 @@ services:
       - traefik.http.routers.openclaw-ui.entrypoints=web
       - traefik.http.routers.openclaw-ui.middlewares=edge-auth@docker
       - traefik.http.routers.openclaw-ui.service=openclaw-ui
+      # Webhook endpoints bypass edge-auth (needed for Telegram, etc.)
+      - traefik.http.routers.openclaw-webhook.rule=(Host(`openclaw.ai-community-platform.org`) || Host(`openclaw.localhost`)) && PathPrefix(`/api/channels/`)
+      - traefik.http.routers.openclaw-webhook.entrypoints=web
+      - traefik.http.routers.openclaw-webhook.priority=200
+      - traefik.http.routers.openclaw-webhook.service=openclaw-ui
       - traefik.http.services.openclaw-ui.loadbalancer.server.port=18789
     healthcheck:
       test:
