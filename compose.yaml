@@ -19,6 +19,13 @@ services:
     volumes:
       - ./docker/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik-dashboard.rule=PathPrefix(`/traefik`)
+      - traefik.http.routers.traefik-dashboard.entrypoints=web
+      - traefik.http.routers.traefik-dashboard.middlewares=edge-auth@docker,traefik-stripprefix
+      - traefik.http.routers.traefik-dashboard.service=api@internal
+      - traefik.http.middlewares.traefik-stripprefix.stripprefix.prefixes=/traefik
     networks:
       - dev-edge
 
@@ -111,6 +118,14 @@ services:
       - "--detailed_debug"
     ports:
       - "4000:4000"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.litellm.rule=PathPrefix(`/litellm`)
+      - traefik.http.routers.litellm.entrypoints=web
+      - traefik.http.routers.litellm.middlewares=edge-auth@docker,litellm-stripprefix
+      - traefik.http.routers.litellm.service=litellm
+      - traefik.http.middlewares.litellm-stripprefix.stripprefix.prefixes=/litellm
+      - traefik.http.services.litellm.loadbalancer.server.port=4000
     volumes:
       - ./docker/litellm/config.yaml:/app/config.yaml:ro
     depends_on:

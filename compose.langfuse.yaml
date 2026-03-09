@@ -52,6 +52,12 @@ services:
       - traefik.http.routers.langfuse-web.priority=100
       - traefik.http.routers.langfuse-web.middlewares=edge-auth@docker
       - traefik.http.routers.langfuse-web.service=langfuse
+      # Path-based routing for port 80 (web entrypoint)
+      - traefik.http.routers.langfuse-path.rule=PathPrefix(`/langfuse`)
+      - traefik.http.routers.langfuse-path.entrypoints=web
+      - traefik.http.routers.langfuse-path.middlewares=edge-auth@docker,langfuse-stripprefix
+      - traefik.http.routers.langfuse-path.service=langfuse
+      - traefik.http.middlewares.langfuse-stripprefix.stripprefix.prefixes=/langfuse
       - traefik.http.routers.langfuse.rule=PathPrefix(`/`)
       - traefik.http.routers.langfuse.entrypoints=langfuse
       - traefik.http.routers.langfuse.middlewares=edge-auth@docker

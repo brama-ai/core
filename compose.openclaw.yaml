@@ -28,6 +28,16 @@ services:
       - traefik.http.routers.openclaw-ui.entrypoints=openclaw
       - traefik.http.routers.openclaw-ui.middlewares=edge-auth@docker
       - traefik.http.routers.openclaw-ui.service=openclaw-ui
+      # Port 80 routing (web entrypoint)
+      - traefik.http.routers.openclaw-messaging-web.rule=PathPrefix(`/api/channels/`)
+      - traefik.http.routers.openclaw-messaging-web.entrypoints=web
+      - traefik.http.routers.openclaw-messaging-web.priority=100
+      - traefik.http.routers.openclaw-messaging-web.service=openclaw-ui
+      - traefik.http.routers.openclaw-ui-web.rule=PathPrefix(`/openclaw`)
+      - traefik.http.routers.openclaw-ui-web.entrypoints=web
+      - traefik.http.routers.openclaw-ui-web.middlewares=edge-auth@docker,openclaw-stripprefix
+      - traefik.http.routers.openclaw-ui-web.service=openclaw-ui
+      - traefik.http.middlewares.openclaw-stripprefix.stripprefix.prefixes=/openclaw
       - traefik.http.services.openclaw-ui.loadbalancer.server.port=18789
     healthcheck:
       test:
