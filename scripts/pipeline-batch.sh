@@ -38,12 +38,22 @@ EXTRA_ARGS=""
 STOP_ON_FAILURE=true
 WEBHOOK_URL=""
 WORKERS=1
+WATCH_MODE=false
+WATCH_INTERVAL=15  # seconds between polls for new tasks
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-stop-on-failure)
       STOP_ON_FAILURE=false
       shift
+      ;;
+    --watch)
+      WATCH_MODE=true
+      shift
+      ;;
+    --watch-interval)
+      WATCH_INTERVAL="$2"
+      shift 2
       ;;
     --workers)
       WORKERS="$2"
@@ -97,6 +107,8 @@ if [[ -z "$TASK_SOURCE" ]]; then
   echo "Options:"
   echo "  --workers N           Run N tasks in parallel (default: 1, sequential)"
   echo "  --no-stop-on-failure  Continue to next task even if current fails"
+  echo "  --watch               Keep running and pick up new tasks from todo/"
+  echo "  --watch-interval N    Seconds between polls for new tasks (default: 15)"
   echo ""
   echo "Pipeline options are passed through to pipeline.sh:"
   echo "  --skip-architect    Skip the architect stage"
@@ -219,6 +231,7 @@ echo -e "${BLUE}Source:${NC}           ${SOURCE_LABEL}"
 echo -e "${BLUE}Total tasks:${NC}      ${TOTAL}"
 echo -e "${BLUE}Workers:${NC}          ${WORKERS}"
 echo -e "${BLUE}Stop on failure:${NC}  ${STOP_ON_FAILURE}"
+echo -e "${BLUE}Watch mode:${NC}       ${WATCH_MODE}"
 echo -e "${BLUE}Extra args:${NC}       ${EXTRA_ARGS:-none}"
 echo -e "${BLUE}Original branch:${NC}  ${ORIGINAL_BRANCH}"
 echo -e "${BLUE}Results:${NC}          ${RESULTS_FILE}"
@@ -398,6 +411,39 @@ run_sequential() {
 }
 
 # ---------------------------------------------------------------------------
+# Worktree dependency setup
+#
+# Git worktrees do NOT include .gitignored directories (vendor/, node_modules/,
+# var/, .venv/). Symlink them from the main repo so agents can run tools like
+# phpstan, codecept, openspec etc.
+# ---------------------------------------------------------------------------
+setup_worktree_deps() {
+  local wt="$1"
+
+  # Find vendor/, node_modules/, var/ directories in the main repo (max depth 3)
+  # and create matching symlinks in the worktree
+  while IFS= read -r dep_dir; do
+    local rel_path="${dep_dir#"$REPO_ROOT"/}"
+    local wt_parent="$wt/$(dirname "$rel_path")"
+    local wt_target="$wt/$rel_path"
+
+    # Skip if symlink already exists
+    [[ -L "$wt_target" ]] && continue
+    # Skip if directory already exists (shouldn't happen, but safety check)
+    [[ -d "$wt_target" ]] && continue
+
+    mkdir -p "$wt_parent"
+    ln -s "$dep_dir" "$wt_target"
+  done < <(find "$REPO_ROOT" -maxdepth 3 -type d \( -name vendor -o -name node_modules -o -name var -o -name '.venv' \) \
+    -not -path '*/.opencode/*' -not -path '*/.git/*' 2>/dev/null)
+
+  # Symlink .local/ if it exists (Docker volume mounts, local state)
+  if [[ -d "$REPO_ROOT/.local" && ! -L "$wt/.local" ]]; then
+    ln -s "$REPO_ROOT/.local" "$wt/.local"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Parallel mode (--workers N where N > 1)
 #
 # Uses git worktrees so each worker has an isolated copy of the repo.
@@ -444,6 +490,7 @@ run_parallel() {
       git -C "$REPO_ROOT" worktree remove --force "$wt" 2>/dev/null || true
     fi
     git -C "$REPO_ROOT" worktree add --detach "$wt" HEAD 2>/dev/null
+    setup_worktree_deps "$wt"
     echo -e "  ${GREEN}worker-${w}${NC} → ${wt}"
     echo "worker-${w}" >&3
   done
@@ -557,44 +604,132 @@ run_parallel() {
 }
 
 # ---------------------------------------------------------------------------
+# Run one round of tasks
+# ---------------------------------------------------------------------------
+run_round() {
+  if [[ $WORKERS -gt 1 ]]; then
+    run_parallel
+  else
+    run_sequential
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Re-scan todo/ for new tasks (watch mode)
+# ---------------------------------------------------------------------------
+rescan_tasks() {
+  TASK_NAMES=()
+  TASK_FPATHS=()
+
+  if [[ -d "$TASK_SOURCE" ]]; then
+    local todo_dir="$TASK_SOURCE/todo"
+    [[ -d "$todo_dir" ]] || return 1
+
+    local files=()
+    while IFS= read -r -d '' f; do
+      files+=("$f")
+    done < <(find "$todo_dir" -maxdepth 1 -name '*.md' -print0 | sort -z)
+
+    [[ ${#files[@]} -eq 0 ]] && return 1
+
+    FOLDER_MODE=true
+    for f in "${files[@]}"; do
+      local title
+      title=$(extract_title "$f")
+      TASK_NAMES+=("$title")
+      TASK_FPATHS+=("$f")
+    done
+    TOTAL=${#TASK_NAMES[@]}
+    return 0
+  fi
+  return 1
+}
+
+# ---------------------------------------------------------------------------
+# Print summary for current round
+# ---------------------------------------------------------------------------
+print_summary() {
+  local batch_end batch_duration
+  batch_end=$(date +%s)
+  batch_duration=$(( batch_end - BATCH_START ))
+
+  {
+    echo ""
+    echo "## Summary"
+    echo ""
+    echo "- **Passed**: ${PASSED}/${TOTAL}"
+    echo "- **Failed**: ${FAILED}/${TOTAL}"
+    if $STOPPED; then
+      echo "- **Skipped**: $((TOTAL - PASSED - FAILED))/${TOTAL}"
+    fi
+    echo "- **Workers**: ${WORKERS}"
+    echo "- **Watch mode**: ${WATCH_MODE}"
+    echo "- **Total duration**: ${batch_duration}s ($(( batch_duration / 60 )) min)"
+    echo "- **Completed**: $(date '+%Y-%m-%d %H:%M:%S')"
+  } >> "$RESULTS_FILE"
+
+  echo ""
+  echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${YELLOW}Batch Results:${NC}"
+  echo -e "  ${GREEN}Passed:${NC}   ${PASSED}/${TOTAL}"
+  echo -e "  ${RED}Failed:${NC}   ${FAILED}/${TOTAL}"
+  if $STOPPED; then
+    echo -e "  ${YELLOW}Skipped:${NC}  $((TOTAL - PASSED - FAILED))/${TOTAL}"
+  fi
+  echo -e "  ${BLUE}Workers:${NC}  ${WORKERS}"
+  echo -e "  ${BLUE}Duration:${NC} ${batch_duration}s ($(( batch_duration / 60 )) min)"
+  echo -e "  ${BLUE}Report:${NC}   ${RESULTS_FILE}"
+  echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
+# ---------------------------------------------------------------------------
 # Main execution
 # ---------------------------------------------------------------------------
-if [[ $WORKERS -gt 1 ]]; then
-  run_parallel
-else
-  run_sequential
-fi
 
-BATCH_END=$(date +%s)
-BATCH_DURATION=$(( BATCH_END - BATCH_START ))
+# First round: run tasks loaded at startup
+run_round
+print_summary
 
-# Summary
-{
+if $WATCH_MODE && $FOLDER_MODE; then
   echo ""
-  echo "## Summary"
-  echo ""
-  echo "- **Passed**: ${PASSED}/${TOTAL}"
-  echo "- **Failed**: ${FAILED}/${TOTAL}"
-  if $STOPPED; then
-    echo "- **Skipped**: $((TOTAL - PASSED - FAILED))/${TOTAL}"
-  fi
-  echo "- **Workers**: ${WORKERS}"
-  echo "- **Total duration**: ${BATCH_DURATION}s ($(( BATCH_DURATION / 60 )) min)"
-  echo "- **Completed**: $(date '+%Y-%m-%d %H:%M:%S')"
-} >> "$RESULTS_FILE"
+  echo -e "${CYAN}Watch mode active — polling todo/ every ${WATCH_INTERVAL}s (Ctrl-C to stop)${NC}"
 
-echo ""
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Batch Results:${NC}"
-echo -e "  ${GREEN}Passed:${NC}   ${PASSED}/${TOTAL}"
-echo -e "  ${RED}Failed:${NC}   ${FAILED}/${TOTAL}"
-if $STOPPED; then
-  echo -e "  ${YELLOW}Skipped:${NC}  $((TOTAL - PASSED - FAILED))/${TOTAL}"
+  while true; do
+    sleep "$WATCH_INTERVAL"
+
+    if rescan_tasks; then
+      echo ""
+      echo -e "${CYAN}══════════════════════════════════════════════════${NC}"
+      echo -e "${YELLOW}New tasks detected: ${TOTAL}${NC}"
+      echo -e "${CYAN}══════════════════════════════════════════════════${NC}"
+
+      # Reset counters for new round
+      PASSED=0
+      FAILED=0
+      STOPPED=false
+      BATCH_START=$(date +%s)
+      BATCH_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+      RESULTS_FILE="$REPO_ROOT/.opencode/pipeline/reports/batch_${BATCH_TIMESTAMP}.md"
+      mkdir -p "$(dirname "$RESULTS_FILE")"
+
+      # Write new report header
+      {
+        echo "# Batch Pipeline Results (watch round)"
+        echo ""
+        echo "- **Started**: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "- **Source**: ${TASK_SOURCE}/todo/ (watch mode)"
+        echo "- **Total tasks**: ${TOTAL}"
+        echo "- **Workers**: ${WORKERS}"
+        echo ""
+        echo "| # | Task | Status | Duration | Branch |"
+        echo "|---|------|--------|----------|--------|"
+      } > "$RESULTS_FILE"
+
+      run_round
+      print_summary
+    fi
+  done
 fi
-echo -e "  ${BLUE}Workers:${NC}  ${WORKERS}"
-echo -e "  ${BLUE}Duration:${NC} ${BATCH_DURATION}s ($(( BATCH_DURATION / 60 )) min)"
-echo -e "  ${BLUE}Report:${NC}   ${RESULTS_FILE}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 # Return to original branch
 git -C "$REPO_ROOT" checkout "$ORIGINAL_BRANCH" 2>/dev/null || true

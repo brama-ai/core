@@ -40,7 +40,7 @@ NC='\033[0m'
 AGENTS=(architect coder validator tester documenter)
 
 # Timeouts per agent (seconds, override via env)
-PIPELINE_TIMEOUT_ARCHITECT="${PIPELINE_TIMEOUT_ARCHITECT:-1800}"   # 30 min
+PIPELINE_TIMEOUT_ARCHITECT="${PIPELINE_TIMEOUT_ARCHITECT:-2700}"   # 45 min
 PIPELINE_TIMEOUT_CODER="${PIPELINE_TIMEOUT_CODER:-3600}"           # 60 min
 PIPELINE_TIMEOUT_VALIDATOR="${PIPELINE_TIMEOUT_VALIDATOR:-1200}"   # 20 min
 PIPELINE_TIMEOUT_TESTER="${PIPELINE_TIMEOUT_TESTER:-1800}"         # 30 min
@@ -896,8 +896,16 @@ main() {
     git -C "$REPO_ROOT" checkout -b "$branch"
     echo -e "${GREEN}Created branch: ${branch}${NC}"
   else
-    git -C "$REPO_ROOT" checkout "$branch"
-    echo -e "${YELLOW}Switched to existing branch: ${branch}${NC}"
+    # In worktree mode, re-create the branch from current HEAD to avoid
+    # "already checked out" errors from a previous failed run
+    if [[ -f "$REPO_ROOT/.git" ]]; then
+      git -C "$REPO_ROOT" branch -D "$branch" 2>/dev/null || true
+      git -C "$REPO_ROOT" checkout -b "$branch"
+      echo -e "${YELLOW}Re-created branch (worktree re-run): ${branch}${NC}"
+    else
+      git -C "$REPO_ROOT" checkout "$branch"
+      echo -e "${YELLOW}Switched to existing branch: ${branch}${NC}"
+    fi
   fi
 
   # Initialize handoff
