@@ -1,0 +1,105 @@
+flowchart TD
+
+    subgraph NET["dev-edge network"]
+
+        subgraph PERSISTENCE["Persistence"]
+            PG[("PostgreSQL")]
+            OS[("OpenSearch")]
+            REDIS[("Redis")]
+            RMQ["RabbitMQ"]
+        end
+
+        subgraph INFRA["Core Infrastructure"]
+            TRAEFIK["Traefik Gateway + Proxy"]
+            CORE["Core"]
+            OC["OpenClaw"]
+            LITELLM["LiteLLM"]
+        end
+
+        subgraph AGENTS["Business Agents"]
+            subgraph DEV_GROUP["Dev Agents"]
+                DEV["Dev Agent"]
+                REPORTER["Dev Reporter"]
+            end
+            subgraph KNOWLEDGE_GROUP["Knowledge"]
+                KNOWLEDGE["Knowledge Agent"]
+                KW["Knowledge Worker"]
+            end
+            WIKI["Wiki Agent"]
+            NEWS["News Maker"]
+        end
+
+    end
+
+    TELEGRAM["Telegram"]
+    LLM_MODELS[/"LLM Models — Opus · GPT · Minimax"\]
+    OPENROUTER["OpenRouter API Gateway"]
+
+    subgraph LANGFUSE["Langfuse Observability (isolated)"]
+        LF_WEB["langfuse-web"]
+        LF_WORKER["langfuse-worker"]
+        LF_PG[("postgres")]
+        LF_CH[("ClickHouse")]
+        LF_REDIS[("redis")]
+        LF_MINIO[("MinIO")]
+    end
+
+    %% PostgreSQL — used by most agents (not OC, not Hello)
+    CORE      --> PG
+    DEV       --> PG
+    KNOWLEDGE --> PG
+    KW        --> PG
+    WIKI      --> PG
+    NEWS      --> PG
+    REPORTER  --> PG
+    LITELLM   --> PG
+
+    %% OpenSearch — used by all agents except Core
+    DEV       --> OS
+    KNOWLEDGE --> OS
+    KW        --> OS
+    WIKI      --> OS
+    NEWS      --> OS
+    REPORTER  --> OS
+    OC        --> OS
+
+    %% Langfuse internal wiring
+    LF_WEB    --> LF_PG
+    LF_WORKER --> LF_PG
+    LF_WORKER --> LF_CH
+    LF_WORKER --> LF_REDIS
+    LF_WORKER --> LF_MINIO
+
+    %% Agents → LiteLLM
+    DEV  --> LITELLM
+    WIKI --> LITELLM
+    NEWS --> LITELLM
+
+    %% LiteLLM → OpenRouter → LLM models
+    LITELLM --> OPENROUTER --> LLM_MODELS
+
+    %% A2A — Core is the hub, agents register and receive messages
+    CORE <-.->|a2a| DEV
+    CORE <-.->|a2a| REPORTER
+    CORE <-.->|a2a| KNOWLEDGE
+    CORE <-.->|a2a| WIKI
+    CORE <-.->|a2a| NEWS
+    OC -.->|a2a| CORE
+    TELEGRAM --> OC
+
+    %% LiteLLM ships traces to Langfuse
+    LITELLM -.-> LF_WEB
+
+    classDef shared      fill:#7c3aed,color:#fff,stroke:#4c1d95,stroke-width:3px,font-weight:bold
+    classDef persistence fill:#0f766e,color:#fff,stroke:#134e4a,stroke-width:2px
+    classDef infra       fill:#1e40af,color:#fff,stroke:#1e3a8a,stroke-width:2px
+    classDef agent    fill:#065f46,color:#fff,stroke:#064e3b,stroke-width:2px
+    classDef obs      fill:#92400e,color:#fff,stroke:#78350f,stroke-width:2px
+    classDef external fill:#1c1917,color:#fff,stroke:#57534e,stroke-width:2px,stroke-dasharray:5
+
+    class PG,OS shared
+    class REDIS,RMQ persistence
+    class TRAEFIK,CORE,OC,LITELLM infra
+    class DEV,KNOWLEDGE,KW,WIKI,NEWS,REPORTER agent
+    class LF_WEB,LF_WORKER,LF_PG,LF_CH,LF_REDIS,LF_MINIO obs
+    class OPENROUTER,LLM_MODELS,TELEGRAM external
