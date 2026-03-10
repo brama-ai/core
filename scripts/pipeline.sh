@@ -485,22 +485,30 @@ write_checkpoint() {
 
   [[ -f "$CHECKPOINT_FILE" ]] || return 0
 
-  # Use python3 to safely update JSON
-  python3 -c "
+  # Use python3 to safely update JSON (stdin to avoid shell quoting issues)
+  python3 - "$CHECKPOINT_FILE" "$agent" "$status" "$duration" "$commit_hash" "$tokens_json" <<'PYEOF'
 import json, sys
-with open('$CHECKPOINT_FILE', 'r') as f:
+cp_file, agent, status, duration, commit, tokens_raw = sys.argv[1:7]
+with open(cp_file, 'r') as f:
     data = json.load(f)
-tokens = json.loads('$tokens_json') if '$tokens_json' != '{}' else {}
-data['agents']['$agent'] = {
-    'status': '$status',
-    'duration': $duration,
-    'commit': '$commit_hash',
-    'finished': '$(date '+%Y-%m-%d %H:%M:%S')',
+try:
+    tokens = json.loads(tokens_raw) if tokens_raw != '{}' else {}
+except json.JSONDecodeError:
+    tokens = {}
+from datetime import datetime
+data['agents'][agent] = {
+    'status': status,
+    'duration': int(duration),
+    'commit': commit,
+    'finished': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
     'tokens': tokens
 }
-with open('$CHECKPOINT_FILE', 'w') as f:
+with open(cp_file, 'w') as f:
     json.dump(data, f, indent=2)
-" 2>/dev/null || true
+PYEOF
+  if [[ $? -ne 0 ]]; then
+    echo -e "  ${YELLOW}⚠ write_checkpoint failed for ${agent}${NC}" >&2
+  fi
 }
 
 # Copy agent log to artifacts

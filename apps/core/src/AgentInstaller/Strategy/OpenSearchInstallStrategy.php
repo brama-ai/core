@@ -146,7 +146,7 @@ final class OpenSearchInstallStrategy implements InstallStrategyInterface
         ]);
 
         $response = @file_get_contents($url, false, $context);
-        $headers = $http_response_header ?? [];
+        $headers = $http_response_header;
 
         if (false === $response && [] === $headers) {
             throw new AgentInstallException(sprintf('Failed to delete OpenSearch index: %s', $indexName));

@@ -40,7 +40,7 @@ final class NewsCrawlTrigger
             throw new AgentActionException(sprintf('Crawl trigger failed: could not reach %s', $url));
         }
 
-        $status = $this->extractStatusCode($http_response_header ?? []);
+        $status = $this->extractStatusCode($http_response_header);
 
         if (null === $status) {
             throw new AgentActionException('Crawl trigger failed: unknown response status.');
