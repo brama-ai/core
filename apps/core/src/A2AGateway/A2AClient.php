@@ -13,7 +13,7 @@ use App\Observability\TraceContext;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 
-final class A2AClient
+final class A2AClient implements A2AClientInterface
 {
     public function __construct(
         private readonly AgentRegistryInterface $registry,

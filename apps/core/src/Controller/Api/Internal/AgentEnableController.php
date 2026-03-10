@@ -7,6 +7,7 @@ namespace App\Controller\Api\Internal;
 use App\A2AGateway\SkillCatalogSyncService;
 use App\AgentRegistry\AgentRegistryAuditLogger;
 use App\AgentRegistry\AgentRegistryRepository;
+use App\Scheduler\SchedulerService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,6 +21,7 @@ final class AgentEnableController extends AbstractController
         private readonly AgentRegistryRepository $registry,
         private readonly AgentRegistryAuditLogger $audit,
         private readonly SkillCatalogSyncService $syncService,
+        private readonly SchedulerService $schedulerService,
     ) {
     }
 
@@ -46,6 +48,7 @@ final class AgentEnableController extends AbstractController
             return $this->json(['error' => sprintf('Agent "%s" not found', $name)], Response::HTTP_NOT_FOUND);
         }
 
+        $this->schedulerService->enableByAgent($name);
         $this->audit->log($name, 'enabled', $actor);
         $this->syncService->pushDiscovery();
 

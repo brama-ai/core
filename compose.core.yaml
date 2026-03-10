@@ -38,6 +38,36 @@ services:
     networks:
       - dev-edge
 
+  core-scheduler:
+    build:
+      context: .
+      dockerfile: docker/core/Dockerfile
+    env_file:
+      - ./docker/openclaw/.env
+    command: ["php", "bin/console", "scheduler:run"]
+    environment:
+      LANGFUSE_ENABLED: "true"
+      LANGFUSE_BASE_URL: http://langfuse-web:3000
+      LANGFUSE_PUBLIC_KEY: lf_pk_local_dev
+      LANGFUSE_SECRET_KEY: lf_sk_local_dev
+      LANGFUSE_ENV: local
+      ADMIN_OPENCLAW_URL: http://openclaw.localhost/
+      ADMIN_LANGFUSE_URL: http://langfuse.localhost/
+      ADMIN_TRAEFIK_URL: http://traefik.localhost/dashboard/
+      ADMIN_LITELLM_URL: http://litellm.localhost/ui/
+      EDGE_AUTH_JWT_SECRET: dev-edge-auth-secret-change-me
+      EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
+      EDGE_AUTH_TOKEN_TTL: 43200
+      EDGE_AUTH_LOGIN_BASE_URL: http://localhost
+      EDGE_AUTH_COOKIE_DOMAIN: localhost
+    volumes:
+      - ./apps/core:/var/www/html
+    depends_on:
+      - core
+    restart: unless-stopped
+    networks:
+      - dev-edge
+
   core-e2e:
     profiles: [e2e]
     build:

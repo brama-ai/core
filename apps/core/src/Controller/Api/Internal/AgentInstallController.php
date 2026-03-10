@@ -9,6 +9,7 @@ use App\AgentInstaller\AgentInstallException;
 use App\AgentInstaller\AgentMigrationTrigger;
 use App\AgentRegistry\AgentRegistryAuditLogger;
 use App\AgentRegistry\AgentRegistryRepository;
+use App\Scheduler\SchedulerService;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -24,6 +25,7 @@ final class AgentInstallController extends AbstractController
         private readonly AgentRegistryAuditLogger $audit,
         private readonly AgentInstallerService $installer,
         private readonly AgentMigrationTrigger $migrationTrigger,
+        private readonly SchedulerService $schedulerService,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -67,10 +69,13 @@ final class AgentInstallController extends AbstractController
 
             $this->registry->markInstalled($name);
 
+            $scheduledJobsCount = $this->schedulerService->registerFromManifest($name, $manifest);
+
             $actor = $this->getUser()?->getUserIdentifier() ?? 'unknown';
             $this->audit->log($name, 'installed', $actor, [
                 'provisioned_actions' => $actions,
                 'warnings' => $warnings,
+                'scheduled_jobs' => $scheduledJobsCount,
             ]);
 
             $this->logger->info('Agent installed', [

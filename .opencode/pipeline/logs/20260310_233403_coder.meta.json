@@ -1,0 +1,18 @@
+{
+  "agent": "coder",
+  "model": "",
+  "started_epoch": 1773178700,
+  "finished_epoch": 1773179602,
+  "duration_seconds": 902,
+  "exit_code": 0,
+  "log_file": "20260310_233403_coder.log",
+  "log_bytes": 82230,
+  "log_lines": 1458,
+  "tokens": {
+  "input_tokens": 124,
+  "output_tokens": 46072,
+  "cache_read": 9938912,
+  "cache_write": 126462,
+  "cost": 0
+}}
+}

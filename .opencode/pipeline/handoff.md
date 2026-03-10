@@ -140,10 +140,41 @@
 
 ## Coder
 
-- **Status**: pending
-- **Files modified**: —
-- **Migrations created**: —
-- **Deviations**: —
+- **Status**: done
+- **Files created**:
+  - `apps/core/migrations/Version20260310000001.php` — `scheduled_jobs` table migration
+  - `apps/core/src/Scheduler/ScheduledJobRepository.php` — DBAL repository for scheduled jobs
+  - `apps/core/src/Scheduler/CronExpressionHelper.php` — wrapper around dragonmantank/cron-expression
+  - `apps/core/src/Scheduler/SchedulerService.php` — orchestration: tick, registerFromManifest, lifecycle methods
+  - `apps/core/src/A2AGateway/A2AClientInterface.php` — interface extracted from A2AClient for testability
+  - `apps/core/src/Command/SchedulerRunCommand.php` — long-running `scheduler:run` command with SIGTERM/SIGINT handling
+  - `apps/core/src/Controller/Admin/SchedulerController.php` — `GET /admin/scheduler` admin page
+  - `apps/core/src/Controller/Api/Internal/SchedulerRunNowController.php` — `POST /api/v1/internal/scheduler/{id}/run`
+  - `apps/core/src/Controller/Api/Internal/SchedulerToggleController.php` — `POST /api/v1/internal/scheduler/{id}/toggle`
+  - `apps/core/templates/admin/scheduler/index.html.twig` — admin UI template
+  - `apps/core/tests/Unit/Scheduler/CronExpressionHelperTest.php` — unit tests for cron helper
+  - `apps/core/tests/Unit/Scheduler/SchedulerServiceTest.php` — unit tests for scheduler service (retry, dead-letter, catch-up)
+  - `apps/core/tests/Functional/Scheduler/ScheduledJobRepositoryTest.php` — functional tests for repository
+  - `apps/core/tests/Functional/Scheduler/AgentInstallSchedulerTest.php` — functional tests for install/uninstall lifecycle
+  - `docs/scheduler.md` — developer documentation
+- **Files modified**:
+  - `apps/core/composer.json` — added `dragonmantank/cron-expression:^3.3`
+  - `apps/core/composer.lock` — updated by composer
+  - `apps/core/src/A2AGateway/A2AClient.php` — implements `A2AClientInterface`
+  - `apps/core/src/Controller/Api/Internal/AgentInstallController.php` — calls `SchedulerService::registerFromManifest` after install
+  - `apps/core/src/Controller/Api/Internal/AgentDeleteController.php` — calls `SchedulerService::removeByAgent` before uninstall
+  - `apps/core/src/Controller/Api/Internal/AgentEnableController.php` — calls `SchedulerService::enableByAgent` after enable
+  - `apps/core/src/Controller/Api/Internal/AgentDisableController.php` — calls `SchedulerService::disableByAgent` after disable
+  - `apps/core/templates/admin/layout.html.twig` — added "Планувальник" nav link
+  - `compose.core.yaml` — added `core-scheduler` service
+  - `docs/agent-requirements/storage-provisioning.md` — added `scheduled_jobs` section
+  - `openspec/changes/add-central-scheduler/tasks.md` — marked all tasks `[x]`
+- **Migrations created**: `Version20260310000001` — run on both dev and test databases
+- **Deviations**:
+  - `ScheduledJobRepository` and `CronExpressionHelper` are not `final` (removed to allow PHPUnit mocking in unit tests)
+  - Created `A2AClientInterface` to allow mocking `A2AClient` in `SchedulerServiceTest` (A2AClient is final)
+  - Tasks 7.4 and 7.5 combined into `AgentInstallSchedulerTest` (install and uninstall tests in one file)
+  - PHPStan reports 2 pre-existing errors in `NewsCrawlTrigger.php` and `OpenSearchInstallStrategy.php` — not introduced by this change
 
 ## Validator
 
@@ -165,3 +196,4 @@
 
 ---
 
+- **Commit (architect)**: c9352f0

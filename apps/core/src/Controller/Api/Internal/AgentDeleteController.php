@@ -9,6 +9,7 @@ use App\AgentInstaller\AgentInstallerService;
 use App\AgentInstaller\AgentInstallException;
 use App\AgentRegistry\AgentRegistryAuditLogger;
 use App\AgentRegistry\AgentRegistryRepository;
+use App\Scheduler\SchedulerService;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -24,6 +25,7 @@ final class AgentDeleteController extends AbstractController
         private readonly AgentRegistryAuditLogger $audit,
         private readonly SkillCatalogSyncService $syncService,
         private readonly AgentInstallerService $installer,
+        private readonly SchedulerService $schedulerService,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -50,6 +52,7 @@ final class AgentDeleteController extends AbstractController
 
         try {
             $actions = $this->installer->uninstall($manifest);
+            $this->schedulerService->removeByAgent($name);
             $this->registry->markUninstalled($name);
             $this->audit->log($name, 'uninstalled', $actor, ['deprovisioned_actions' => $actions]);
             $this->syncService->pushDiscovery();

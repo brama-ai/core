@@ -1,4 +1,17 @@
-# Skill: Documentation
+---
+name: docs-manager
+description: >
+  Manage bilingual (UA/EN) project documentation: conventions, directory structure,
+  INDEX.md maintenance, templates, and validation. Use this skill whenever work involves
+  the docs/ directory — creating docs, updating docs, checking doc structure, figuring out
+  where a doc should go, understanding the bilingual folder convention, writing agent PRDs,
+  feature docs, or spec docs. Also use when you need to validate that docs follow the
+  leaf-directory rule, update INDEX.md, or pick the right template. Triggers on: "document",
+  "docs", "write docs", "add documentation", "doc structure", "INDEX.md", "bilingual",
+  "ua/en", "PRD", "where should I put this doc", "doc template".
+---
+
+# Docs Manager
 
 Manage bilingual project documentation following the folder-based language convention.
 

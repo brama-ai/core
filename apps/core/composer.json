@@ -9,6 +9,7 @@
         "ext-pdo_pgsql": "*",
         "doctrine/dbal": "^4",
         "doctrine/doctrine-migrations-bundle": "^3.3",
+        "dragonmantank/cron-expression": "^3.3",
         "predis/predis": "^3.4",
         "symfony/console": "7.*",
         "symfony/dotenv": "7.*",

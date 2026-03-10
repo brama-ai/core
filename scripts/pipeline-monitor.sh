@@ -200,15 +200,18 @@ list_todo_sorted() {
   [[ -d "$todo_dir" ]] || return
 
   local entries=()
+  local ecount=0
   while IFS= read -r f; do
     [[ -f "$f" ]] || continue
     local prio
     prio=$(get_priority "$f")
     entries+=("$(printf '%03d|%s' "$prio" "$f")")
+    ecount=$((ecount + 1))
   done < <(find "$todo_dir" -maxdepth 1 -name '*.md' 2>/dev/null | sort)
 
   # Sort by priority descending (higher = first)
-  printf '%s\n' "${entries[@]}" | sort -t'|' -k1 -rn | cut -d'|' -f2
+  [[ $ecount -gt 0 ]] && \
+    printf '%s\n' "${entries[@]}" | sort -t'|' -k1 -rn | cut -d'|' -f2
 }
 
 # ---------------------------------------------------------------------------
@@ -217,12 +220,15 @@ list_todo_sorted() {
 
 detect_workers() {
   local workers=()
+  local wcount=0
   if [[ -d "$WORKTREE_BASE" ]]; then
     for wt in "$WORKTREE_BASE"/worker-*; do
-      [[ -d "$wt" ]] && workers+=("$(basename "$wt")")
+      [[ -d "$wt" ]] && { workers+=("$(basename "$wt")"); wcount=$((wcount + 1)); }
     done
   fi
-  echo "${workers[@]:-}"
+  if [[ $wcount -gt 0 ]]; then
+    echo "${workers[*]}"
+  fi
 }
 
 # Get the task a specific worker is currently running (from opencode process)
@@ -349,20 +355,22 @@ render_tabs_str() {
     out+="${DIM} 1:Overview ${RESET}"
   fi
 
-  local idx=2
-  for w in "${workers[@]}"; do
-    local task_hint
-    task_hint=$(get_worker_active_task "$w")
-    local label="${idx}:${w}"
-    [[ -n "$task_hint" ]] && label="${idx}:${w} ${task_hint}"
+  if [[ ${#workers[@]} -gt 0 ]]; then
+    local idx=2
+    for w in "${workers[@]}"; do
+      local task_hint
+      task_hint=$(get_worker_active_task "$w")
+      local label="${idx}:${w}"
+      [[ -n "$task_hint" ]] && label="${idx}:${w} ${task_hint}"
 
-    if [[ $CURRENT_TAB -eq $idx ]]; then
-      out+="${REV}${BOLD} ${label} ${RESET}"
-    else
-      out+="${DIM} ${label} ${RESET}"
-    fi
-    idx=$((idx + 1))
-  done
+      if [[ $CURRENT_TAB -eq $idx ]]; then
+        out+="${REV}${BOLD} ${label} ${RESET}"
+      else
+        out+="${DIM} ${label} ${RESET}"
+      fi
+      idx=$((idx + 1))
+    done
+  fi
 
   printf '%s' "$out"
 }
@@ -796,7 +804,7 @@ render() {
     raw=$(detect_workers)
     [[ -n "$raw" ]] && read -ra workers <<< "$raw"
     local worker_idx=$((CURRENT_TAB - 1))
-    if [[ $worker_idx -le ${#workers[@]} ]]; then
+    if [[ ${#workers[@]} -gt 0 && $worker_idx -le ${#workers[@]} ]]; then
       local worker_num
       worker_num=$(echo "${workers[$((worker_idx - 1))]}" | sed 's/worker-//')
       render_worker_tab "$worker_num"

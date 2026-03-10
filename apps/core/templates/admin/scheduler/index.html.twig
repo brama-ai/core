@@ -1,0 +1,112 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Планувальник — Admin{% endblock %}
+{% block page_title %}Планувальник задач{% endblock %}
+
+{% block content %}
+    <div class="glass-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+            <span style="font-size:.85rem;color:var(--text-secondary);">Всього задач: {{ jobs|length }}</span>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Агент</th>
+                        <th>Задача</th>
+                        <th>Skill</th>
+                        <th>Cron</th>
+                        <th>Наступний запуск</th>
+                        <th>Останній запуск</th>
+                        <th>Статус</th>
+                        <th>Retry</th>
+                        <th>Увімкнено</th>
+                        <th>Дії</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in jobs %}
+                        <tr id="job-row-{{ job.id }}">
+                            <td style="font-size:.85rem;">{{ job.agent_name }}</td>
+                            <td style="font-size:.85rem;font-weight:500;">{{ job.job_name }}</td>
+                            <td style="font-family:monospace;font-size:.8rem;">{{ job.skill_id }}</td>
+                            <td style="font-family:monospace;font-size:.8rem;">{{ job.cron_expression ?? '—' }}</td>
+                            <td style="font-family:monospace;font-size:.8rem;white-space:nowrap;">
+                                {{ job.next_run_at ? job.next_run_at|slice(0, 19)|replace({'T': ' '}) : '—' }}
+                            </td>
+                            <td style="font-family:monospace;font-size:.8rem;white-space:nowrap;">
+                                {{ job.last_run_at ? job.last_run_at|slice(0, 19)|replace({'T': ' '}) : '—' }}
+                            </td>
+                            <td>
+                                {% if job.last_status == 'completed' %}
+                                    <span class="badge badge-log-info">completed</span>
+                                {% elseif job.last_status == 'failed' %}
+                                    <span class="badge badge-log-error">failed</span>
+                                {% else %}
+                                    <span style="color:var(--text-muted);">—</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-size:.85rem;text-align:center;">
+                                {{ job.retry_count }}/{{ job.max_retries }}
+                            </td>
+                            <td style="text-align:center;">
+                                <button
+                                    class="btn btn-settings"
+                                    style="font-size:.75rem;padding:.2rem .5rem;"
+                                    onclick="toggleJob('{{ job.id }}', {{ job.enabled ? 'false' : 'true' }})"
+                                    title="{{ job.enabled ? 'Вимкнути' : 'Увімкнути' }}"
+                                >
+                                    {{ job.enabled ? '✓' : '✗' }}
+                                </button>
+                            </td>
+                            <td>
+                                <button
+                                    class="btn btn-primary"
+                                    style="font-size:.75rem;padding:.2rem .6rem;"
+                                    onclick="runNow('{{ job.id }}')"
+                                    title="Запустити зараз"
+                                >
+                                    ▶ Зараз
+                                </button>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="10" class="empty-row">Задач не знайдено</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+async function runNow(id) {
+    const res = await fetch('/api/v1/internal/scheduler/' + id + '/run', {method: 'POST'});
+    const data = await res.json();
+    if (res.ok) {
+        alert('Задачу заплановано на негайний запуск');
+        location.reload();
+    } else {
+        alert('Помилка: ' + (data.error ?? 'невідома'));
+    }
+}
+
+async function toggleJob(id, enable) {
+    const res = await fetch('/api/v1/internal/scheduler/' + id + '/toggle', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({enabled: enable}),
+    });
+    const data = await res.json();
+    if (res.ok) {
+        location.reload();
+    } else {
+        alert('Помилка: ' + (data.error ?? 'невідома'));
+    }
+}
+</script>
+{% endblock %}
