@@ -546,10 +546,10 @@ save_agent_artifact() {
 get_resume_agent() {
   [[ -f "$CHECKPOINT_FILE" ]] || return
 
-  python3 -c "
-import json
+  python3 - "$CHECKPOINT_FILE" <<'PYEOF' 2>/dev/null || true
+import json, sys
 agents_order = ['architect', 'coder', 'validator', 'tester', 'documenter']
-with open('$CHECKPOINT_FILE', 'r') as f:
+with open(sys.argv[1], 'r') as f:
     data = json.load(f)
 completed = data.get('agents', {})
 for agent in agents_order:
@@ -557,16 +557,16 @@ for agent in agents_order:
     if info.get('status') != 'done':
         print(agent)
         break
-" 2>/dev/null || true
+PYEOF
 }
 
 # Print checkpoint summary
 print_checkpoint_summary() {
   [[ -f "$CHECKPOINT_FILE" ]] || return
 
-  python3 -c "
-import json
-with open('$CHECKPOINT_FILE', 'r') as f:
+  python3 - "$CHECKPOINT_FILE" <<'PYEOF' 2>/dev/null || true
+import json, sys
+with open(sys.argv[1], 'r') as f:
     data = json.load(f)
 agents = data.get('agents', {})
 if not agents:
@@ -578,7 +578,7 @@ for name, info in agents.items():
     commit = info.get('commit', '')
     icon = '✓' if status == 'done' else '✗'
     print(f'  {icon} {name}: {status} ({dur}s) {commit}')
-" 2>/dev/null || true
+PYEOF
 }
 
 # ── Dev Reporter Agent integration ───────────────────────────────────
@@ -1805,20 +1805,22 @@ main() {
 
       # Get status from checkpoint
       local agent_status agent_dur
-      agent_status=$(python3 -c "
-import json
-with open('$CHECKPOINT_FILE', 'r') as f:
+      agent_status=$(python3 - "$CHECKPOINT_FILE" "$agent" <<'PYEOF' 2>/dev/null || echo "unknown"
+import json, sys
+with open(sys.argv[1], 'r') as f:
     data = json.load(f)
-info = data.get('agents', {}).get('$agent', {})
+info = data.get('agents', {}).get(sys.argv[2], {})
 print(info.get('status', 'skipped'))
-" 2>/dev/null || echo "unknown")
-      agent_dur=$(python3 -c "
-import json
-with open('$CHECKPOINT_FILE', 'r') as f:
+PYEOF
+)
+      agent_dur=$(python3 - "$CHECKPOINT_FILE" "$agent" <<'PYEOF' 2>/dev/null || echo "0"
+import json, sys
+with open(sys.argv[1], 'r') as f:
     data = json.load(f)
-info = data.get('agents', {}).get('$agent', {})
+info = data.get('agents', {}).get(sys.argv[2], {})
 print(info.get('duration', 0))
-" 2>/dev/null || echo "0")
+PYEOF
+)
 
       local status_icon="✓"
       if [[ "$agent_status" != "done" ]]; then

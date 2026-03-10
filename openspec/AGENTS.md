@@ -54,9 +54,10 @@ Track these steps as TODOs and complete them one by one.
 4. **Implement tasks sequentially** - Complete in order
 5. **Update documentation** - Every proposal that introduces or changes a capability MUST update `docs/`. Rules:
    - Developer-facing docs (contracts, conventions, runbooks): English, place under `docs/`
-   - User/operator-facing docs: Ukrainian canonical + `.en.md` English mirror
+   - User/operator-facing docs: folder-based bilingual — `ua/` (Ukrainian canonical) + `en/` (English mirror)
    - Every `tasks.md` MUST contain a documentation task as the final step before quality checks
    - If the change affects agent contracts or platform conventions, update `docs/agent-requirements/`
+   - Follow the `docs-manager` skill conventions for directory structure and templates
 6. **Confirm completion** - Ensure every item in `tasks.md` is finished before updating statuses
 7. **Run quality checks and automated tests** - Execute all applicable tools before marking done:
    - `phpstan analyse` — zero errors at level 8
