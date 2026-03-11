@@ -1,0 +1,392 @@
+# AI Community Platform — Helm Chart Default Values
+#
+# This file documents every configurable value with safe defaults.
+# For production, create a values-prod.yaml that overrides only what you need.
+# Never commit secrets to values files — use secretRefs or external secret operators.
+
+# ---------------------------------------------------------------------------
+# Global image settings
+# ---------------------------------------------------------------------------
+global:
+  # Image pull policy for all platform images.
+  # Use IfNotPresent in production with pinned tags.
+  imagePullPolicy: IfNotPresent
+
+  # Optional: image pull secrets for private registries
+  imagePullSecrets: []
+  # - name: my-registry-secret
+
+  # Namespace override (defaults to the release namespace)
+  namespaceOverride: ""
+
+# ---------------------------------------------------------------------------
+# Core application service
+# ---------------------------------------------------------------------------
+core:
+  image:
+    repository: ghcr.io/nmdimas/ai-community-platform/core
+    # Pin to a specific release tag in production. Never use "latest".
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  # Resource requests and limits
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+
+  # Readiness probe — gates traffic until the app is ready
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 80
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+
+  # Liveness probe — restarts the container if it becomes unhealthy
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 80
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    failureThreshold: 3
+
+  # Startup probe — allows slow startup before liveness kicks in
+  startupProbe:
+    httpGet:
+      path: /health
+      port: 80
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 24
+
+  # Environment variables injected into the core container.
+  # Sensitive values should use secretRef entries below.
+  env:
+    APP_ENV: prod
+    LANGFUSE_ENABLED: "true"
+    EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
+    EDGE_AUTH_TOKEN_TTL: "43200"
+
+  # Reference an existing Kubernetes Secret for sensitive values.
+  # The secret must contain keys matching the expected env var names.
+  # Example keys: APP_SECRET, EDGE_AUTH_JWT_SECRET, DATABASE_URL,
+  #               LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY
+  secretRef: ""
+  # secretRef: core-secrets
+
+  # Persistence for any local file state (optional; prefer external storage)
+  persistence:
+    enabled: false
+    storageClass: ""
+    size: 1Gi
+
+# ---------------------------------------------------------------------------
+# Core scheduler (long-running worker)
+# ---------------------------------------------------------------------------
+coreScheduler:
+  enabled: true
+
+  image:
+    repository: ghcr.io/nmdimas/ai-community-platform/core
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+
+  # Schedulers run as a single replica; horizontal scaling is not safe
+  replicaCount: 1
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  # Scheduler does not expose HTTP; use exec probe
+  livenessProbe:
+    exec:
+      command:
+        - php
+        - bin/console
+        - scheduler:status
+    initialDelaySeconds: 30
+    periodSeconds: 60
+    failureThreshold: 3
+
+# ---------------------------------------------------------------------------
+# Agents
+# Each agent can be enabled/disabled independently.
+# ---------------------------------------------------------------------------
+agents:
+  knowledge:
+    enabled: true
+    image:
+      repository: ghcr.io/nmdimas/ai-community-platform/knowledge-agent
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+    replicaCount: 1
+    service:
+      port: 8083
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 8083
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8083
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    secretRef: ""
+
+  hello:
+    enabled: true
+    image:
+      repository: ghcr.io/nmdimas/ai-community-platform/hello-agent
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+    replicaCount: 1
+    service:
+      port: 8085
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 8085
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8085
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    secretRef: ""
+
+  newsMaker:
+    enabled: false
+    image:
+      repository: ghcr.io/nmdimas/ai-community-platform/news-maker-agent
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+    replicaCount: 1
+    service:
+      port: 8087
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 8087
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8087
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    secretRef: ""
+
+# ---------------------------------------------------------------------------
+# LiteLLM proxy
+# ---------------------------------------------------------------------------
+litellm:
+  enabled: true
+  image:
+    repository: ghcr.io/berriai/litellm
+    tag: "main-latest"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    port: 4000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 4000
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 4000
+    initialDelaySeconds: 30
+    periodSeconds: 30
+  # Reference a secret containing: LITELLM_MASTER_KEY, DATABASE_URL,
+  # LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, OPENROUTER_API_KEY
+  secretRef: ""
+  # Path to the LiteLLM config file mounted as a ConfigMap
+  configMapRef: ""
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: true
+  className: nginx
+  # TLS is strongly recommended in production
+  tls:
+    enabled: false
+    secretName: acp-tls
+  annotations: {}
+  # kubernetes.io/ingress.class: nginx
+  # cert-manager.io/cluster-issuer: letsencrypt-prod
+
+  hosts:
+    core: platform.example.com
+    langfuse: langfuse.example.com
+    litellm: litellm.example.com
+    openclaw: openclaw.example.com
+
+# ---------------------------------------------------------------------------
+# External dependency endpoints
+# Set these when using managed/external services instead of bundled sub-charts.
+# ---------------------------------------------------------------------------
+externalDependencies:
+  # PostgreSQL
+  postgres:
+    # When true, the bundled postgresql sub-chart is disabled and this host is used
+    external: false
+    host: ""
+    port: 5432
+    database: ai_community_platform
+    # Credentials should come from a secretRef, not plain values
+
+  # Redis
+  redis:
+    external: false
+    host: ""
+    port: 6379
+
+  # OpenSearch (optional; used for structured logs)
+  opensearch:
+    external: false
+    host: ""
+    port: 9200
+
+  # RabbitMQ (optional; used by some agents)
+  rabbitmq:
+    external: false
+    host: ""
+    port: 5672
+
+# ---------------------------------------------------------------------------
+# Bundled sub-chart toggles
+# Disable these when using external managed services.
+# ---------------------------------------------------------------------------
+postgresql:
+  enabled: true
+  auth:
+    database: ai_community_platform
+    username: app
+    # Use a secret in production — do not set password here
+    existingSecret: ""
+    secretKeys:
+      adminPasswordKey: postgres-password
+      userPasswordKey: password
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 2Gi
+
+# ---------------------------------------------------------------------------
+# Migration job
+# Runs as a Helm pre-upgrade / post-install hook.
+# ---------------------------------------------------------------------------
+migrations:
+  # When true, a Job is created to run database migrations before app rollout
+  enabled: true
+  image:
+    repository: ghcr.io/nmdimas/ai-community-platform/core
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  # Hook annotations control when the job runs relative to the release lifecycle
+  hookAnnotations:
+    "helm.sh/hook": pre-upgrade,post-install
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  # Reference the same secret as core for DATABASE_URL access
+  secretRef: ""
+
+# ---------------------------------------------------------------------------
+# Service account
+# ---------------------------------------------------------------------------
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# ---------------------------------------------------------------------------
+# Pod security context
+# ---------------------------------------------------------------------------
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+# ---------------------------------------------------------------------------
+# Node scheduling
+# ---------------------------------------------------------------------------
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# ---------------------------------------------------------------------------
+# Extra labels applied to all resources
+# ---------------------------------------------------------------------------
+commonLabels: {}

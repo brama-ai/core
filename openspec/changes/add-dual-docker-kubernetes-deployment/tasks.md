@@ -34,14 +34,14 @@
 
 ## 3. Kubernetes Packaging
 
-- [ ] 3.1 Choose the Kubernetes packaging format:
+- [x] 3.1 Choose the Kubernetes packaging format:
   - Helm umbrella chart preferred
   - raw manifests only as implementation detail if needed
-- [ ] 3.2 Define which stateful services are bundled versus expected as external managed services
-- [ ] 3.3 Implement Kubernetes jobs/hooks for bootstrap and migrations
-- [ ] 3.4 Add ingress, secret references, probes, scaling hints, and persistence defaults
-- [ ] 3.5 Document a production-grade sample `values.yaml`
-- [ ] 3.6 Define the Kubernetes upgrade flow:
+- [x] 3.2 Define which stateful services are bundled versus expected as external managed services
+- [x] 3.3 Implement Kubernetes jobs/hooks for bootstrap and migrations
+- [x] 3.4 Add ingress, secret references, probes, scaling hints, and persistence defaults
+- [x] 3.5 Document a production-grade sample `values.yaml`
+- [x] 3.6 Define the Kubernetes upgrade flow:
   - chart versioning and app version mapping
   - `helm upgrade` preflight review
   - migration hook or job behavior

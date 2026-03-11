@@ -1,0 +1,56 @@
+{{- range $agentKey, $agent := .Values.agents }}
+{{- if $agent.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "acp.fullname" $ }}-agent-{{ $agentKey | lower }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "acp.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: agent-{{ $agentKey | lower }}
+spec:
+  replicas: {{ $agent.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "acp.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: agent-{{ $agentKey | lower }}
+  template:
+    metadata:
+      labels:
+        {{- include "acp.selectorLabels" $ | nindent 8 }}
+        app.kubernetes.io/component: agent-{{ $agentKey | lower }}
+    spec:
+      {{- include "acp.imagePullSecrets" $ | nindent 6 }}
+      serviceAccountName: {{ include "acp.serviceAccountName" $ }}
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ $agentKey | lower }}
+          image: "{{ $agent.image.repository }}:{{ $agent.image.tag }}"
+          imagePullPolicy: {{ $agent.image.pullPolicy | default $.Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $agent.service.port }}
+              protocol: TCP
+          {{- if $agent.secretRef }}
+          envFrom:
+            - secretRef:
+                name: {{ $agent.secretRef }}
+          {{- end }}
+          readinessProbe:
+            {{- toYaml $agent.readinessProbe | nindent 12 }}
+          livenessProbe:
+            {{- toYaml $agent.livenessProbe | nindent 12 }}
+          resources:
+            {{- toYaml $agent.resources | nindent 12 }}
+      {{- with $.Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}

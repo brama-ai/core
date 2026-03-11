@@ -1,0 +1,134 @@
+# AI Community Platform — Production Values Example
+#
+# Copy this file to values-prod.yaml and fill in your environment-specific values.
+# Never commit values-prod.yaml to version control — it contains references to secrets.
+#
+# Usage:
+#   helm upgrade --install ai-community-platform ./deploy/charts/ai-community-platform \
+#     -n acp --create-namespace \
+#     -f deploy/charts/ai-community-platform/values-prod.example.yaml \
+#     -f values-prod.yaml \
+#     --wait --timeout 15m
+
+# ---------------------------------------------------------------------------
+# Image tags — pin to a specific release in production
+# ---------------------------------------------------------------------------
+core:
+  image:
+    tag: "0.1.0"  # Replace with the target release tag
+
+  replicaCount: 1
+
+  env:
+    APP_ENV: prod
+    LANGFUSE_ENABLED: "true"
+    LANGFUSE_BASE_URL: "https://langfuse.example.com"
+    EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
+    EDGE_AUTH_TOKEN_TTL: "43200"
+    EDGE_AUTH_LOGIN_BASE_URL: "https://platform.example.com"
+    EDGE_AUTH_COOKIE_DOMAIN: ".example.com"
+
+  # Name of the Kubernetes Secret containing:
+  #   APP_SECRET, EDGE_AUTH_JWT_SECRET, DATABASE_URL,
+  #   LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY
+  secretRef: core-secrets
+
+coreScheduler:
+  enabled: true
+  image:
+    tag: "0.1.0"
+
+# ---------------------------------------------------------------------------
+# Agents — enable only what you deploy
+# ---------------------------------------------------------------------------
+agents:
+  knowledge:
+    enabled: true
+    image:
+      tag: "0.1.0"
+    secretRef: knowledge-agent-secrets
+
+  hello:
+    enabled: true
+    image:
+      tag: "0.1.0"
+    secretRef: hello-agent-secrets
+
+  newsMaker:
+    enabled: false
+
+# ---------------------------------------------------------------------------
+# LiteLLM
+# ---------------------------------------------------------------------------
+litellm:
+  enabled: true
+  image:
+    tag: "main-stable"  # Pin to a stable tag in production
+  secretRef: litellm-secrets
+  configMapRef: litellm-config
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: true
+  className: nginx
+  tls:
+    enabled: true
+    secretName: acp-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  hosts:
+    core: platform.example.com
+    langfuse: langfuse.example.com
+    litellm: litellm.example.com
+    openclaw: openclaw.example.com
+
+# ---------------------------------------------------------------------------
+# External managed services (recommended for production Kubernetes)
+# ---------------------------------------------------------------------------
+externalDependencies:
+  postgres:
+    external: true
+    host: postgres.example.com
+    port: 5432
+    database: ai_community_platform
+
+  redis:
+    external: true
+    host: redis.example.com
+    port: 6379
+
+# Disable bundled sub-charts when using external managed services
+postgresql:
+  enabled: false
+
+redis:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# Migrations
+# ---------------------------------------------------------------------------
+migrations:
+  enabled: true
+  image:
+    tag: "0.1.0"
+  secretRef: core-secrets
+
+# ---------------------------------------------------------------------------
+# Resource tuning for production
+# ---------------------------------------------------------------------------
+# Adjust based on your cluster capacity and observed usage.
+# Start with these conservative values and tune after observing metrics.
+
+# core.resources, agents.*.resources, etc. can be overridden here.
+# Example:
+# core:
+#   resources:
+#     requests:
+#       cpu: 500m
+#       memory: 512Mi
+#     limits:
+#       cpu: 2000m
+#       memory: 1Gi

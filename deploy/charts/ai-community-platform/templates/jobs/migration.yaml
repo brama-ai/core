@@ -1,0 +1,56 @@
+{{- if .Values.migrations.enabled -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "acp.fullname" . }}-migrate-{{ .Release.Revision }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "acp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migration
+  annotations:
+    {{- toYaml .Values.migrations.hookAnnotations | nindent 4 }}
+spec:
+  # Allow one retry in case of transient DB connectivity issues
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "acp.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: Never
+      {{- include "acp.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "acp.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migrate
+          image: "{{ .Values.migrations.image.repository }}:{{ .Values.migrations.image.tag }}"
+          imagePullPolicy: {{ .Values.migrations.image.pullPolicy | default .Values.global.imagePullPolicy }}
+          # Run all known migration targets in sequence.
+          # Add agent-specific migrations here as agents are enabled.
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "==> Running core migrations"
+              php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+              echo "==> Migrations complete"
+          env:
+            {{- range $key, $value := .Values.core.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- if .Values.migrations.secretRef }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.migrations.secretRef }}
+          {{- else if .Values.core.secretRef }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.core.secretRef }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
+{{- end }}

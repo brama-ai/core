@@ -1,0 +1,23 @@
+{{- range $agentKey, $agent := .Values.agents }}
+{{- if $agent.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "acp.fullname" $ }}-agent-{{ $agentKey | lower }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "acp.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: agent-{{ $agentKey | lower }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ $agent.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "acp.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: agent-{{ $agentKey | lower }}
+{{- end }}
+{{- end }}

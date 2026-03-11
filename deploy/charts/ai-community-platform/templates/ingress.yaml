@@ -1,0 +1,49 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "acp.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "acp.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hosts.core }}
+        {{- if .Values.litellm.enabled }}
+        - {{ .Values.ingress.hosts.litellm }}
+        {{- end }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.hosts.core }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "acp.fullname" . }}-core
+                port:
+                  number: {{ .Values.core.service.port }}
+    {{- if .Values.litellm.enabled }}
+    - host: {{ .Values.ingress.hosts.litellm }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "acp.fullname" . }}-litellm
+                port:
+                  number: {{ .Values.litellm.service.port }}
+    {{- end }}
+{{- end }}

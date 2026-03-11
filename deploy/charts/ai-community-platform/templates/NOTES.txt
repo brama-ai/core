@@ -1,0 +1,44 @@
+AI Community Platform has been deployed.
+
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+Chart version: {{ .Chart.Version }}
+App version: {{ .Chart.AppVersion }}
+
+=== Access ===
+
+{{- if .Values.ingress.enabled }}
+Platform URL: {{ if .Values.ingress.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.ingress.hosts.core }}
+{{- else }}
+Ingress is disabled. Use port-forward to access the platform:
+
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "acp.fullname" . }}-core 8080:80
+
+Then open: http://localhost:8080
+{{- end }}
+
+=== Migration Status ===
+
+{{- if .Values.migrations.enabled }}
+A migration job was created as part of this release.
+Check its status:
+
+  kubectl get jobs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=migration
+  kubectl logs job/{{ include "acp.fullname" . }}-migrate-{{ .Release.Revision }} -n {{ .Release.Namespace }}
+{{- else }}
+Migrations are disabled. If this is an upgrade, run migrations manually.
+{{- end }}
+
+=== Health Checks ===
+
+  kubectl get pods -n {{ .Release.Namespace }}
+  kubectl rollout status deploy/{{ include "acp.fullname" . }}-core -n {{ .Release.Namespace }}
+
+=== Rollback ===
+
+If something is wrong, roll back to the previous release:
+
+  helm history {{ .Release.Name }} -n {{ .Release.Namespace }}
+  helm rollback {{ .Release.Name }} <revision> -n {{ .Release.Namespace }} --wait
+
+See docs/guides/deployment/en/kubernetes-upgrade.md for the full upgrade and rollback runbook.

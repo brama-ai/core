@@ -1,0 +1,34 @@
+apiVersion: v2
+name: ai-community-platform
+description: AI Community Platform — Helm umbrella chart for Kubernetes deployment
+type: application
+
+# Chart version — bump on every chart change
+version: 0.1.0
+
+# Application version — matches the platform release tag
+appVersion: "0.1.0"
+
+keywords:
+  - ai
+  - community
+  - platform
+  - agents
+  - llm
+
+home: https://github.com/nmdimas/ai-community-platform
+
+maintainers:
+  - name: AI Community Platform Team
+
+# Bundled sub-charts for optional in-cluster stateful dependencies.
+# Operators who use managed external services should disable these.
+dependencies:
+  - name: postgresql
+    version: "15.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: "19.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

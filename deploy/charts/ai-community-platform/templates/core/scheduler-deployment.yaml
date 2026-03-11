@@ -1,0 +1,54 @@
+{{- if .Values.coreScheduler.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "acp.fullname" . }}-core-scheduler
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "acp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: core-scheduler
+spec:
+  # Schedulers must run as a single replica to avoid duplicate job execution
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "acp.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: core-scheduler
+  template:
+    metadata:
+      labels:
+        {{- include "acp.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: core-scheduler
+    spec:
+      {{- include "acp.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "acp.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: core-scheduler
+          image: "{{ .Values.coreScheduler.image.repository }}:{{ .Values.coreScheduler.image.tag }}"
+          imagePullPolicy: {{ .Values.coreScheduler.image.pullPolicy | default .Values.global.imagePullPolicy }}
+          command: ["php", "bin/console", "scheduler:run"]
+          env:
+            {{- range $key, $value := .Values.core.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- if .Values.core.secretRef }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.core.secretRef }}
+          {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.coreScheduler.livenessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.coreScheduler.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
