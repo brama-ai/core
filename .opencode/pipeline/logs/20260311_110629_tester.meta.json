@@ -1,0 +1,18 @@
+{
+  "agent": "tester",
+  "model": "",
+  "started_epoch": 1773220536,
+  "finished_epoch": 1773220828,
+  "duration_seconds": 292,
+  "exit_code": 0,
+  "log_file": "20260311_110629_tester.log",
+  "log_bytes": 45560,
+  "log_lines": 1084,
+  "tokens": {
+  "input_tokens": 39064,
+  "output_tokens": 6184,
+  "cache_read": 561536,
+  "cache_write": 0,
+  "cost": 0
+}}
+}

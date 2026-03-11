@@ -1,0 +1,32 @@
+services:
+  hello-agent:
+    build:
+      context: ../..
+      dockerfile: docker/hello-agent/Dockerfile
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hello-agent.rule=PathPrefix(`/`)
+      - traefik.http.routers.hello-agent.entrypoints=hello
+      - traefik.http.routers.hello-agent.middlewares=edge-auth@docker
+      - traefik.http.services.hello-agent.loadbalancer.server.port=80
+      - ai.platform.agent=true
+    environment:
+      LANGFUSE_ENABLED: "true"
+      LANGFUSE_BASE_URL: http://langfuse-web:3000
+      LANGFUSE_PUBLIC_KEY: lf_pk_local_dev
+      LANGFUSE_SECRET_KEY: lf_sk_local_dev
+      LANGFUSE_ENV: local
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_API_KEY: dev-key
+      LLM_MODEL: minimax/minimax-m2.5
+      OPENSEARCH_URL: http://opensearch:9200
+    env_file:
+      - path: ../../docker/openclaw/.env
+        required: false
+    volumes:
+      - ./src:/var/www/html
+    depends_on:
+      - opensearch
+      - litellm
+    networks:
+      - dev-edge

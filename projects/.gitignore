@@ -1,0 +1,9 @@
+# External agent source checkouts are not tracked by the platform repository.
+# Each agent repository manages its own Git history.
+#
+# The compose.fragment.yaml and README.md for each agent workspace ARE tracked
+# (they define the platform integration contract for that agent).
+#
+# Ignore src/ directories (external git clones) but keep compose fragments and READMEs.
+*/src/
+!*/src/.gitkeep

@@ -1,0 +1,38 @@
+# compose.fragment.yaml — External Agent Compose Fragment Template
+#
+# Copy this file to your agent repository root and customize it.
+# Place it in the platform workspace at: projects/<agent-name>/compose.fragment.yaml
+#
+# Required changes:
+#   - Replace MY_AGENT_NAME with your agent's service name (must end with -agent)
+#   - Replace MY_AGENT_PORT with the port your application listens on
+#   - Add or remove environment variables as needed
+#   - Add depends_on entries for any platform services your agent requires
+#
+# Platform services available via the dev-edge network:
+#   - core          (http://core)
+#   - postgres      (postgres:5432)
+#   - redis         (redis:6379)
+#   - opensearch    (http://opensearch:9200)
+#   - rabbitmq      (amqp://app:app@rabbitmq:5672)
+#   - litellm       (http://litellm:4000)
+
+services:
+  MY_AGENT_NAME:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    labels:
+      - ai.platform.agent=true
+    environment:
+      PLATFORM_CORE_URL: http://core
+      APP_INTERNAL_TOKEN: ${APP_INTERNAL_TOKEN:-dev-internal-token}
+      # Add agent-specific environment variables here
+    env_file:
+      - path: .env.local
+        required: false
+    # Uncomment if your agent has a database:
+    # depends_on:
+    #   - postgres
+    networks:
+      - dev-edge

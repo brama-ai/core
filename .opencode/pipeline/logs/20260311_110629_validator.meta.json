@@ -1,0 +1,18 @@
+{
+  "agent": "validator",
+  "model": "",
+  "started_epoch": 1773220491,
+  "finished_epoch": 1773220533,
+  "duration_seconds": 42,
+  "exit_code": 0,
+  "log_file": "20260311_110629_validator.log",
+  "log_bytes": 3455,
+  "log_lines": 66,
+  "tokens": {
+  "input_tokens": 13750,
+  "output_tokens": 1214,
+  "cache_read": 74752,
+  "cache_write": 0,
+  "cost": 0
+}}
+}
