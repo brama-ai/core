@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     rewriter_model: str = "minimax/minimax-m2.5"
     platform_core_url: str = "http://core"
     app_internal_token: str = "dev-internal-token"
+    openclaw_gateway_token: str = ""
     opensearch_url: str = "http://opensearch:9200"
     admin_public_url: str = "http://localhost:8084/admin/sources"
     enable_test_endpoints: bool = False

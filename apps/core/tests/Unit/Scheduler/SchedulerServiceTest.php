@@ -9,6 +9,7 @@ use App\Scheduler\CronExpressionHelperInterface;
 use App\Scheduler\ScheduledJobRepositoryInterface;
 use App\Scheduler\SchedulerService;
 use Codeception\Test\Unit;
+use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
 
@@ -18,6 +19,7 @@ final class SchedulerServiceTest extends Unit
     private CronExpressionHelperInterface&MockObject $cronHelper;
     private A2AClientInterface&MockObject $a2aClient;
     private LoggerInterface&MockObject $logger;
+    private Connection&MockObject $connection;
     private SchedulerService $service;
 
     protected function setUp(): void
@@ -26,12 +28,14 @@ final class SchedulerServiceTest extends Unit
         $this->cronHelper = $this->createMock(CronExpressionHelperInterface::class);
         $this->a2aClient = $this->createMock(A2AClientInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
+        $this->connection = $this->createMock(Connection::class);
 
         $this->service = new SchedulerService(
             $this->repository,
             $this->cronHelper,
             $this->a2aClient,
             $this->logger,
+            $this->connection,
         );
     }
 

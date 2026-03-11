@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Requirement\Requirement;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[IsGranted('ROLE_ADMIN')]
@@ -20,7 +21,7 @@ final class SchedulerToggleController extends AbstractController
     ) {
     }
 
-    #[Route('/api/v1/internal/scheduler/{id}/toggle', name: 'api_internal_scheduler_toggle', methods: ['POST'])]
+    #[Route('/api/v1/internal/scheduler/{id}/toggle', name: 'api_internal_scheduler_toggle', requirements: ['id' => Requirement::UUID_V4], methods: ['POST'])]
     public function __invoke(string $id, Request $request): JsonResponse
     {
         $job = $this->repository->findById($id);

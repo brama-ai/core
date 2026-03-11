@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Scheduler;
 
 use App\A2AGateway\A2AClientInterface;
+use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 
 final class SchedulerService
@@ -14,12 +15,22 @@ final class SchedulerService
         private readonly CronExpressionHelperInterface $cronHelper,
         private readonly A2AClientInterface $a2aClient,
         private readonly LoggerInterface $logger,
+        private readonly Connection $connection,
     ) {
     }
 
     public function tick(): int
     {
-        $jobs = $this->repository->findDueJobs();
+        $this->connection->beginTransaction();
+
+        try {
+            $jobs = $this->repository->findDueJobs();
+        } catch (\Throwable $e) {
+            $this->connection->rollBack();
+
+            throw $e;
+        }
+
         $executed = 0;
 
         foreach ($jobs as $job) {
@@ -64,6 +75,8 @@ final class SchedulerService
 
             ++$executed;
         }
+
+        $this->connection->commit();
 
         return $executed;
     }

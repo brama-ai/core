@@ -24,9 +24,12 @@ interface ScheduledJobRepositoryInterface
         int $retryDelaySeconds,
         string $timezone,
         string $nextRunAt,
+        string $source = 'manifest',
     ): void;
 
     public function deleteByAgent(string $agentName): int;
+
+    public function deleteJob(string $id): void;
 
     public function enableByAgent(string $agentName): int;
 

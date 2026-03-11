@@ -153,6 +153,69 @@ final class AgentRegistryRepositoryTest extends Unit
         $this->assertSame($rows, $result);
     }
 
+    public function testDeleteStaleMarketplaceAgentsDeletesEligibleAgents(): void
+    {
+        $staleAgents = [['name' => 'stale-agent-1'], ['name' => 'stale-agent-2']];
+
+        $this->connection->expects($this->once())
+            ->method('fetchAllAssociative')
+            ->with(
+                $this->stringContains('installed_at IS NULL AND health_check_failures >= :threshold'),
+                ['threshold' => 5],
+            )
+            ->willReturn($staleAgents);
+
+        $this->connection->expects($this->exactly(4))
+            ->method('executeStatement')
+            ->willReturn(1);
+
+        $this->cache->expects($this->once())
+            ->method('deleteItem')
+            ->with('agent_registry.enabled');
+
+        $result = $this->repository->deleteStaleMarketplaceAgents(5);
+
+        $this->assertSame(2, $result);
+    }
+
+    public function testDeleteStaleMarketplaceAgentsDoesNotDeleteInstalledAgents(): void
+    {
+        // Installed agents have installed_at IS NOT NULL, so they won't appear in the SELECT
+        $this->connection->expects($this->once())
+            ->method('fetchAllAssociative')
+            ->with($this->stringContains('installed_at IS NULL'))
+            ->willReturn([]);
+
+        $this->connection->expects($this->never())
+            ->method('executeStatement');
+
+        $this->cache->expects($this->never())
+            ->method('deleteItem');
+
+        $result = $this->repository->deleteStaleMarketplaceAgents(5);
+
+        $this->assertSame(0, $result);
+    }
+
+    public function testDeleteStaleMarketplaceAgentsPreservesAgentsBelowThreshold(): void
+    {
+        // Agents below threshold won't appear in the SELECT query
+        $this->connection->expects($this->once())
+            ->method('fetchAllAssociative')
+            ->with($this->stringContains('health_check_failures >= :threshold'))
+            ->willReturn([]);
+
+        $this->connection->expects($this->never())
+            ->method('executeStatement');
+
+        $this->cache->expects($this->never())
+            ->method('deleteItem');
+
+        $result = $this->repository->deleteStaleMarketplaceAgents(5);
+
+        $this->assertSame(0, $result);
+    }
+
     /**
      * @return array<string, mixed>
      */

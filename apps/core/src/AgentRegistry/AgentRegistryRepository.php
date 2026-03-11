@@ -282,6 +282,49 @@ final class AgentRegistryRepository implements AgentRegistryInterface
         return $rows > 0;
     }
 
+    public function deleteStaleMarketplaceAgents(int $failureThreshold): int
+    {
+        /** @var list<array<string, mixed>> $stale */
+        $stale = $this->connection->fetchAllAssociative(
+            'SELECT name FROM agent_registry WHERE installed_at IS NULL AND health_check_failures >= :threshold',
+            ['threshold' => $failureThreshold],
+        );
+
+        if ([] === $stale) {
+            return 0;
+        }
+
+        $deleted = 0;
+
+        foreach ($stale as $agent) {
+            $name = (string) $agent['name'];
+
+            $rows = $this->connection->executeStatement(
+                'DELETE FROM agent_registry WHERE name = :name AND installed_at IS NULL AND health_check_failures >= :threshold',
+                ['name' => $name, 'threshold' => $failureThreshold],
+            );
+
+            if ($rows > 0) {
+                $this->connection->executeStatement(
+                    <<<'SQL'
+                    INSERT INTO agent_registry_audit (agent_name, action, actor, payload, created_at)
+                    VALUES (:agentName, 'stale_deleted', NULL, '{}', now())
+                    SQL,
+                    ['agentName' => $name],
+                );
+
+                $this->logger->info('Stale marketplace agent auto-deleted', ['agent' => $name, 'failure_threshold' => $failureThreshold]);
+                ++$deleted;
+            }
+        }
+
+        if ($deleted > 0) {
+            $this->invalidateCache();
+        }
+
+        return $deleted;
+    }
+
     private function invalidateCache(): void
     {
         $this->cache->deleteItem(self::CACHE_KEY);

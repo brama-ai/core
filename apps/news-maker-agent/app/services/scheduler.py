@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 _scheduler: BackgroundScheduler | None = None
 _crawl_pipeline_lock = threading.Lock()
+_digest_lock = threading.Lock()
 
 
 def recover_interrupted_runs() -> int:
@@ -133,3 +134,28 @@ def trigger_cleanup_now() -> None:
 
     threading.Thread(target=_run_cleanup, daemon=True, name="news-cleanup-manual").start()
     logger.info("Manual cleanup trigger accepted")
+
+
+def _run_digest() -> None:
+    from app.services.digest import run_digest
+
+    if not _digest_lock.acquire(blocking=False):
+        logger.warning("Skipping digest: another digest run is in progress")
+        return
+
+    logger.info("Starting manual digest run")
+    try:
+        run_digest()
+    finally:
+        _digest_lock.release()
+
+
+def trigger_digest_now() -> bool:
+    """Manually trigger digest generation immediately. Returns False if already running."""
+    if _digest_lock.locked():
+        logger.warning("Manual digest trigger ignored: digest is already running")
+        return False
+
+    threading.Thread(target=_run_digest, daemon=True, name="news-digest-manual").start()
+    logger.info("Manual digest trigger accepted")
+    return True

@@ -61,4 +61,11 @@ interface AgentRegistryInterface
     public function markUninstalled(string $name): bool;
 
     public function delete(string $name): bool;
+
+    /**
+     * Hard-delete marketplace agents that were never installed and have accumulated
+     * health-check failures equal to or exceeding the given threshold.
+     * Returns the number of deleted agents.
+     */
+    public function deleteStaleMarketplaceAgents(int $failureThreshold): int;
 }

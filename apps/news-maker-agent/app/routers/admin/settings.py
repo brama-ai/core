@@ -83,3 +83,14 @@ def trigger_cleanup():
     logger.info("Received manual cleanup trigger from admin")
     trigger_cleanup_now()
     return RedirectResponse("/admin/settings", status_code=303)
+
+
+@router.post("/admin/trigger/digest")
+def trigger_digest():
+    from app.services.scheduler import trigger_digest_now
+
+    logger.info("Received manual digest trigger from admin")
+    accepted = trigger_digest_now()
+    if not accepted:
+        logger.warning("Manual digest trigger skipped: digest is already running")
+    return RedirectResponse("/admin/settings", status_code=303)

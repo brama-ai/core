@@ -71,6 +71,17 @@ final class ManifestController extends AbstractController
                     ],
                 ],
             ],
+            'scheduled_jobs' => [
+                [
+                    'name' => 'daily-greeting',
+                    'skill_id' => 'hello.greet',
+                    'cron_expression' => '0 9 * * *',
+                    'payload' => ['name' => 'Дмитро'],
+                    'max_retries' => 2,
+                    'retry_delay_seconds' => 120,
+                    'timezone' => 'Europe/Kyiv',
+                ],
+            ],
             'permissions' => [],
             'commands' => ['/hello'],
             'events' => [],

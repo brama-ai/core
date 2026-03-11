@@ -24,6 +24,33 @@ SCRIPT_DIR="$REPO_ROOT/scripts"
 BATCH_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RESULTS_FILE="$REPO_ROOT/.opencode/pipeline/reports/batch_${BATCH_TIMESTAMP}.md"
 
+# ── Single-instance guard ─────────────────────────────────────────────
+LOCKFILE="$REPO_ROOT/.opencode/pipeline/.batch.lock"
+
+acquire_lock() {
+  mkdir -p "$(dirname "$LOCKFILE")"
+  if [[ -f "$LOCKFILE" ]]; then
+    local old_pid
+    old_pid=$(cat "$LOCKFILE" 2>/dev/null || true)
+    if [[ -n "$old_pid" ]] && kill -0 "$old_pid" 2>/dev/null; then
+      echo -e "${RED}Error: Another pipeline-batch is already running (PID $old_pid)${NC}"
+      echo -e "${YELLOW}Kill it first: kill $old_pid${NC}"
+      exit 1
+    fi
+    # Stale lockfile — previous process died
+    echo -e "${YELLOW}Removing stale lockfile (PID $old_pid no longer running)${NC}"
+    rm -f "$LOCKFILE"
+  fi
+  echo "$$" > "$LOCKFILE"
+}
+
+release_lock() {
+  rm -f "$LOCKFILE"
+}
+
+acquire_lock
+trap 'release_lock' EXIT
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
