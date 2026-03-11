@@ -1,0 +1,18 @@
+{
+  "agent": "auditor",
+  "model": "",
+  "started_epoch": 1773219199,
+  "finished_epoch": 1773219426,
+  "duration_seconds": 227,
+  "exit_code": 0,
+  "log_file": "20260311_104344_auditor.log",
+  "log_bytes": 5156,
+  "log_lines": 100,
+  "tokens": {
+  "input_tokens": 12949,
+  "output_tokens": 683,
+  "cache_read": 47104,
+  "cache_write": 0,
+  "cost": 0
+}}
+}

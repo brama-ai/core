@@ -122,10 +122,32 @@ assumes that every production agent must live under `apps/`.
 
 ## Documenter
 
-- **Status**: pending
-- **Docs created/updated**: —
+- **Status**: done
+- **Docs created/updated**:
+  - `docs/guides/external-agents/en/onboarding.md` — operator onboarding guide (EN)
+  - `docs/guides/external-agents/ua/onboarding.md` — operator onboarding guide (UA, canonical)
+  - `docs/guides/external-agents/en/repository-structure.md` — external agent repo structure guide
+  - `docs/guides/external-agents/en/migration-playbook.md` — migration playbook
+  - `docs/guides/deployment/en/deployment.md` — added External Agents section
+  - `docs/guides/deployment/ua/deployment.md` — added Зовнішні агенти section
+  - `docs/agent-requirements/conventions.md` — added sections 8 & 9
+
+## Auditor
+
+- **Status**: done
+- **Scope**: Platform-level audit (external agent workspace contract)
+- **Results**: 7 PASS | 1 WARN | 0 FAIL
+- **Verdict**: **PASS**
+- **Findings**:
+  - Makefile targets properly implemented with auto-discovery
+  - Script executable with proper error handling
+  - Complete bilingual documentation (EN/UA)
+  - Gitignore correctly configured
+  - Agent contract preserved for discovery/health
+  - One WARN: Neuron tool not available for openspec validation (infrastructure constraint)
 
 ---
 
 - **Commit (coder)**: 1551c93
 - **Commit (validator)**: 563ef40
+- **Commit (tester)**: 6b64a41
