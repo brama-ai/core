@@ -190,7 +190,7 @@ Interactive TUI monitor with tabs:
 | Tab | Description |
 |-----|-------------|
 | 1:Overview | Task status, progress bar, batch state |
-| 2:Logs | Latest log file from `.opencode/pipeline/logs/` |
+| 2:Activity | Event timeline: tasks, agents, workers (time, duration, status) |
 | 3+:worker-N | Per-worker logs (dynamic, appear when workers are active) |
 
 Keyboard shortcuts:

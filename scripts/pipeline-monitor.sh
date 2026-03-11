@@ -2,16 +2,16 @@
 # shellcheck disable=SC2034
 #
 # Interactive pipeline monitor with tab-based TUI.
-# Version: 0.7.0
+# Version: 0.9.0
 #
-MONITOR_VERSION="0.7.0"
+MONITOR_VERSION="0.9.0"
 # Usage:
 #   ./scripts/pipeline-monitor.sh              # auto-detect tasks/ folder
 #   ./scripts/pipeline-monitor.sh tasks/       # monitor specific tasks folder
 #
 # Tabs:
 #   [1] Overview   — task statuses, progress bar, timing
-#   [2] Logs       — latest pipeline log (always present)
+#   [2] Activity   — timeline of task & agent events
 #   [3] Worker 1   — live log tail for worker-1
 #   ...
 #
@@ -269,9 +269,9 @@ render_tabs_str() {
     out+="${DIM} 1:Overview ${RESET}"
   fi
   if [[ $CURRENT_TAB -eq 2 ]]; then
-    out+="${REV}${BOLD} 2:Logs ${RESET}"
+    out+="${REV}${BOLD} 2:Activity ${RESET}"
   else
-    out+="${DIM} 2:Logs ${RESET}"
+    out+="${DIM} 2:Activity ${RESET}"
   fi
   local idx=3
   for w in "${DETECTED_WORKERS[@]}"; do
@@ -501,26 +501,212 @@ find_task_log() {
   echo "$log"
 }
 
-# ── Tab: Logs (always present) ────────────────────────────────────────
+# ── Tab: Activity Log (always present) ────────────────────────────────
+format_duration() {
+  local secs="$1"
+  if [[ $secs -ge 3600 ]]; then
+    printf '%dh %dm' $((secs / 3600)) $(((secs % 3600) / 60))
+  elif [[ $secs -ge 60 ]]; then
+    printf '%dm %ds' $((secs / 60)) $((secs % 60))
+  else
+    printf '%ds' "$secs"
+  fi
+}
+
+format_epoch() {
+  # macOS date -r <epoch>, Linux date -d @<epoch>
+  if date -r 0 '+%H:%M:%S' &>/dev/null 2>&1; then
+    date -r "$1" '+%H:%M:%S' 2>/dev/null || echo "??:??:??"
+  else
+    date -d "@$1" '+%H:%M:%S' 2>/dev/null || echo "??:??:??"
+  fi
+}
+
+build_activity_events() {
+  ACTIVITY_EVENTS=()
+
+  # 1) Agent START + FINISH events from .meta.json files
+  local meta_files=()
+  if [[ -d "$LOG_DIR" ]]; then
+    while IFS= read -r f; do
+      [[ -n "$f" ]] && meta_files+=("$f")
+    done < <(ls -t "$LOG_DIR"/*.meta.json 2>/dev/null)
+  fi
+  # Also check worktree log dirs
+  local wt
+  for wt in "${DETECTED_WORKERS[@]}"; do
+    local wt_log="$WORKTREE_BASE/$wt/.opencode/pipeline/logs"
+    if [[ -d "$wt_log" ]]; then
+      while IFS= read -r f; do
+        [[ -n "$f" ]] && meta_files+=("$f")
+      done < <(ls -t "$wt_log"/*.meta.json 2>/dev/null)
+    fi
+  done
+
+  local f agent started finished duration exit_code task_name worker_id
+  for f in "${meta_files[@]}"; do
+    agent=$(sed -n 's/.*"agent"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$f" | head -1)
+    started=$(sed -n 's/.*"started_epoch"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$f" | head -1)
+    finished=$(sed -n 's/.*"finished_epoch"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$f" | head -1)
+    duration=$(sed -n 's/.*"duration_seconds"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$f" | head -1)
+    exit_code=$(sed -n 's/.*"exit_code"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$f" | head -1)
+    task_name=$(sed -n 's/.*"task"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$f" | head -1)
+    worker_id=$(sed -n 's/.*"worker"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$f" | head -1)
+    [[ -z "$agent" || -z "$started" ]] && continue
+
+    # Truncate task name
+    [[ ${#task_name} -gt 35 ]] && task_name="${task_name:0:32}..."
+
+    local worker_tag="${worker_id:-main}"
+
+    # START event
+    local start_time; start_time=$(format_epoch "$started")
+    ACTIVITY_EVENTS+=("${started}|START|${start_time}|${agent}|${task_name}|${worker_tag}")
+
+    # FINISH event (if completed)
+    if [[ -n "$finished" && "$finished" -gt 0 ]]; then
+      local end_time; end_time=$(format_epoch "$finished")
+      local dur_str=""; [[ -n "$duration" && "$duration" -gt 0 ]] && dur_str=$(format_duration "$duration")
+      local status_raw="ok"
+      [[ "${exit_code:-0}" -ne 0 ]] && status_raw="fail"
+      ACTIVITY_EVENTS+=("${finished}|FINISH|${end_time}|${agent}|${task_name}|${worker_tag}|${dur_str}|${status_raw}")
+    fi
+  done
+
+  # 2) Task state transitions from task files
+  local state state_dir
+  for state in done failed in-progress; do
+    state_dir="$TASK_SOURCE/$state"
+    [[ -d "$state_dir" ]] || continue
+    local tf
+    for tf in "$state_dir"/*.md; do
+      [[ -f "$tf" ]] || continue
+      local title; title=$(basename "$tf" .md | tr '-' ' ')
+      local batch_line; batch_line=$(head -1 "$tf")
+      local batch_ts="" task_dur="" task_branch=""
+      if [[ "$batch_line" =~ batch:\ ([0-9_]+) ]]; then
+        batch_ts="${BASH_REMATCH[1]}"
+      fi
+      if [[ "$batch_line" =~ duration:\ ([0-9]+)s ]]; then
+        task_dur="${BASH_REMATCH[1]}"
+      fi
+      if [[ "$batch_line" =~ branch:\ ([^\ ]+) ]]; then
+        task_branch="${BASH_REMATCH[1]}"
+        task_branch="${task_branch%% -->}"
+        task_branch=$(basename "$task_branch")
+      fi
+
+      local sort_key
+      if [[ -n "$batch_ts" ]]; then
+        sort_key=$(echo "$batch_ts" | tr -d '_')
+      else
+        sort_key=$(stat -f '%m' "$tf" 2>/dev/null || stat -c '%Y' "$tf" 2>/dev/null || echo "0")
+      fi
+
+      local time_str=""
+      if [[ -n "$batch_ts" ]]; then
+        local hh mm ss
+        hh="${batch_ts:9:2}"; mm="${batch_ts:11:2}"; ss="${batch_ts:13:2}"
+        time_str="${hh}:${mm}:${ss}"
+      else
+        time_str=$(stat -f '%Sm' -t '%H:%M:%S' "$tf" 2>/dev/null || date -r "$tf" '+%H:%M:%S' 2>/dev/null || echo "??:??:??")
+      fi
+
+      local dur_str=""
+      [[ -n "$task_dur" && "$task_dur" -gt 0 ]] && dur_str=$(format_duration "$task_dur")
+      [[ ${#title} -gt 35 ]] && title="${title:0:32}..."
+
+      # Compute finish sort_key = batch_ts + duration for done/failed
+      local finish_sort_key="$sort_key"
+      if [[ -n "$batch_ts" && -n "$task_dur" ]]; then
+        # Approximate: add duration to batch timestamp for proper ordering
+        local batch_hh="${batch_ts:9:2}" batch_mm="${batch_ts:11:2}" batch_ss="${batch_ts:13:2}"
+        local batch_secs=$(( 10#$batch_hh * 3600 + 10#$batch_mm * 60 + 10#$batch_ss + task_dur ))
+        local fin_hh=$(( batch_secs / 3600 )) fin_mm=$(( (batch_secs % 3600) / 60 )) fin_ss=$(( batch_secs % 60 ))
+        finish_sort_key="${batch_ts:0:8}$(printf '%02d%02d%02d' $fin_hh $fin_mm $fin_ss)"
+      fi
+
+      # Task picked up event (batch start time)
+      ACTIVITY_EVENTS+=("${sort_key}|TSTART|${time_str}|${title}|${task_branch}")
+
+      # Task finished event
+      if [[ "$state" == "done" || "$state" == "failed" ]]; then
+        local fin_time=""
+        if [[ -n "$batch_ts" && -n "$task_dur" ]]; then
+          local batch_hh="${batch_ts:9:2}" batch_mm="${batch_ts:11:2}" batch_ss="${batch_ts:13:2}"
+          local total_secs=$(( 10#$batch_hh * 3600 + 10#$batch_mm * 60 + 10#$batch_ss + task_dur ))
+          fin_time=$(printf '%02d:%02d:%02d' $((total_secs / 3600)) $(((total_secs % 3600) / 60)) $((total_secs % 60)))
+        else
+          fin_time="$time_str"
+        fi
+        ACTIVITY_EVENTS+=("${finish_sort_key}|TFINISH|${fin_time}|${title}|${dur_str}|${state}")
+      fi
+    done
+  done
+
+  # 3) Sort events by timestamp descending (newest first)
+  IFS=$'\n' ACTIVITY_EVENTS=($(printf '%s\n' "${ACTIVITY_EVENTS[@]}" | sort -t'|' -k1 -rn)); unset IFS
+}
+
 render_logs_tab() {
   get_terminal_size
   buf_reset
   update_worker_state
   buf_line "$(render_tabs_str)  ${DIM}v${MONITOR_VERSION}  $(date '+%H:%M:%S')${RESET}"
+  buf_line "  ${BOLD}Activity Log${RESET}"
 
-  local log_file=""
-  [[ -d "$LOG_DIR" ]] && log_file=$(ls -t "$LOG_DIR"/*.log 2>/dev/null | head -1 || true)
+  build_activity_events
 
-  if [[ -z "$log_file" ]]; then
-    buf_line "  ${DIM}No log files found${RESET}"
-    buf_line "  ${DIM}Log directory: $LOG_DIR${RESET}"
+  local available_lines=$((TERM_ROWS - 4))
+  [[ $available_lines -lt 5 ]] && available_lines=5
+
+  if [[ ${#ACTIVITY_EVENTS[@]} -eq 0 ]]; then
+    buf_line "  ${DIM}No activity recorded yet${RESET}"
+    buf_line "  ${DIM}Start a batch with [s] to see events here${RESET}"
   else
-    local agent_name; agent_name=$(basename "$log_file" .log | sed 's/^[0-9_]*//')
-    local log_size; log_size=$(wc -c < "$log_file" | tr -d ' ')
-    buf_line "  ${YELLOW}$agent_name${RESET}  ${DIM}$(basename "$log_file")  $(( log_size / 1024 ))KB${RESET}"
-    local available_lines=$((TERM_ROWS - 4))
-    [[ $available_lines -lt 5 ]] && available_lines=5
-    render_log_lines "$log_file" "$available_lines"
+    local shown=0 event
+    for event in "${ACTIVITY_EVENTS[@]}"; do
+      [[ $shown -ge $available_lines ]] && break
+      local IFS='|'; set -- $event; unset IFS
+      local sort_key="$1" etype="$2" etime="$3"
+
+      case "$etype" in
+        START)
+          local agent="$4" task="$5" worker="$6"
+          local task_part=""; [[ -n "$task" ]] && task_part="  ${WHITE}${task}${RESET}"
+          local worker_part=""; [[ -n "$worker" && "$worker" != "main" ]] && worker_part="  ${DIM}#${worker}${RESET}"
+          buf_line "  ${DIM}${etime}${RESET}  ${YELLOW}START${RESET}  ${CYAN}${agent}${RESET}${task_part}${worker_part}"
+          ;;
+        FINISH)
+          local agent="$4" task="$5" worker="$6" dur="$7" status_raw="$8"
+          local status_fmt=""
+          case "$status_raw" in
+            ok)   status_fmt="${GREEN}OK${RESET}" ;;
+            fail) status_fmt="${RED}FAIL${RESET}" ;;
+          esac
+          local dur_part=""; [[ -n "$dur" ]] && dur_part="  ${DIM}${dur}${RESET}"
+          local task_part=""; [[ -n "$task" ]] && task_part="  ${WHITE}${task}${RESET}"
+          local worker_part=""; [[ -n "$worker" && "$worker" != "main" ]] && worker_part="  ${DIM}#${worker}${RESET}"
+          buf_line "  ${DIM}${etime}${RESET}  ${status_fmt}  ${CYAN}${agent}${RESET}${dur_part}${task_part}${worker_part}"
+          ;;
+        TSTART)
+          local title="$4" branch="$5"
+          local branch_part=""; [[ -n "$branch" ]] && branch_part="  ${DIM}${branch}${RESET}"
+          buf_line "  ${DIM}${etime}${RESET}  ${BLUE}TASK${RESET}  ${WHITE}${title}${RESET}${branch_part}"
+          ;;
+        TFINISH)
+          local title="$4" dur="$5" state="$6"
+          local state_fmt=""
+          case "$state" in
+            done)   state_fmt="${GREEN}DONE${RESET}" ;;
+            failed) state_fmt="${RED}FAIL${RESET}" ;;
+          esac
+          local dur_part=""; [[ -n "$dur" ]] && dur_part="  ${DIM}${dur}${RESET}"
+          buf_line "  ${DIM}${etime}${RESET}  ${state_fmt}  ${WHITE}${title}${RESET}${dur_part}"
+          ;;
+      esac
+      ((shown++))
+    done
   fi
 
   buf_line "  ${DIM}←/→ tabs  [s] start  [k] kill  [q] quit  (auto-refresh ${REFRESH_INTERVAL}s)${RESET}"

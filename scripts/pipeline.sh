@@ -2,19 +2,21 @@
 #
 # Multi-agent pipeline orchestrator for OpenCode.
 #
-# Runs 5 agents in sequence:
-#   1. Architect (Opus)     — creates OpenSpec proposal
-#   2. Coder (Sonnet)       — implements the code
-#   3. Validator (Codex)    — runs PHPStan + CS, fixes issues
-#   4. Tester (Codex)       — runs tests, fixes failures
-#   5. Documenter (Sonnet)  — writes documentation
+# Runs pipeline agents in sequence:
+#   1. Architect (Opus)      — creates OpenSpec proposal
+#   2. Coder (Sonnet)        — implements the code
+#   3. Auditor (optional)    — audits agent/platform compliance
+#   4. Validator (Codex)     — runs PHPStan + CS, fixes issues
+#   5. Tester (Codex)        — runs tests, fixes failures
+#   6. Documenter (optional) — writes documentation
+#   7. Summarizer (GPT-5.4)  — writes final task summary to task/*.md
 #
 # Usage:
 #   ./scripts/pipeline.sh "Add streaming support to A2A gateway"
 #   ./scripts/pipeline.sh --skip-architect "implement change add-a2a-streaming"
 #   ./scripts/pipeline.sh --from coder "Continue implementing add-a2a-streaming"
 #   ./scripts/pipeline.sh --only validator "Run PHPStan on core"
-#   ./scripts/pipeline.sh --audit "Add feature X"   # adds auditor as 6th agent
+#   ./scripts/pipeline.sh --audit "Add feature X"
 #   ./scripts/pipeline.sh --webhook https://hooks.slack.com/... "Task"
 #
 set -euo pipefail
@@ -38,7 +40,7 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # Agent order
-AGENTS=(architect coder validator tester)
+AGENTS=(architect coder validator tester summarizer)
 
 # Timeouts per agent (seconds, override via env)
 PIPELINE_TIMEOUT_ARCHITECT="${PIPELINE_TIMEOUT_ARCHITECT:-2700}"   # 45 min
@@ -47,6 +49,7 @@ PIPELINE_TIMEOUT_VALIDATOR="${PIPELINE_TIMEOUT_VALIDATOR:-1200}"   # 20 min
 PIPELINE_TIMEOUT_TESTER="${PIPELINE_TIMEOUT_TESTER:-1800}"         # 30 min
 PIPELINE_TIMEOUT_DOCUMENTER="${PIPELINE_TIMEOUT_DOCUMENTER:-900}"  # 15 min
 PIPELINE_TIMEOUT_AUDITOR="${PIPELINE_TIMEOUT_AUDITOR:-1200}"       # 20 min
+PIPELINE_TIMEOUT_SUMMARIZER="${PIPELINE_TIMEOUT_SUMMARIZER:-900}"  # 15 min
 
 # Retry config
 MAX_RETRIES="${PIPELINE_MAX_RETRIES:-2}"
@@ -69,6 +72,7 @@ FALLBACK_VALIDATOR="${PIPELINE_FALLBACK_VALIDATOR:-anthropic/claude-sonnet-4-6,o
 FALLBACK_TESTER="${PIPELINE_FALLBACK_TESTER:-anthropic/claude-sonnet-4-6,openai/codex-mini-latest,free,cheap}"
 FALLBACK_DOCUMENTER="${PIPELINE_FALLBACK_DOCUMENTER:-anthropic/claude-opus-4-6,free,cheap}"
 FALLBACK_AUDITOR="${PIPELINE_FALLBACK_AUDITOR:-anthropic/claude-sonnet-4-6,free,cheap}"
+FALLBACK_SUMMARIZER="${PIPELINE_FALLBACK_SUMMARIZER:-openai/gpt-5.4,openai/gpt-5.3-codex,free,cheap}"
 
 # ── Help ──────────────────────────────────────────────────────────────
 
@@ -86,7 +90,7 @@ Options:
                       If file is in tasks/todo/, it moves through
                       todo/ → in-progress/ → done/ (or failed/)
                       so pipeline-monitor.sh can track progress
-  --audit             Add auditor as 6th quality gate agent
+  --audit             Add auditor quality gate agent
   --webhook <url>     POST JSON summary to webhook on completion/failure
   --telegram          Send status updates via Telegram bot
   --no-commit         Skip auto-commits between agents
@@ -94,12 +98,12 @@ Options:
   --skip-planner      Skip the planner agent (use default pipeline)
   -h, --help          Show this help
 
-Agents: planner, architect, coder, validator, tester, documenter
+Agents: planner, architect, coder, auditor, validator, tester, documenter, summarizer
 
 Profiles:
-  quick-fix    — coder + validator only (typos, config, minor fixes)
-  standard     — full 5-agent pipeline (default)
-  complex      — full pipeline + auditor + extended timeouts
+  quick-fix    — coder + validator + summarizer
+  standard     — architect + coder + validator + tester + summarizer
+  complex      — standard + auditor + extended timeouts
 
 Timeouts (override via env):
   PIPELINE_TIMEOUT_PLANNER=300     (5 min)
@@ -108,12 +112,14 @@ Timeouts (override via env):
   PIPELINE_TIMEOUT_VALIDATOR=1200 (20 min)
   PIPELINE_TIMEOUT_TESTER=1800   (30 min)
   PIPELINE_TIMEOUT_DOCUMENTER=900 (15 min)
+  PIPELINE_TIMEOUT_SUMMARIZER=900 (15 min)
   PIPELINE_MAX_RETRIES=2
 
 Token budgets (override via env, 0=unlimited):
   PIPELINE_TOKEN_BUDGET_PLANNER=100000
   PIPELINE_TOKEN_BUDGET_ARCHITECT=500000
   PIPELINE_TOKEN_BUDGET_CODER=2000000
+  PIPELINE_TOKEN_BUDGET_SUMMARIZER=300000
   PIPELINE_MAX_COST=<max total cost in USD>
   PIPELINE_RETRY_DELAY=30
 
@@ -128,6 +134,7 @@ Fallback models (env vars, comma-separated):
   PIPELINE_FALLBACK_VALIDATOR    (default: sonnet,codex-mini,free,cheap)
   PIPELINE_FALLBACK_TESTER       (default: sonnet,codex-mini,free,cheap)
   PIPELINE_FALLBACK_DOCUMENTER   (default: opus,free,cheap)
+  PIPELINE_FALLBACK_SUMMARIZER   (default: gpt-5.4,gpt-5.3-codex,free,cheap)
   PIPELINE_CHEAP_MODELS          (default: deepseek-v3.2,gemini-3.1-flash-lite)
   PIPELINE_FREE_MODELS           (default: big-pickle,gpt-5-nano,minimax-m2.5-free)
 
@@ -137,6 +144,7 @@ Examples:
   ./scripts/pipeline.sh --from validator "Fix validation issues"
   ./scripts/pipeline.sh --only tester "Run tests for hello-agent"
   ./scripts/pipeline.sh --audit "Add feature with quality gate"
+  ./scripts/pipeline.sh --only summarizer --task-file tasks/done/example.md
 HELP
 }
 
@@ -174,6 +182,7 @@ PIPELINE_TOKEN_BUDGET_VALIDATOR="${PIPELINE_TOKEN_BUDGET_VALIDATOR:-500000}"
 PIPELINE_TOKEN_BUDGET_TESTER="${PIPELINE_TOKEN_BUDGET_TESTER:-500000}"
 PIPELINE_TOKEN_BUDGET_DOCUMENTER="${PIPELINE_TOKEN_BUDGET_DOCUMENTER:-300000}"
 PIPELINE_TOKEN_BUDGET_AUDITOR="${PIPELINE_TOKEN_BUDGET_AUDITOR:-300000}"
+PIPELINE_TOKEN_BUDGET_SUMMARIZER="${PIPELINE_TOKEN_BUDGET_SUMMARIZER:-300000}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -424,14 +433,35 @@ mkdir -p "$LOG_DIR" "$REPORT_DIR"
 get_agents_to_run() {
   local agent_list=("${AGENTS[@]}")
 
-  # Add auditor if enabled
+  # Add auditor if enabled and not already present. Keep it after coder.
   if [[ "$ENABLE_AUDIT" == true ]]; then
-    agent_list+=(auditor)
+    local has_auditor=false
+    local new_list=()
+    for agent in "${agent_list[@]}"; do
+      [[ "$agent" == "auditor" ]] && has_auditor=true
+    done
+    if [[ "$has_auditor" != true ]]; then
+      for agent in "${agent_list[@]}"; do
+        new_list+=("$agent")
+        if [[ "$agent" == "coder" ]]; then
+          new_list+=("auditor")
+        fi
+      done
+      agent_list=("${new_list[@]}")
+    fi
   fi
 
   if [[ -n "$ONLY_AGENT" ]]; then
     echo "$ONLY_AGENT"
     return
+  fi
+
+  local has_summarizer=false
+  for agent in "${agent_list[@]}"; do
+    [[ "$agent" == "summarizer" ]] && has_summarizer=true
+  done
+  if [[ "$has_summarizer" != true ]]; then
+    agent_list+=("summarizer")
   fi
 
   local started=false
@@ -556,8 +586,11 @@ init_artifacts() {
   local branch="$2"
   ARTIFACTS_DIR="$ARTIFACTS_BASE/$slug"
   CHECKPOINT_FILE="$ARTIFACTS_DIR/checkpoint.json"
+  TASK_SUMMARY_DIR="$REPO_ROOT/task"
+  TASK_SUMMARY_FILE="$TASK_SUMMARY_DIR/${TIMESTAMP}-${slug}.md"
 
   mkdir -p "$ARTIFACTS_DIR"
+  mkdir -p "$TASK_SUMMARY_DIR"
 
   # Only create new checkpoint if not resuming
   if [[ "$RESUME_MODE" == true && -f "$CHECKPOINT_FILE" ]]; then
@@ -574,6 +607,21 @@ init_artifacts() {
   "agents": {}
 }
 CHECKPOINT_EOF
+}
+
+set_planned_agents() {
+  [[ -f "$CHECKPOINT_FILE" ]] || return 0
+
+  python3 - "$CHECKPOINT_FILE" "$@" <<'PYEOF'
+import json, sys
+cp_file = sys.argv[1]
+planned = sys.argv[2:]
+with open(cp_file, 'r') as f:
+    data = json.load(f)
+data['planned_agents'] = planned
+with open(cp_file, 'w') as f:
+    json.dump(data, f, indent=2)
+PYEOF
 }
 
 # Write checkpoint after agent completes
@@ -640,6 +688,8 @@ save_agent_artifact() {
         fi
       done
     fi
+  elif [[ "$agent" == "summarizer" && -f "$TASK_SUMMARY_FILE" ]]; then
+    cp "$TASK_SUMMARY_FILE" "$agent_dir/$(basename "$TASK_SUMMARY_FILE")" 2>/dev/null || true
   fi
 }
 
@@ -649,9 +699,9 @@ get_resume_agent() {
 
   python3 - "$CHECKPOINT_FILE" <<'PYEOF' 2>/dev/null || true
 import json, sys
-agents_order = ['architect', 'coder', 'validator', 'tester', 'documenter']
 with open(sys.argv[1], 'r') as f:
     data = json.load(f)
+agents_order = data.get('planned_agents') or ['planner', 'architect', 'coder', 'auditor', 'validator', 'tester', 'documenter', 'summarizer']
 completed = data.get('agents', {})
 for agent in agents_order:
     info = completed.get(agent, {})
@@ -896,6 +946,16 @@ query_session_tokens() {
   echo "$result"
 }
 
+# Detect worker ID from worktree path (e.g. .pipeline-worktrees/worker-2 → worker-2)
+_detect_worker_id() {
+  local cwd; cwd=$(pwd)
+  if [[ "$cwd" =~ \.pipeline-worktrees/(worker-[0-9]+) ]]; then
+    echo "${BASH_REMATCH[1]}"
+  elif [[ "$cwd" =~ \.pipeline-worktrees/(adhoc-[0-9]+) ]]; then
+    echo "${BASH_REMATCH[1]}"
+  fi
+}
+
 # Write per-agent metadata sidecar file
 write_agent_meta() {
   local agent="$1"
@@ -917,10 +977,16 @@ write_agent_meta() {
 
   local duration=$(( finished_epoch - started_epoch ))
 
+  # Task and worker context for Activity Log
+  local task_slug; task_slug=$(_task_slug "$TASK_MESSAGE" 2>/dev/null || echo "")
+  local worker_id; worker_id=$(_detect_worker_id)
+
   cat > "$meta_file" << META_EOF
 {
   "agent": "$agent",
   "model": "$model",
+  "task": "$task_slug",
+  "worker": "${worker_id:-main}",
   "started_epoch": $started_epoch,
   "finished_epoch": $finished_epoch,
   "duration_seconds": $duration,
@@ -1452,11 +1518,12 @@ Write ONLY a JSON file to \`.opencode/pipeline/plan.json\` with this exact struc
 **Fields**:
 - \`is_agent_task\`: set to \`true\` when the task creates, modifies, or significantly changes an agent (any app in \`apps/\` with \`-agent\` suffix, or agent configs in \`.opencode/agents/\`). When true, the pipeline auto-injects an auditor step after the coder to verify agent compliance.
 
-Agent options: planner, architect, coder, validator, tester, auditor, documenter.
-For quick-fix: typically ["coder", "validator"].
-For standard: typically ["architect", "coder", "validator", "tester"].
+Agent options: planner, architect, coder, auditor, validator, tester, documenter, summarizer.
+For quick-fix: typically ["coder", "validator", "summarizer"].
+For standard: typically ["architect", "coder", "validator", "tester", "summarizer"].
 For complex: add "auditor" and increase timeouts.
 Note: documenter is NOT needed by default — coder handles docs via tasks.md "Documentation" section. Only add documenter if documentation is the primary task.
+Always keep "summarizer" as the final agent unless this is an explicit single-agent run.
 
 **IMPORTANT**: If an existing OpenSpec proposal already has \`tasks.md\` — exclude \`architect\` from agents. The coder reads specs directly from \`openspec/changes/<id>/\`. If the task says "Implement openspec change ..." — the spec is ready, skip architect.
 
@@ -1687,6 +1754,60 @@ Write audit report to \`.opencode/pipeline/reports/${TIMESTAMP}_audit.md\`
 Update \`.opencode/pipeline/handoff.md\` with audit summary and verdict (PASS/WARN/FAIL)
 PROMPT
       ;;
+    summarizer)
+      cat << PROMPT
+Task: Create the final task summary for this pipeline run.
+
+## Instructions
+
+1. Read \`.opencode/pipeline/handoff.md\` for cross-agent context.
+2. Read \`${CHECKPOINT_FILE}\` to see which agents actually ran, their statuses, durations, and commits.
+3. Read the available logs in \`.opencode/pipeline/logs/${TIMESTAMP}_*.log\`.
+4. Read \`.opencode/pipeline/reports/${TIMESTAMP}.md\` if it already exists.
+5. Write the final markdown summary to \`${TASK_SUMMARY_FILE}\`.
+6. Write the report in Ukrainian.
+
+## Required Report Structure
+
+\`\`\`md
+# Task Summary: <title>
+
+## Загальний статус
+- Статус пайплайну
+- Гілка
+- Pipeline ID
+
+## Агенти
+### <agent>
+- Що зробив
+- Які були складнощі або блокери
+- Що залишилось виправити або доробити
+
+## Що треба доробити
+- ...
+
+## Пропозиція до наступної задачі
+- Назва задачі
+- Чому її варто створити зараз
+- Очікуваний результат
+\`\`\`
+
+## Rules
+
+- Include only agents that actually worked on the task.
+- If an agent log shows no blocking issues, say so explicitly.
+- If the pipeline failed, clearly name the failing agent and the unfinished work.
+- End with exactly one concrete proposed follow-up task.
+- Do not overwrite other reports; write only to \`${TASK_SUMMARY_FILE}\`.
+
+## Handoff
+
+Update \`.opencode/pipeline/handoff.md\` — Summarizer section:
+- Status
+- Summary file path
+- Final recommendation for next task
+PROMPT
+      ;;
   esac
 }
 
@@ -1739,10 +1860,22 @@ init_handoff() {
 - **Test results**: —
 - **New tests written**: —
 
+## Auditor
+
+- **Status**: pending
+- **Verdict**: —
+- **Recommendations**: —
+
 ## Documenter
 
 - **Status**: pending
 - **Docs created/updated**: —
+
+## Summarizer
+
+- **Status**: pending
+- **Summary file**: —
+- **Next task recommendation**: —
 
 ---
 
@@ -1850,6 +1983,7 @@ main() {
   # Get agents to run
   local agents_to_run
   agents_to_run=$(get_agents_to_run)
+  set_planned_agents $agents_to_run
 
   echo ""
   echo -e "${BLUE}Agents to run:${NC} $(echo "$agents_to_run" | tr '\n' ' ')"
@@ -1871,6 +2005,10 @@ main() {
   # Run each agent
   local failed=false
   local failed_agent=""
+  local should_run_summarizer=false
+  if echo "$agents_to_run" | grep -qx 'summarizer'; then
+    should_run_summarizer=true
+  fi
   for agent in $agents_to_run; do
     local prompt
     prompt=$(build_prompt "$agent")
@@ -1942,6 +2080,35 @@ main() {
     fi
   done
 
+  if $failed && $should_run_summarizer && [[ "$failed_agent" != "summarizer" ]]; then
+    echo ""
+    echo -e "${YELLOW}Running summarizer after failure to capture partial task status...${NC}"
+
+    local summary_prompt
+    summary_prompt=$(build_prompt "summarizer")
+    local summary_start
+    summary_start=$(date +%s)
+    local summary_log="$LOG_DIR/${TIMESTAMP}_summarizer.log"
+
+    if run_agent "summarizer" "$summary_prompt"; then
+      local summary_dur=$(( $(date +%s) - summary_start ))
+      commit_agent_work "summarizer" "$task_slug"
+      local summary_commit
+      summary_commit=$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo "")
+      local summary_tokens
+      summary_tokens=$(get_agent_tokens "summarizer")
+      write_checkpoint "summarizer" "done" "$summary_dur" "$summary_commit" "$summary_tokens"
+      save_agent_artifact "summarizer" "$summary_log"
+    else
+      local summary_dur=$(( $(date +%s) - summary_start ))
+      local summary_tokens
+      summary_tokens=$(get_agent_tokens "summarizer")
+      write_checkpoint "summarizer" "failed" "$summary_dur" "" "$summary_tokens"
+      save_agent_artifact "summarizer" "$summary_log"
+      echo -e "${YELLOW}⚠ Summarizer failed after pipeline failure; keeping original failure status${NC}"
+    fi
+  fi
+
   local total_duration=$(( $(date +%s) - pipeline_start ))
 
   # Generate report
@@ -2011,6 +2178,10 @@ PYEOF
     echo '```'
     opencode stats 2>/dev/null || echo "(stats unavailable)"
     echo '```'
+    echo ""
+    echo "## Task Summary"
+    echo ""
+    echo "- **Summary file**: ${TASK_SUMMARY_FILE}"
   } > "$report_file"
 
   # Webhook
@@ -2055,12 +2226,14 @@ PYEOF
   if $failed; then
     echo -e "${RED}Pipeline FAILED at agent: ${failed_agent}${NC}"
     echo -e "${BLUE}Report:${NC}  ${report_file}"
+    [[ -f "$TASK_SUMMARY_FILE" ]] && echo -e "${BLUE}Task MD:${NC} ${TASK_SUMMARY_FILE}"
     echo -e "${YELLOW}Logs:${NC}    ${LOG_DIR}/${TIMESTAMP}_*.log${NC}"
     exit 1
   else
     echo -e "${GREEN}Pipeline COMPLETED in $(( total_duration / 60 )) min${NC}"
     echo -e "${BLUE}Branch:${NC}  ${branch}"
     echo -e "${BLUE}Report:${NC}  ${report_file}"
+    echo -e "${BLUE}Task MD:${NC} ${TASK_SUMMARY_FILE}"
     echo -e "${BLUE}Handoff:${NC} ${HANDOFF_FILE}"
     echo -e "${BLUE}Logs:${NC}    ${LOG_DIR}/${TIMESTAMP}_*.log${NC}"
   fi
