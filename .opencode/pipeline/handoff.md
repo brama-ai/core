@@ -101,10 +101,13 @@ the monorepo workflow and documenting the migration path.
 
 ## Validator
 
-- **Status**: pending
-- **PHPStan**: —
-- **CS-check**: —
-- **Files fixed**: —
+- **Status**: done
+- **Apps validated**: `apps/hello-agent/` (pilot app referenced by this change)
+- **PHPStan**:
+  - `apps/hello-agent/`: pass (`make hello-analyse`)
+- **CS-check**:
+  - `apps/hello-agent/`: pass (`make hello-cs-check`)
+- **Files fixed**: none
 
 ## Tester
 
@@ -119,3 +122,4 @@ the monorepo workflow and documenting the migration path.
 
 ---
 
+- **Commit (coder)**: 497d780
