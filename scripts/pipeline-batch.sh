@@ -339,12 +339,15 @@ move_to_done() {
   local src="$1"
   local task_branch="$2"
   local duration="$3"
-  local dest="${TASK_SOURCE}/done/$(basename "$src")"
+  local basename_f; basename_f=$(basename "$src")
+  local dest="${TASK_SOURCE}/done/${basename_f}"
   {
     echo "<!-- batch: ${BATCH_TIMESTAMP} | status: pass | duration: ${duration}s | branch: ${task_branch} -->"
     cat "$src"
   } > "$dest"
   rm -f "$src"
+  # Clean up leftover failed copy from a previous attempt (e.g. auto-fix retry)
+  rm -f "${TASK_SOURCE}/failed/${basename_f}"
 }
 
 move_to_failed() {

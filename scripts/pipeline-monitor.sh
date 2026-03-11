@@ -23,10 +23,11 @@
 #   x           Stop selected in-progress task
 #   +           Raise priority of selected waiting task
 #   -           Lower priority of selected waiting task
+#   l           View logs for selected failed/in-progress task
 #   d           Delete selected waiting/failed task (with files)
 #   a           Archive all completed tasks
 #   r           Refresh
-#   q/Ctrl-C    Quit
+#   q/Ctrl-C    Quit (or back from log/detail view)
 #
 # Task priority:
 #   Tasks in todo/ are sorted by priority. Priority is set via a comment
@@ -63,6 +64,8 @@ MAX_TABS=2  # Overview + Logs minimum
 SELECTED_IDX=0
 DETAIL_MODE=false
 DETAIL_FILE=""
+LOG_VIEW_MODE=false
+LOG_VIEW_FILE=""
 ACTION_MSG=""
 ACTIVE_WORKER_COUNT=0
 REFRESH_INTERVAL=3
@@ -309,6 +312,12 @@ render_overview() {
   buf_line "$(render_tabs_str)"
   buf_line ""
 
+  if [[ "$LOG_VIEW_MODE" == true ]]; then
+    render_task_log_view_buf
+    buf_flush
+    return
+  fi
+
   if [[ "$DETAIL_MODE" == true && -n "$DETAIL_FILE" && -f "$DETAIL_FILE" ]]; then
     render_task_detail_buf
     buf_flush
@@ -420,8 +429,8 @@ render_bottom_menu_buf() {
   local batch_running=false; is_batch_running && batch_running=true
   local keys="  ${DIM}←/→ tabs  ↑/↓ select  Enter detail"
   case "$state" in
-    in-progress) keys="$keys  ${WHITE}[x]${DIM} stop" ;;
-    failed) keys="$keys  ${WHITE}[f]${DIM} retry  ${WHITE}[d]${DIM} delete" ;;
+    in-progress) keys="$keys  ${WHITE}[x]${DIM} stop  ${WHITE}[l]${DIM} logs" ;;
+    failed) keys="$keys  ${WHITE}[f]${DIM} retry  ${WHITE}[d]${DIM} delete  ${WHITE}[l]${DIM} logs" ;;
     todo)
       keys="$keys  ${WHITE}[+]${DIM} prio+  ${WHITE}[-]${DIM} prio-  ${WHITE}[d]${DIM} delete"
       $batch_running && keys="$keys  ${WHITE}[s]${DIM} start extra"
@@ -451,14 +460,40 @@ render_task_detail_buf() {
   buf_line "  ${DIM}Esc back  [q] quit${RESET}"
 }
 
+# ── Task log view ────────────────────────────────────────────────────
+render_task_log_view_buf() {
+  if [[ -z "$LOG_VIEW_FILE" || ! -f "$LOG_VIEW_FILE" ]]; then
+    buf_line "  ${DIM}No log file found for this task${RESET}"
+    buf_line "  ${DIM}q/Esc back${RESET}"
+  else
+    local log_size; log_size=$(wc -c < "$LOG_VIEW_FILE" | tr -d ' ')
+    buf_line "  ${BOLD}Task Logs${RESET}  ${DIM}$(basename "$LOG_VIEW_FILE")  $(( log_size / 1024 ))KB  (q/Esc back)${RESET}"
+    local available_lines=$((TERM_ROWS - 7))
+    [[ $available_lines -lt 5 ]] && available_lines=5
+    render_log_lines "$LOG_VIEW_FILE" "$available_lines"
+  fi
+}
+
+find_task_log() {
+  local file="$1"
+  local fname; fname=$(basename "$file" .md)
+  # Search in main log dir and worktree log dirs
+  local log=""
+  log=$(ls -t "$LOG_DIR"/*"${fname}"* "$WORKTREE_BASE"/worker-*/.opencode/pipeline/logs/*"${fname}"* 2>/dev/null | head -1 || true)
+  # Fallback: try matching by task slug from title
+  if [[ -z "$log" ]]; then
+    local title; title=$(grep -m1 '^# ' "$file" 2>/dev/null | sed 's/^# //')
+    local slug; slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g;s/--*/-/g;s/^-//;s/-$//' | cut -c1-50)
+    [[ -n "$slug" ]] && log=$(ls -t "$LOG_DIR"/*"${slug}"* 2>/dev/null | head -1 || true)
+  fi
+  echo "$log"
+}
+
 # ── Tab: Logs (always present) ────────────────────────────────────────
 render_logs_tab() {
   get_terminal_size
   buf_reset
-  buf_line "${CYAN}${BOLD}  Pipeline Monitor${RESET}  ${DIM}Logs${RESET}  $(date '+%H:%M:%S')"
-  buf_line "${DIM}$(hline)${RESET}"
-  buf_line "$(render_tabs_str)"
-  buf_line ""
+  buf_line "$(render_tabs_str)  ${DIM}$(date '+%H:%M:%S')${RESET}"
 
   local log_file=""
   [[ -d "$LOG_DIR" ]] && log_file=$(ls -t "$LOG_DIR"/*.log 2>/dev/null | head -1 || true)
@@ -469,15 +504,12 @@ render_logs_tab() {
   else
     local agent_name; agent_name=$(basename "$log_file" .log | sed 's/^[0-9_]*//')
     local log_size; log_size=$(wc -c < "$log_file" | tr -d ' ')
-    buf_line "  ${BOLD}Agent:${RESET} ${YELLOW}$agent_name${RESET}    ${BOLD}Log:${RESET} ${DIM}$(basename "$log_file")${RESET}    ${BOLD}Size:${RESET} ${DIM}$(( log_size / 1024 ))KB${RESET}"
-    buf_line "${DIM}$(hline)${RESET}"
-    local available_lines=$((TERM_ROWS - 8))
+    buf_line "  ${YELLOW}$agent_name${RESET}  ${DIM}$(basename "$log_file")  $(( log_size / 1024 ))KB${RESET}"
+    local available_lines=$((TERM_ROWS - 4))
     [[ $available_lines -lt 5 ]] && available_lines=5
     render_log_lines "$log_file" "$available_lines"
   fi
 
-  buf_line ""
-  buf_line "${DIM}$(hline)${RESET}"
   buf_line "  ${DIM}←/→ tabs  [s] start  [k] kill  [q] quit  (auto-refresh ${REFRESH_INTERVAL}s)${RESET}"
   buf_flush
 }
@@ -487,10 +519,7 @@ render_worker_tab() {
   local worker_name="worker-${1}"
   get_terminal_size
   buf_reset
-  buf_line "${CYAN}${BOLD}  Pipeline Monitor${RESET}  ${DIM}$worker_name${RESET}  $(date '+%H:%M:%S')"
-  buf_line "${DIM}$(hline)${RESET}"
-  buf_line "$(render_tabs_str)"
-  buf_line ""
+  buf_line "$(render_tabs_str)  ${DIM}$(date '+%H:%M:%S')${RESET}"
 
   local log_file=""
   local wt_log_dir="$WORKTREE_BASE/$worker_name/.opencode/pipeline/logs"
@@ -504,15 +533,12 @@ render_worker_tab() {
   else
     local agent_name; agent_name=$(basename "$log_file" .log | sed 's/^[0-9_]*//')
     local log_size; log_size=$(wc -c < "$log_file" | tr -d ' ')
-    buf_line "  ${BOLD}Agent:${RESET} ${YELLOW}$agent_name${RESET}    ${BOLD}Log:${RESET} ${DIM}$(basename "$log_file")${RESET}    ${BOLD}Size:${RESET} ${DIM}$(( log_size / 1024 ))KB${RESET}"
-    buf_line "${DIM}$(hline)${RESET}"
-    local available_lines=$((TERM_ROWS - 8))
+    buf_line "  ${YELLOW}$agent_name${RESET}  ${DIM}$(basename "$log_file")  $(( log_size / 1024 ))KB${RESET}"
+    local available_lines=$((TERM_ROWS - 4))
     [[ $available_lines -lt 5 ]] && available_lines=5
     render_log_lines "$log_file" "$available_lines"
   fi
 
-  buf_line ""
-  buf_line "${DIM}$(hline)${RESET}"
   buf_line "  ${DIM}←/→ tabs  [s] start  [k] kill  [q] quit  (auto-refresh ${REFRESH_INTERVAL}s)${RESET}"
   buf_flush
 }
@@ -652,11 +678,13 @@ action_start_task() {
     "$wt/scripts/pipeline.sh" --branch "$task_branch" --task-file "$wt_task_file" > "$log_file" 2>&1 || exit_code=$?
     rm -f "$wt_task_file"
     local duration=$(( $(date +%s) - start_time )) batch_ts; batch_ts=$(date +%Y%m%d_%H%M%S)
+    local base_name; base_name=$(basename "$active_file")
     if [[ $exit_code -eq 0 ]]; then
-      { echo "<!-- batch: ${batch_ts} | status: pass | duration: ${duration}s | branch: ${task_branch} -->"; cat "$active_file"; } > "$TASK_SOURCE/done/$(basename "$active_file")"
+      { echo "<!-- batch: ${batch_ts} | status: pass | duration: ${duration}s | branch: ${task_branch} -->"; cat "$active_file"; } > "$TASK_SOURCE/done/${base_name}"
+      rm -f "$TASK_SOURCE/failed/${base_name}"  # clean leftover from previous attempt
     else
       mkdir -p "$TASK_SOURCE/failed"
-      { echo "<!-- batch: ${batch_ts} | status: fail | duration: ${duration}s | branch: ${task_branch} -->"; cat "$active_file"; } > "$TASK_SOURCE/failed/$(basename "$active_file")"
+      { echo "<!-- batch: ${batch_ts} | status: fail | duration: ${duration}s | branch: ${task_branch} -->"; cat "$active_file"; } > "$TASK_SOURCE/failed/${base_name}"
     fi
     rm -f "$active_file"
     git -C "$REPO_ROOT" worktree remove --force "$wt" 2>/dev/null || rm -rf "$wt"
@@ -750,7 +778,14 @@ main() {
     read_key
 
     case "$LAST_KEY" in
-      q|Q)        exit 0 ;;
+      q|Q)
+        if [[ "$LOG_VIEW_MODE" == true ]]; then
+          LOG_VIEW_MODE=false; LOG_VIEW_FILE=""
+        elif [[ "$DETAIL_MODE" == true ]]; then
+          DETAIL_MODE=false; DETAIL_FILE=""
+        else
+          exit 0
+        fi ;;
       r|R)        continue ;;
       s|S)        action_start ;;
       f|F)        action_retry_failed ;;
@@ -760,11 +795,21 @@ main() {
       -)          action_demote ;;
       d|D)        action_delete ;;
       a|A)        action_archive ;;
-      UP)         [[ $SELECTED_IDX -gt 0 ]] && SELECTED_IDX=$((SELECTED_IDX - 1)); DETAIL_MODE=false ;;
-      DOWN)       [[ $SELECTED_IDX -lt $((ALL_TASKS_COUNT - 1)) ]] && SELECTED_IDX=$((SELECTED_IDX + 1)); DETAIL_MODE=false ;;
-      LEFT)       CURRENT_TAB=$(( CURRENT_TAB > 1 ? CURRENT_TAB - 1 : MAX_TABS )); DETAIL_MODE=false ;;
-      RIGHT)      CURRENT_TAB=$(( CURRENT_TAB < MAX_TABS ? CURRENT_TAB + 1 : 1 )); DETAIL_MODE=false ;;
-      ESC|$'\x7f') DETAIL_MODE=false; DETAIL_FILE="" ;;
+      l|L)
+        if [[ $CURRENT_TAB -eq 1 && $ALL_TASKS_COUNT -gt 0 && $SELECTED_IDX -lt $ALL_TASKS_COUNT ]]; then
+          local state="${ALL_TASKS_STATES[$SELECTED_IDX]%%:*}"
+          if [[ "$state" == "failed" || "$state" == "in-progress" ]]; then
+            LOG_VIEW_FILE=$(find_task_log "${ALL_TASKS_FILES[$SELECTED_IDX]}")
+            LOG_VIEW_MODE=true
+          else
+            ACTION_MSG="${YELLOW}Logs available for failed/in-progress tasks only${RESET}"
+          fi
+        fi ;;
+      UP)         [[ $SELECTED_IDX -gt 0 ]] && SELECTED_IDX=$((SELECTED_IDX - 1)); DETAIL_MODE=false; LOG_VIEW_MODE=false ;;
+      DOWN)       [[ $SELECTED_IDX -lt $((ALL_TASKS_COUNT - 1)) ]] && SELECTED_IDX=$((SELECTED_IDX + 1)); DETAIL_MODE=false; LOG_VIEW_MODE=false ;;
+      LEFT)       CURRENT_TAB=$(( CURRENT_TAB > 1 ? CURRENT_TAB - 1 : MAX_TABS )); DETAIL_MODE=false; LOG_VIEW_MODE=false ;;
+      RIGHT)      CURRENT_TAB=$(( CURRENT_TAB < MAX_TABS ? CURRENT_TAB + 1 : 1 )); DETAIL_MODE=false; LOG_VIEW_MODE=false ;;
+      ESC|$'\x7f') DETAIL_MODE=false; DETAIL_FILE=""; LOG_VIEW_MODE=false; LOG_VIEW_FILE="" ;;
       ENTER)
         if [[ $CURRENT_TAB -eq 1 && $ALL_TASKS_COUNT -gt 0 && $SELECTED_IDX -lt $ALL_TASKS_COUNT ]]; then
           DETAIL_MODE=true; DETAIL_FILE="${ALL_TASKS_FILES[$SELECTED_IDX]}"
