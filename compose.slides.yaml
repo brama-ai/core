@@ -5,7 +5,8 @@ services:
       dockerfile: docker/slides/Dockerfile
     labels:
       - traefik.enable=true
-      - traefik.http.routers.slides.rule=PathPrefix(`/slides/slide/`)
+      - traefik.docker.network=ai-community-platform_dev-edge
+      - traefik.http.routers.slides.rule=Host(`slides.ai-community-platform.org`) || Host(`slides.localhost`)
       - traefik.http.routers.slides.entrypoints=web
       - traefik.http.services.slides.loadbalancer.server.port=80
     networks:

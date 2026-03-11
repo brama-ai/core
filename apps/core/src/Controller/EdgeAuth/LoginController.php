@@ -80,6 +80,9 @@ final class LoginController extends AbstractController
         $expiresAt = (new \DateTimeImmutable())->modify(sprintf('+%d seconds', $this->tokenTtlSeconds));
 
         $response = new RedirectResponse($redirectTarget, Response::HTTP_FOUND);
+
+        // Use host-only cookie (no domain) so each subdomain gets its own cookie.
+        // This avoids browser issues where domain=localhost cookies aren't sent to *.localhost.
         $response->headers->setCookie(Cookie::create(
             $this->cookieName,
             $token,
@@ -119,10 +122,11 @@ final class LoginController extends AbstractController
             return $default;
         }
 
-        if (!in_array($host, ['localhost', '127.0.0.1'], true) && '' !== $host) {
-            // In production, we might want to restrict this to our own domains.
-            // But to support relative paths and different domains, we'll be more permissive for now.
-            return $target;
+        if ('' !== $host
+            && !in_array($host, ['localhost', '127.0.0.1'], true)
+            && !str_ends_with($host, '.localhost')
+        ) {
+            return $default;
         }
 
         return $target;

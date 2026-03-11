@@ -582,6 +582,44 @@ a:hover { text-decoration: underline; }
 .chat-tool-payload pre { font-size: .72rem; margin-top: .25rem; background: rgba(15, 23, 42, .5); padding: .5rem; border-radius: var(--radius-sm); overflow: auto; max-height: 200px; border: 1px solid var(--bg-card-border); color: var(--text-secondary); }
 
 /* ==========================================================================
+   Dashboard
+   ========================================================================== */
+.dash-section-title { font-size: .75rem; font-weight: 700; color: var(--text-muted); letter-spacing: .08em; text-transform: uppercase; margin: 1.25rem 0 .6rem; }
+
+/* Nav cards */
+.dash-nav-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .6rem; }
+.dash-nav-card { display: flex; align-items: flex-start; gap: .75rem; padding: .85rem 1rem; background: var(--bg-card); border: 1px solid var(--bg-card-border); border-radius: var(--radius); text-decoration: none; transition: border-color var(--transition), background var(--transition); }
+.dash-nav-card:hover { border-color: rgba(148, 163, 184, .35); background: rgba(30, 41, 59, .85); text-decoration: none; }
+.dash-nav-card strong { display: block; font-size: .88rem; color: var(--text-primary); margin-bottom: .15rem; }
+.dash-nav-card span:not(.dash-nav-icon) { font-size: .78rem; color: var(--text-secondary); line-height: 1.4; }
+.dash-nav-body { min-width: 0; }
+
+.dash-nav-icon { flex-shrink: 0; width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: .9rem; font-weight: 700; }
+.dash-nav-icon--agents  { background: rgba(59, 130, 246, .15); color: #60a5fa; }
+.dash-nav-icon--agents::before  { content: "A"; }
+.dash-nav-icon--chats   { background: rgba(34, 197, 94, .15); color: #4ade80; }
+.dash-nav-icon--chats::before   { content: "C"; }
+.dash-nav-icon--logs    { background: rgba(234, 179, 8, .15); color: #facc15; }
+.dash-nav-icon--logs::before    { content: "L"; }
+.dash-nav-icon--settings { background: rgba(148, 163, 184, .15); color: #94a3b8; }
+.dash-nav-icon--settings::before { content: "S"; }
+
+/* External tools */
+.dash-tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .6rem; }
+.dash-tool { display: flex; align-items: flex-start; gap: .65rem; padding: .75rem .9rem; background: var(--bg-card); border: 1px solid var(--bg-card-border); border-radius: var(--radius); text-decoration: none; transition: border-color var(--transition), background var(--transition); }
+.dash-tool:hover { border-color: rgba(148, 163, 184, .35); background: rgba(30, 41, 59, .85); text-decoration: none; }
+.dash-tool-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; }
+.dash-tool strong { display: block; font-size: .85rem; color: var(--text-primary); margin-bottom: .1rem; }
+.dash-tool span { font-size: .78rem; color: var(--text-secondary); line-height: 1.4; }
+
+/* Steps */
+.dash-steps { margin: 0; padding-left: 1.4rem; }
+.dash-steps li { font-size: .85rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: .3rem; }
+.dash-steps li:last-child { margin-bottom: 0; }
+.dash-steps li strong { color: var(--text-primary); }
+.dash-steps li a { color: var(--accent); }
+
+/* ==========================================================================
    Responsive: sidebar collapse below 768px
    ========================================================================== */
 @media (max-width: 768px) {

@@ -1,51 +1,114 @@
 {% extends 'admin/layout.html.twig' %}
 
-{% block title %}Статистика — Admin{% endblock %}
-{% block page_title %}Статистика{% endblock %}
+{% block title %}Панель керування — Admin{% endblock %}
+{% block page_title %}Панель керування{% endblock %}
 
 {% block content %}
-    {% set is_local_host = app.request.host in ['localhost', '127.0.0.1'] %}
-    {% set show_langfuse = is_local_host or ('localhost' not in admin_langfuse_url and '127.0.0.1' not in admin_langfuse_url) %}
-    {% set show_litellm = is_local_host or ('localhost' not in admin_litellm_url and '127.0.0.1' not in admin_litellm_url) %}
-    {% set show_openclaw = is_local_host or ('localhost' not in admin_openclaw_url and '127.0.0.1' not in admin_openclaw_url) %}
-    {% set show_traefik = is_local_host or ('localhost' not in admin_traefik_url and '127.0.0.1' not in admin_traefik_url) %}
-
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-label">Всього агентів</div>
             <div class="stat-value">{{ agents_total ?? '—' }}</div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Активних агентів</div>
+            <div class="stat-label">Активних</div>
             <div class="stat-value text-success">{{ agents_enabled ?? '—' }}</div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Вимкнених агентів</div>
+            <div class="stat-label">Вимкнених</div>
             <div class="stat-value text-danger">{{ agents_disabled ?? '—' }}</div>
         </div>
     </div>
 
-    <div class="glass-card">
-        <h2>Ласкаво просимо, {{ username }}</h2>
-        <p>Це панель адміністрування AI Community Platform. Використовуйте навігацію зліва для управління системою.</p>
-        <div style="margin-top:1rem;display:flex;gap:.6rem;flex-wrap:wrap;">
+    {% set is_local_host = app.request.host in ['localhost', '127.0.0.1'] or '.localhost' in app.request.host %}
+
+    {# ---- Quick nav ---- #}
+    <div class="dash-section-title">Навігація</div>
+    <div class="dash-nav-grid">
+        <a href="{{ path('admin_agents') }}" class="dash-nav-card">
+            <span class="dash-nav-icon dash-nav-icon--agents"></span>
+            <div class="dash-nav-body">
+                <strong>Агенти</strong>
+                <span>Discovery, встановлення, увімкнення/вимкнення агентів платформи.</span>
+            </div>
+        </a>
+        <a href="{{ path('admin_chats') }}" class="dash-nav-card">
+            <span class="dash-nav-icon dash-nav-icon--chats"></span>
+            <div class="dash-nav-body">
+                <strong>Чати</strong>
+                <span>Сесії користувачів, статуси, тривалість, трейси запитів.</span>
+            </div>
+        </a>
+        <a href="{{ path('admin_logs') }}" class="dash-nav-card">
+            <span class="dash-nav-icon dash-nav-icon--logs"></span>
+            <div class="dash-nav-body">
+                <strong>Логи</strong>
+                <span>Пошук по OpenSearch, фільтри за рівнем, агентом, категорією.</span>
+            </div>
+        </a>
+        <a href="{{ path('admin_settings') }}" class="dash-nav-card">
+            <span class="dash-nav-icon dash-nav-icon--settings"></span>
+            <div class="dash-nav-body">
+                <strong>Налаштування</strong>
+                <span>Рівень логування, ретенція даних, розмір сховища.</span>
+            </div>
+        </a>
+    </div>
+
+    {# ---- External tools ---- #}
+    {% set show_openclaw = is_local_host or ('localhost' not in admin_openclaw_url and '127.0.0.1' not in admin_openclaw_url) %}
+    {% set show_langfuse = is_local_host or ('localhost' not in admin_langfuse_url and '127.0.0.1' not in admin_langfuse_url) %}
+    {% set show_litellm = is_local_host or ('localhost' not in admin_litellm_url and '127.0.0.1' not in admin_litellm_url) %}
+    {% set show_traefik = is_local_host or ('localhost' not in admin_traefik_url and '127.0.0.1' not in admin_traefik_url) %}
+
+    {% if show_openclaw or show_langfuse or show_litellm or show_traefik %}
+        <div class="dash-section-title">Інструменти платформи</div>
+        <div class="dash-tools-grid">
+            {% if show_openclaw %}
+                <a href="{{ admin_openclaw_url }}?token={{ openclaw_gateway_token }}" target="_blank" class="dash-tool">
+                    <span class="dash-tool-dot" style="background:#60a5fa;"></span>
+                    <div>
+                        <strong>OpenClaw UI</strong>
+                        <span>Оркестрація агентів, тестування скілів, A2A-комунікація, налаштування gateway.</span>
+                    </div>
+                </a>
+            {% endif %}
             {% if show_langfuse %}
-                <a class="btn btn-primary" href="{{ admin_langfuse_url }}">Відкрити Langfuse</a>
+                <a href="{{ admin_langfuse_url }}" class="dash-tool">
+                    <span class="dash-tool-dot" style="background:#f97316;"></span>
+                    <div>
+                        <strong>Langfuse</strong>
+                        <span>LLM observability — трейси, вартість, латенсі, аналіз промптів.</span>
+                    </div>
+                </a>
             {% endif %}
             {% if show_litellm %}
-                <a class="btn btn-settings" href="{{ admin_litellm_url }}">Відкрити LiteLLM</a>
-            {% endif %}
-            {% if show_openclaw %}
-                <a class="btn btn-settings" href="{{ admin_openclaw_url }}?token={{ openclaw_gateway_token }}" target="_blank">Відкрити OpenClaw UI</a>
+                <a href="{{ admin_litellm_url }}" class="dash-tool">
+                    <span class="dash-tool-dot" style="background:#a78bfa;"></span>
+                    <div>
+                        <strong>LiteLLM</strong>
+                        <span>Unified LLM proxy — маршрутизація моделей, бюджети, rate limits.</span>
+                    </div>
+                </a>
             {% endif %}
             {% if show_traefik %}
-                <a class="btn btn-settings" href="{{ admin_traefik_url }}">Відкрити Traefik</a>
+                <a href="{{ admin_traefik_url }}" class="dash-tool">
+                    <span class="dash-tool-dot" style="background:#22d3ee;"></span>
+                    <div>
+                        <strong>Traefik</strong>
+                        <span>Edge router — маршрутизація сервісів, middlewares, health checks.</span>
+                    </div>
+                </a>
             {% endif %}
         </div>
-        {% if not is_local_host and (not show_langfuse or not show_litellm or not show_openclaw or not show_traefik) %}
-            <p style="margin-top:1rem;color:var(--text-secondary);">
-                Частина tool-посилань прихована, бо для цього середовища вони все ще налаштовані на <code>localhost</code>.
-            </p>
-        {% endif %}
+    {% endif %}
+
+    {# ---- Getting started ---- #}
+    <div class="dash-section-title">Швидкий старт</div>
+    <div class="glass-card">
+        <ol class="dash-steps">
+            <li>Відкрийте <a href="{{ path('admin_agents') }}">Агенти</a> → натисніть <strong>Discover</strong> щоб знайти доступних агентів</li>
+            <li>Встановіть та увімкніть потрібних агентів — їхні скіли з'являться в OpenClaw</li>
+            <li>Тестуйте через <a href="{{ admin_openclaw_url }}?token={{ openclaw_gateway_token }}" target="_blank">OpenClaw UI</a>, слідкуйте за результатами в <a href="{{ path('admin_chats') }}">Чатах</a> та <a href="{{ path('admin_logs') }}">Логах</a></li>
+        </ol>
     </div>
 {% endblock %}

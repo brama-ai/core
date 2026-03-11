@@ -38,7 +38,7 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # Agent order
-AGENTS=(architect coder validator tester documenter)
+AGENTS=(architect coder validator tester)
 
 # Timeouts per agent (seconds, override via env)
 PIPELINE_TIMEOUT_ARCHITECT="${PIPELINE_TIMEOUT_ARCHITECT:-2700}"   # 45 min
@@ -83,21 +83,38 @@ Options:
   --only <agent>      Run only a specific agent
   --branch <name>     Use specific branch name (default: auto-generated)
   --task-file <path>  Read task prompt from a file instead of CLI argument
+                      If file is in tasks/todo/, it moves through
+                      todo/ → in-progress/ → done/ (or failed/)
+                      so pipeline-monitor.sh can track progress
   --audit             Add auditor as 6th quality gate agent
   --webhook <url>     POST JSON summary to webhook on completion/failure
   --telegram          Send status updates via Telegram bot
   --no-commit         Skip auto-commits between agents
+  --profile <name>    Use task profile: quick-fix, standard, complex
+  --skip-planner      Skip the planner agent (use default pipeline)
   -h, --help          Show this help
 
-Agents: architect, coder, validator, tester, documenter
+Agents: planner, architect, coder, validator, tester, documenter
+
+Profiles:
+  quick-fix    — coder + validator only (typos, config, minor fixes)
+  standard     — full 5-agent pipeline (default)
+  complex      — full pipeline + auditor + extended timeouts
 
 Timeouts (override via env):
-  PIPELINE_TIMEOUT_ARCHITECT=1800   (30 min)
-  PIPELINE_TIMEOUT_CODER=3600      (60 min)
-  PIPELINE_TIMEOUT_VALIDATOR=1200  (20 min)
-  PIPELINE_TIMEOUT_TESTER=1800    (30 min)
-  PIPELINE_TIMEOUT_DOCUMENTER=900  (15 min)
+  PIPELINE_TIMEOUT_PLANNER=300     (5 min)
+  PIPELINE_TIMEOUT_ARCHITECT=2700  (45 min)
+  PIPELINE_TIMEOUT_CODER=3600     (60 min)
+  PIPELINE_TIMEOUT_VALIDATOR=1200 (20 min)
+  PIPELINE_TIMEOUT_TESTER=1800   (30 min)
+  PIPELINE_TIMEOUT_DOCUMENTER=900 (15 min)
   PIPELINE_MAX_RETRIES=2
+
+Token budgets (override via env, 0=unlimited):
+  PIPELINE_TOKEN_BUDGET_PLANNER=100000
+  PIPELINE_TOKEN_BUDGET_ARCHITECT=500000
+  PIPELINE_TOKEN_BUDGET_CODER=2000000
+  PIPELINE_MAX_COST=<max total cost in USD>
   PIPELINE_RETRY_DELAY=30
 
 Telegram (env vars):
@@ -137,6 +154,26 @@ RESUME_MODE=false
 TELEGRAM_NOTIFY=false
 TELEGRAM_BOT_TOKEN="${PIPELINE_TELEGRAM_BOT_TOKEN:-}"
 TELEGRAM_CHAT_ID="${PIPELINE_TELEGRAM_CHAT_ID:-}"
+PIPELINE_PROFILE=""
+SKIP_PLANNER=false
+
+# Pipeline cost budget (empty = unlimited)
+PIPELINE_MAX_COST="${PIPELINE_MAX_COST:-}"
+
+# Per-agent token tracking via temp files (bash 3.x has no associative arrays)
+AGENT_TOKENS_DIR="/tmp/pipeline_tokens_$$"
+mkdir -p "$AGENT_TOKENS_DIR"
+set_agent_tokens() { echo "$2" > "$AGENT_TOKENS_DIR/$1"; }
+get_agent_tokens() { cat "$AGENT_TOKENS_DIR/$1" 2>/dev/null || echo "{}"; }
+
+# Per-agent token budgets (0 = unlimited)
+PIPELINE_TOKEN_BUDGET_PLANNER="${PIPELINE_TOKEN_BUDGET_PLANNER:-100000}"
+PIPELINE_TOKEN_BUDGET_ARCHITECT="${PIPELINE_TOKEN_BUDGET_ARCHITECT:-500000}"
+PIPELINE_TOKEN_BUDGET_CODER="${PIPELINE_TOKEN_BUDGET_CODER:-2000000}"
+PIPELINE_TOKEN_BUDGET_VALIDATOR="${PIPELINE_TOKEN_BUDGET_VALIDATOR:-500000}"
+PIPELINE_TOKEN_BUDGET_TESTER="${PIPELINE_TOKEN_BUDGET_TESTER:-500000}"
+PIPELINE_TOKEN_BUDGET_DOCUMENTER="${PIPELINE_TOKEN_BUDGET_DOCUMENTER:-300000}"
+PIPELINE_TOKEN_BUDGET_AUDITOR="${PIPELINE_TOKEN_BUDGET_AUDITOR:-300000}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -180,6 +217,14 @@ while [[ $# -gt 0 ]]; do
       TELEGRAM_NOTIFY=true
       shift
       ;;
+    --profile)
+      PIPELINE_PROFILE="$2"
+      shift 2
+      ;;
+    --skip-planner)
+      SKIP_PLANNER=true
+      shift
+      ;;
     --help|-h)
       show_help
       exit 0
@@ -204,6 +249,93 @@ if [[ -z "$TASK_MESSAGE" ]]; then
   show_help
   exit 1
 fi
+
+# ── Task file lifecycle (tasks/ directory integration) ──────────────
+# When --task-file points to a file in tasks/todo/, manage its lifecycle
+# so pipeline-monitor.sh can track progress in real time.
+TASK_LIFECYCLE=false
+TASK_ACTIVE_FILE=""
+TASKS_DIR=""
+
+_detect_task_lifecycle() {
+  local abs_tasks_dir="$REPO_ROOT/tasks"
+
+  if [[ -n "$TASK_FILE" ]]; then
+    # --task-file mode: check if file is inside tasks/todo/
+    local abs_task
+    abs_task=$(cd "$(dirname "$TASK_FILE")" && pwd)/$(basename "$TASK_FILE")
+    if [[ "$abs_task" == "$abs_tasks_dir/todo/"* ]]; then
+      TASK_LIFECYCLE=true
+      TASKS_DIR="$abs_tasks_dir"
+    fi
+  else
+    # Text mode: auto-create task file in tasks/todo/ so monitor can track it
+    local slug
+    slug=$(echo "$TASK_MESSAGE" | grep -m1 '[^ ]' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | cut -c1-50)
+    [[ -z "$slug" ]] && slug="task-$(date +%s)"
+    local auto_task_file="$abs_tasks_dir/todo/${slug}.md"
+    if [[ -d "$abs_tasks_dir/todo" ]]; then
+      mkdir -p "$abs_tasks_dir/todo"
+      # Write the first line as title, rest as body
+      local title
+      title=$(echo "$TASK_MESSAGE" | head -1)
+      if [[ "$title" != "# "* ]]; then
+        echo "# ${title}" > "$auto_task_file"
+        echo "" >> "$auto_task_file"
+        echo "$TASK_MESSAGE" >> "$auto_task_file"
+      else
+        echo "$TASK_MESSAGE" > "$auto_task_file"
+      fi
+      TASK_FILE="$auto_task_file"
+      TASK_LIFECYCLE=true
+      TASKS_DIR="$abs_tasks_dir"
+    fi
+  fi
+}
+
+_task_move_to_in_progress() {
+  [[ "$TASK_LIFECYCLE" != true ]] && return
+  local src="$TASK_FILE"
+  local dest="${TASKS_DIR}/in-progress/$(basename "$src")"
+  mkdir -p "${TASKS_DIR}/in-progress"
+  mv "$src" "$dest"
+  TASK_ACTIVE_FILE="$dest"
+  echo -e "${BLUE}Task moved: todo/ → in-progress/${NC}"
+}
+
+_task_move_to_done() {
+  [[ "$TASK_LIFECYCLE" != true ]] && return
+  local src="${TASK_ACTIVE_FILE:-$TASK_FILE}"
+  [[ ! -f "$src" ]] && return
+  local branch="${1:-}"
+  local duration="${2:-0}"
+  local dest="${TASKS_DIR}/done/$(basename "$src")"
+  mkdir -p "${TASKS_DIR}/done"
+  {
+    echo "<!-- batch: ${TIMESTAMP} | status: pass | duration: ${duration}s | branch: ${branch} -->"
+    cat "$src"
+  } > "$dest"
+  rm -f "$src"
+  echo -e "${GREEN}Task moved: in-progress/ → done/${NC}"
+}
+
+_task_move_to_failed() {
+  [[ "$TASK_LIFECYCLE" != true ]] && return
+  local src="${TASK_ACTIVE_FILE:-$TASK_FILE}"
+  [[ ! -f "$src" ]] && return
+  local branch="${1:-}"
+  local duration="${2:-0}"
+  local dest="${TASKS_DIR}/failed/$(basename "$src")"
+  mkdir -p "${TASKS_DIR}/failed"
+  {
+    echo "<!-- batch: ${TIMESTAMP} | status: fail | duration: ${duration}s | branch: ${branch} -->"
+    cat "$src"
+  } > "$dest"
+  rm -f "$src"
+  echo -e "${RED}Task moved: in-progress/ → failed/${NC}"
+}
+
+_detect_task_lifecycle
 
 # ── Pre-flight checks ────────────────────────────────────────────────
 
@@ -250,6 +382,17 @@ preflight() {
   else
     if [[ -n "$(git -C "$REPO_ROOT" status --porcelain 2>/dev/null)" ]]; then
       echo -e "  ${YELLOW}⚠ Git working tree has uncommitted changes${NC}"
+      # Block if openspec/ files have uncommitted changes (P1 sync guard)
+      local openspec_dirty
+      openspec_dirty=$(git -C "$REPO_ROOT" status --porcelain -- openspec/ 2>/dev/null || true)
+      if [[ -n "$openspec_dirty" ]]; then
+        echo -e "  ${RED}✗ openspec/ has uncommitted changes — commit them first${NC}"
+        echo -e "  ${RED}  Pipeline branches from HEAD; uncommitted specs won't be included${NC}"
+        echo "$openspec_dirty" | while IFS= read -r line; do
+          echo -e "    ${RED}${line}${NC}"
+        done
+        errors=$((errors + 1))
+      fi
     else
       echo -e "  ${GREEN}✓ Git working tree clean${NC}"
     fi
@@ -439,23 +582,34 @@ write_checkpoint() {
   local status="$2"
   local duration="$3"
   local commit_hash="${4:-}"
+  local tokens_json="${5:-{}}"
 
   [[ -f "$CHECKPOINT_FILE" ]] || return 0
 
-  # Use python3 to safely update JSON
-  python3 -c "
+  # Use python3 to safely update JSON (stdin to avoid shell quoting issues)
+  python3 - "$CHECKPOINT_FILE" "$agent" "$status" "$duration" "$commit_hash" "$tokens_json" <<'PYEOF'
 import json, sys
-with open('$CHECKPOINT_FILE', 'r') as f:
+cp_file, agent, status, duration, commit, tokens_raw = sys.argv[1:7]
+with open(cp_file, 'r') as f:
     data = json.load(f)
-data['agents']['$agent'] = {
-    'status': '$status',
-    'duration': $duration,
-    'commit': '$commit_hash',
-    'finished': '$(date '+%Y-%m-%d %H:%M:%S')'
+try:
+    tokens = json.loads(tokens_raw) if tokens_raw != '{}' else {}
+except json.JSONDecodeError:
+    tokens = {}
+from datetime import datetime
+data['agents'][agent] = {
+    'status': status,
+    'duration': int(duration),
+    'commit': commit,
+    'finished': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    'tokens': tokens
 }
-with open('$CHECKPOINT_FILE', 'w') as f:
+with open(cp_file, 'w') as f:
     json.dump(data, f, indent=2)
-" 2>/dev/null || true
+PYEOF
+  if [[ $? -ne 0 ]]; then
+    echo -e "  ${YELLOW}⚠ write_checkpoint failed for ${agent}${NC}" >&2
+  fi
 }
 
 # Copy agent log to artifacts
@@ -493,10 +647,10 @@ save_agent_artifact() {
 get_resume_agent() {
   [[ -f "$CHECKPOINT_FILE" ]] || return
 
-  python3 -c "
-import json
+  python3 - "$CHECKPOINT_FILE" <<'PYEOF' 2>/dev/null || true
+import json, sys
 agents_order = ['architect', 'coder', 'validator', 'tester', 'documenter']
-with open('$CHECKPOINT_FILE', 'r') as f:
+with open(sys.argv[1], 'r') as f:
     data = json.load(f)
 completed = data.get('agents', {})
 for agent in agents_order:
@@ -504,16 +658,16 @@ for agent in agents_order:
     if info.get('status') != 'done':
         print(agent)
         break
-" 2>/dev/null || true
+PYEOF
 }
 
 # Print checkpoint summary
 print_checkpoint_summary() {
   [[ -f "$CHECKPOINT_FILE" ]] || return
 
-  python3 -c "
-import json
-with open('$CHECKPOINT_FILE', 'r') as f:
+  python3 - "$CHECKPOINT_FILE" <<'PYEOF' 2>/dev/null || true
+import json, sys
+with open(sys.argv[1], 'r') as f:
     data = json.load(f)
 agents = data.get('agents', {})
 if not agents:
@@ -525,7 +679,7 @@ for name, info in agents.items():
     commit = info.get('commit', '')
     icon = '✓' if status == 'done' else '✗'
     print(f'  {icon} {name}: {status} ({dur}s) {commit}')
-" 2>/dev/null || true
+PYEOF
 }
 
 # ── Dev Reporter Agent integration ───────────────────────────────────
@@ -687,6 +841,294 @@ restore_agent_model() {
   fi
 }
 
+# ── Token tracking via opencode session export ───────────────────────
+
+# Get the most recent opencode session ID for the current working directory
+get_latest_session_id() {
+  local session_json
+  session_json=$(cd "$REPO_ROOT" && opencode session list --format json -n 1 2>/dev/null) || session_json=""
+
+  if [[ -z "$session_json" ]]; then
+    echo ""
+    return
+  fi
+
+  echo "$session_json" | jq -r '.[0].id // empty' 2>/dev/null || echo ""
+}
+
+# Query token usage from an opencode session export
+# Replaces the old LiteLLM-based query_agent_tokens()
+query_session_tokens() {
+  local session_id="$1"
+  local fallback='{"input_tokens":0,"output_tokens":0,"cache_read":0,"cache_write":0,"cost":0}'
+
+  if [[ -z "$session_id" ]]; then
+    echo "$fallback"
+    return
+  fi
+
+  local tmp_file="/tmp/pipeline_session_${$}_${RANDOM}.json"
+
+  # Export to temp file — piping truncates large sessions
+  if ! opencode export "$session_id" > "$tmp_file" 2>/dev/null; then
+    rm -f "$tmp_file"
+    echo "$fallback"
+    return
+  fi
+
+  # Aggregate tokens across all messages
+  local result
+  result=$(jq '{
+    input_tokens: [.messages[].info.tokens.input // 0] | add,
+    output_tokens: [.messages[].info.tokens.output // 0] | add,
+    cache_read: [.messages[].info.tokens.cache.read // 0] | add,
+    cache_write: [.messages[].info.tokens.cache.write // 0] | add,
+    cost: 0
+  }' "$tmp_file" 2>/dev/null) || result=""
+
+  rm -f "$tmp_file"
+
+  if [[ -z "$result" ]]; then
+    echo "$fallback"
+    return
+  fi
+
+  echo "$result"
+}
+
+# Write per-agent metadata sidecar file
+write_agent_meta() {
+  local agent="$1"
+  local model="$2"
+  local started_epoch="$3"
+  local finished_epoch="$4"
+  local exit_code="$5"
+  local log_file="$6"
+  local tokens_json="${7:-{}}"
+
+  local meta_file="$LOG_DIR/${TIMESTAMP}_${agent}.meta.json"
+  local log_bytes=0
+  local log_lines=0
+
+  if [[ -f "$log_file" ]]; then
+    log_bytes=$(wc -c < "$log_file" | tr -d ' ')
+    log_lines=$(wc -l < "$log_file" | tr -d ' ')
+  fi
+
+  local duration=$(( finished_epoch - started_epoch ))
+
+  cat > "$meta_file" << META_EOF
+{
+  "agent": "$agent",
+  "model": "$model",
+  "started_epoch": $started_epoch,
+  "finished_epoch": $finished_epoch,
+  "duration_seconds": $duration,
+  "exit_code": $exit_code,
+  "log_file": "$(basename "$log_file")",
+  "log_bytes": $log_bytes,
+  "log_lines": $log_lines,
+  "tokens": $tokens_json
+}
+META_EOF
+}
+
+# ── Pipeline cost tracking ──────────────────────────────────────────
+
+CUMULATIVE_COST=0
+
+check_cost_budget() {
+  if [[ -z "$PIPELINE_MAX_COST" ]]; then
+    return 0  # no budget set
+  fi
+
+  local over
+  over=$(echo "$CUMULATIVE_COST $PIPELINE_MAX_COST" | awk '{if ($1 > $2) print "yes"; else print "no"}')
+
+  if [[ "$over" == "yes" ]]; then
+    echo -e "${RED}✗ Pipeline cost budget exceeded: \$${CUMULATIVE_COST} > \$${PIPELINE_MAX_COST}${NC}"
+    send_telegram "🛑 <b>Pipeline BUDGET EXCEEDED</b>
+💰 Spent: \$${CUMULATIVE_COST} / \$${PIPELINE_MAX_COST}
+📋 <i>${TASK_MESSAGE}</i>"
+    return 1
+  fi
+  return 0
+}
+
+# ── Profile system ──────────────────────────────────────────────────
+
+PROFILES_FILE="$PIPELINE_DIR/profiles.json"
+
+apply_profile() {
+  local profile_name="$1"
+
+  if [[ ! -f "$PROFILES_FILE" ]]; then
+    echo -e "${YELLOW}⚠ Profiles file not found: ${PROFILES_FILE}${NC}"
+    return 1
+  fi
+
+  if ! jq -e ".\"${profile_name}\"" "$PROFILES_FILE" &>/dev/null; then
+    echo -e "${YELLOW}⚠ Unknown profile: ${profile_name}${NC}"
+    return 1
+  fi
+
+  echo -e "${CYAN}Applying profile: ${profile_name}${NC}"
+
+  # Override AGENTS array
+  local agents_json
+  agents_json=$(jq -r ".\"${profile_name}\".agents[]" "$PROFILES_FILE" 2>/dev/null)
+  if [[ -n "$agents_json" ]]; then
+    AGENTS=()
+    while IFS= read -r agent; do
+      AGENTS+=("$agent")
+    done <<< "$agents_json"
+    echo -e "  ${BLUE}Agents: ${AGENTS[*]}${NC}"
+  fi
+
+  # Override timeouts
+  local timeouts
+  timeouts=$(jq -r ".\"${profile_name}\".timeout_overrides // {} | to_entries[] | \"\(.key)=\(.value)\"" "$PROFILES_FILE" 2>/dev/null)
+  while IFS='=' read -r key val; do
+    [[ -z "$key" ]] && continue
+    local var="PIPELINE_TIMEOUT_$(echo "$key" | tr '[:lower:]' '[:upper:]')"
+    eval "$var=$val"
+    echo -e "  ${BLUE}Timeout ${key}: ${val}s${NC}"
+  done <<< "$timeouts"
+}
+
+# ── Planner agent integration ──────────────────────────────────────
+
+PLAN_FILE="$PIPELINE_DIR/plan.json"
+PIPELINE_TIMEOUT_PLANNER="${PIPELINE_TIMEOUT_PLANNER:-300}"  # 5 min
+FALLBACK_PLANNER="${PIPELINE_FALLBACK_PLANNER:-openai/gpt-5.3-codex,free,cheap}"
+
+apply_plan() {
+  local plan_file="$1"
+
+  if [[ ! -f "$plan_file" ]]; then
+    echo -e "${YELLOW}⚠ Plan file not found, using standard profile${NC}"
+    return 1
+  fi
+
+  if ! jq -e '.' "$plan_file" &>/dev/null; then
+    echo -e "${YELLOW}⚠ Invalid plan JSON, using standard profile${NC}"
+    return 1
+  fi
+
+  local profile
+  profile=$(jq -r '.profile // "standard"' "$plan_file")
+  local reasoning
+  reasoning=$(jq -r '.reasoning // ""' "$plan_file")
+
+  echo -e "${CYAN}Planner chose profile: ${profile}${NC}"
+  if [[ -n "$reasoning" ]]; then
+    echo -e "  ${BLUE}Reasoning: ${reasoning}${NC}"
+  fi
+
+  # Apply profile from profiles.json
+  PIPELINE_PROFILE="$profile"
+  apply_profile "$profile" || true
+
+  # Override agents if planner specified a custom list
+  local custom_agents
+  custom_agents=$(jq -r '.agents // [] | .[]' "$plan_file" 2>/dev/null)
+  if [[ -n "$custom_agents" ]]; then
+    AGENTS=()
+    while IFS= read -r agent; do
+      AGENTS+=("$agent")
+    done <<< "$custom_agents"
+    echo -e "  ${BLUE}Custom agents: ${AGENTS[*]}${NC}"
+  fi
+
+  # Apply timeout overrides from plan
+  local timeouts
+  timeouts=$(jq -r '.timeout_overrides // {} | to_entries[] | "\(.key)=\(.value)"' "$plan_file" 2>/dev/null)
+  while IFS='=' read -r key val; do
+    [[ -z "$key" ]] && continue
+    local var="PIPELINE_TIMEOUT_$(echo "$key" | tr '[:lower:]' '[:upper:]')"
+    eval "$var=$val"
+  done <<< "$timeouts"
+
+  # Apply model overrides from plan
+  local model_overrides
+  model_overrides=$(jq -r '.model_overrides // {} | to_entries[] | "\(.key)=\(.value)"' "$plan_file" 2>/dev/null)
+  while IFS='=' read -r key val; do
+    [[ -z "$key" ]] && continue
+    swap_agent_model "$key" "$val" 2>/dev/null || true
+  done <<< "$model_overrides"
+}
+
+# ── Anti-loop monitor ────────────────────────────────────────────────
+
+monitor_agent_loop() {
+  local log_file="$1"
+  local agent="$2"
+  local agent_pid="$3"
+  local check_interval=60
+  local max_stalls=3
+  local prev_size=0
+  local stall_count=0
+
+  local monitor_start
+  monitor_start=$(date +%s)
+
+  while kill -0 "$agent_pid" 2>/dev/null; do
+    sleep "$check_interval"
+    [[ -f "$log_file" ]] || continue
+
+    local cur_size
+    cur_size=$(wc -c < "$log_file" 2>/dev/null | tr -d ' ' || echo 0)
+
+    # Check 1: Log file not growing (agent stalled)
+    if [[ "$cur_size" -eq "$prev_size" && "$cur_size" -gt 0 ]]; then
+      stall_count=$((stall_count + 1))
+      if [[ $stall_count -ge $max_stalls ]]; then
+        echo "LOOP_DETECTED:stall:Log not growing for $((max_stalls * check_interval))s" > "${log_file}.loop"
+        kill "$agent_pid" 2>/dev/null
+        return
+      fi
+    else
+      stall_count=0
+    fi
+
+    # Check 2: Repeated error patterns in recent output
+    if [[ "$cur_size" -gt 1000 ]]; then
+      local recent_errors
+      recent_errors=$(tail -100 "$log_file" 2>/dev/null | grep -ciE 'error|failed|exception' 2>/dev/null || echo 0)
+      if [[ "$recent_errors" -gt 30 ]]; then
+        local unique_errors
+        unique_errors=$(tail -100 "$log_file" 2>/dev/null | grep -iE 'error|failed|exception' | sort -u | wc -l | tr -d ' ')
+        if [[ "$unique_errors" -lt 3 ]]; then
+          echo "LOOP_DETECTED:repeated_errors:${recent_errors} errors with only ${unique_errors} unique patterns" > "${log_file}.loop"
+          kill "$agent_pid" 2>/dev/null
+          return
+        fi
+      fi
+    fi
+
+    # Check 3: Iteration counting for validator/tester
+    # Detects repeated make cycles (cs-fix/analyse/test) that aren't making progress
+    if [[ "$agent" == "validator" || "$agent" == "tester" ]]; then
+      local make_runs
+      make_runs=$(grep -cE 'make (cs-fix|cs-check|analyse|test|knowledge-|hello-|news-)' "$log_file" 2>/dev/null || echo 0)
+      local max_iterations=8  # ~4 cycles of fix+check
+      if [[ "$make_runs" -gt "$max_iterations" ]]; then
+        # Check if errors are decreasing — if not, it's a loop
+        local recent_errors prev_errors
+        recent_errors=$(tail -50 "$log_file" 2>/dev/null | grep -ciE 'error|ERROR' 2>/dev/null || echo 0)
+        prev_errors=$(sed -n '1,50p' "$log_file" 2>/dev/null | grep -ciE 'error|ERROR' 2>/dev/null || echo 0)
+        if [[ "$recent_errors" -ge "$prev_errors" && "$recent_errors" -gt 0 ]]; then
+          echo "LOOP_DETECTED:iteration_limit:${make_runs} make runs, errors not decreasing (${prev_errors}->${recent_errors})" > "${log_file}.loop"
+          kill "$agent_pid" 2>/dev/null
+          return
+        fi
+      fi
+    fi
+
+    prev_size=$cur_size
+  done
+}
+
 # ── Verify coder produced real code changes ──────────────────────────
 #
 # After the coder stage, check that actual source files were modified
@@ -773,30 +1215,102 @@ run_agent() {
       sleep "$RETRY_DELAY"
     fi
 
-    # Run with timeout
+    # Run with timeout, tracking PID for loop monitor
     # NOTE: We cd into REPO_ROOT instead of using --dir because opencode
     # registers git worktrees as "sandboxes" with restricted permissions
     # when passed via --dir. Running from CWD lets opencode detect the
     # worktree as an independent project with full file access.
     local exit_code=0
+    local agent_start_epoch
+    agent_start_epoch=$(date +%s)
+
     if command -v timeout &>/dev/null; then
       (cd "$REPO_ROOT" && timeout "$agent_timeout" opencode run \
         --agent "$agent" \
         "$message") \
-        2>&1 | tee "$log_file" || exit_code=$?
+        2>&1 | tee "$log_file" &
     else
       (cd "$REPO_ROOT" && opencode run \
         --agent "$agent" \
         "$message") \
-        2>&1 | tee "$log_file" || exit_code=$?
+        2>&1 | tee "$log_file" &
     fi
+    local agent_pid=$!
+
+    # Start loop monitor in background
+    monitor_agent_loop "$log_file" "$agent" "$agent_pid" &
+    local monitor_pid=$!
+
+    # Wait for agent to finish
+    wait "$agent_pid" 2>/dev/null || exit_code=$?
+
+    # Kill monitor
+    kill "$monitor_pid" 2>/dev/null
+    wait "$monitor_pid" 2>/dev/null
+
+    local agent_end_epoch
+    agent_end_epoch=$(date +%s)
+
+    # Capture session ID for token tracking
+    local session_id
+    session_id=$(get_latest_session_id)
+
+    # Check if loop was detected
+    if [[ -f "${log_file}.loop" ]]; then
+      local loop_info
+      loop_info=$(cat "${log_file}.loop")
+      rm -f "${log_file}.loop"
+      echo -e "${RED}✗ Loop detected for '${agent}': ${loop_info}${NC}"
+
+      # Query tokens from opencode session export
+      local tokens_json
+      tokens_json=$(query_session_tokens "$session_id")
+      write_agent_meta "$agent" "$(get_current_model "$agent")" "$agent_start_epoch" "$agent_end_epoch" "2" "$log_file" "$tokens_json"
+
+      # Store token results for report
+      set_agent_tokens "$agent" "$tokens_json"
+
+      local agent_cost
+      agent_cost=$(echo "$tokens_json" | jq -r '.cost' 2>/dev/null || echo 0)
+      CUMULATIVE_COST=$(echo "$CUMULATIVE_COST $agent_cost" | awk '{printf "%.4f", $1 + $2}')
+
+      send_telegram "🔄 <b>${agent}</b> LOOP DETECTED
+📋 <i>${loop_info}</i>
+💰 Cost so far: \$${CUMULATIVE_COST}"
+
+      restore_agent_model "$agent" "$original_model"
+      return 1
+    fi
+
+    # Query token usage from opencode session export
+    local tokens_json
+    tokens_json=$(query_session_tokens "$session_id")
+    write_agent_meta "$agent" "$(get_current_model "$agent")" "$agent_start_epoch" "$agent_end_epoch" "$exit_code" "$log_file" "$tokens_json"
+
+    # Store token results for report
+    set_agent_tokens "$agent" "$tokens_json"
+
+    local agent_cost
+    agent_cost=$(echo "$tokens_json" | jq -r '.cost' 2>/dev/null || echo 0)
+    CUMULATIVE_COST=$(echo "$CUMULATIVE_COST $agent_cost" | awk '{printf "%.4f", $1 + $2}')
 
     # Check result
     if [[ $exit_code -eq 0 ]]; then
+      local in_tok out_tok cache_r cache_w
+      in_tok=$(echo "$tokens_json" | jq -r '.input_tokens' 2>/dev/null || echo 0)
+      out_tok=$(echo "$tokens_json" | jq -r '.output_tokens' 2>/dev/null || echo 0)
+      cache_r=$(echo "$tokens_json" | jq -r '.cache_read' 2>/dev/null || echo 0)
+      cache_w=$(echo "$tokens_json" | jq -r '.cache_write' 2>/dev/null || echo 0)
+
       echo ""
       echo -e "${GREEN}✓ Agent '${agent}' completed successfully${NC}"
-      # Restore original model if we swapped
+      echo -e "  ${BLUE}Tokens: ${in_tok} in / ${out_tok} out | Cache: ${cache_r} read / ${cache_w} write${NC}"
       restore_agent_model "$agent" "$original_model"
+
+      # Check cost budget
+      if ! check_cost_budget; then
+        return 1
+      fi
       return 0
     elif [[ $exit_code -eq 124 ]]; then
       echo -e "${RED}✗ Agent '${agent}' timed out after ${timeout_min} min${NC}"
@@ -834,9 +1348,98 @@ build_prompt() {
   local agent="$1"
 
   case "$agent" in
-    architect)
+    planner)
       cat << PROMPT
 Task: ${TASK_MESSAGE}
+
+## Your Role
+
+Analyze the task and output a JSON pipeline configuration. Do NOT write any code or specs.
+
+## Analysis Steps
+
+1. Read the task description carefully
+2. Search codebase for files/patterns mentioned in the task (use glob/grep)
+3. Check if existing OpenSpec proposals cover this: \`npx openspec list\`
+4. Estimate scope: how many files, apps, services are likely affected?
+5. Check if DB migrations are likely needed (schema changes, new tables)
+6. Check if API surface changes are needed (new/modified endpoints)
+
+## Profile Guide
+
+- **quick-fix**: Typos, config tweaks, minor fixes, single-file edits, slide updates. 1-3 files affected.
+- **standard**: Normal features, moderate changes. Multiple files, single app. May need OpenSpec.
+- **complex**: Multi-service changes, DB migrations, API changes, new agents. Cross-app impact.
+
+## Output
+
+Write ONLY a JSON file to \`.opencode/pipeline/plan.json\` with this exact structure:
+
+\`\`\`json
+{
+  "profile": "quick-fix|standard|complex",
+  "reasoning": "Brief explanation of complexity assessment",
+  "agents": ["list", "of", "agents", "to", "run"],
+  "skip_openspec": true,
+  "estimated_files": 5,
+  "apps_affected": ["core"],
+  "needs_migration": false,
+  "needs_api_change": false,
+  "timeout_overrides": {},
+  "model_overrides": {}
+}
+\`\`\`
+
+Agent options: planner, architect, coder, validator, tester, auditor, documenter.
+For quick-fix: typically ["coder", "validator"].
+For standard: typically ["architect", "coder", "validator", "tester"].
+For complex: add "auditor" and increase timeouts.
+Note: documenter is NOT needed by default — coder handles docs via tasks.md "Documentation" section. Only add documenter if documentation is the primary task.
+
+**IMPORTANT**: If an existing OpenSpec proposal already has \`tasks.md\` — exclude \`architect\` from agents. The coder reads specs directly from \`openspec/changes/<id>/\`. If the task says "Implement openspec change ..." — the spec is ready, skip architect.
+
+Write the file and nothing else. Do not explain your reasoning outside the JSON.
+PROMPT
+      ;;
+    architect)
+      local architect_timeout
+      architect_timeout=$(get_timeout "architect")
+      local architect_timeout_min=$(( architect_timeout / 60 ))
+
+      local scope_instruction=""
+      case "$PIPELINE_PROFILE" in
+        quick-fix)
+          scope_instruction="
+## Scope Note
+This is a quick-fix task. Create ONLY proposal.md with a one-paragraph description.
+Skip design.md, tasks.md, and spec deltas entirely.
+Do NOT explore the codebase beyond the files mentioned in the task.
+Target: complete in under 5 minutes.
+"
+          ;;
+        standard)
+          scope_instruction="
+## Scope Note
+Create a MINIMAL proposal: proposal.md and tasks.md only.
+Skip design.md and detailed spec deltas unless the task involves new API endpoints or DB schema changes.
+Limit codebase exploration to files directly mentioned in the task — do NOT read more than 10 files.
+Focus on getting to the coder stage quickly.
+Target: complete in under 20 minutes.
+"
+          ;;
+        complex)
+          scope_instruction="
+## Scope Note
+Create full proposal with design.md. Limit codebase exploration to 20 files max.
+Focus spec deltas on changed components only, not the entire spec tree.
+"
+          ;;
+      esac
+
+      cat << PROMPT
+Task: ${TASK_MESSAGE}
+${scope_instruction}
+Time budget: ~${architect_timeout_min} minutes. Plan your work accordingly.
 
 ## Instructions
 
@@ -864,7 +1467,7 @@ Task: ${TASK_MESSAGE}
 
 ## Instructions
 
-1. Read \`.opencode/pipeline/handoff.md\` for context from the architect
+1. Read \`.opencode/pipeline/handoff.md\` for context from the architect (if it exists)
 2. Read the full proposal: \`openspec/changes/<id>/proposal.md\`, \`design.md\`, \`tasks.md\`
 3. Read spec deltas in \`openspec/changes/<id>/specs/\`
 4. Implement tasks from \`tasks.md\` sequentially, marking each \`- [x]\` when done
@@ -884,6 +1487,7 @@ Task: ${TASK_MESSAGE}
 - After creating migration files, run \`make migrate\` (or the per-app variant)
 - If migration fails, fix it before proceeding
 - Keep edits minimal and focused on the spec
+- **NEVER delete or modify files that are NOT mentioned in tasks.md** — only touch files required by the spec
 
 ## Handoff
 
@@ -895,11 +1499,11 @@ PROMPT
       ;;
     validator)
       cat << PROMPT
-Task: ${TASK_MESSAGE}
+Read \`.opencode/pipeline/handoff.md\` for the task description and full pipeline context.
 
 ## Instructions
 
-1. Read \`.opencode/pipeline/handoff.md\` to know which apps were changed
+1. From handoff.md, determine which apps were changed
 2. Run validation ONLY for changed apps (not the entire codebase):
 
 | App | CS Check | Analyse |
@@ -924,11 +1528,11 @@ PROMPT
       ;;
     tester)
       cat << PROMPT
-Task: ${TASK_MESSAGE}
+Read \`.opencode/pipeline/handoff.md\` for the task description and full pipeline context.
 
 ## Instructions
 
-1. Read \`.opencode/pipeline/handoff.md\` to know which apps and files were changed
+1. From handoff.md, determine which apps and files were changed
 2. Run the relevant test suite(s) — ONLY for changed apps:
 
 | App | Unit+Functional | Convention |
@@ -961,11 +1565,11 @@ PROMPT
       ;;
     documenter)
       cat << PROMPT
-Task: ${TASK_MESSAGE}
+Read \`.opencode/pipeline/handoff.md\` for the task description and full pipeline context.
 
 ## Instructions
 
-1. Read \`.opencode/pipeline/handoff.md\` for the full pipeline context
+1. From handoff.md, understand what was implemented and which apps were changed
 2. Read the OpenSpec proposal (\`proposal.md\`, \`design.md\`) for what was implemented
 3. Read \`.claude/skills/documentation/SKILL.md\` for documentation conventions
 4. Read \`INDEX.md\` (project root) to understand the current doc landscape
@@ -992,8 +1596,10 @@ Update \`.opencode/pipeline/handoff.md\` — Documenter section:
 PROMPT
       ;;
     auditor)
+      local task_summary
+      task_summary=$(echo "$TASK_MESSAGE" | head -1 | cut -c1-120)
       cat << PROMPT
-Task: Audit the changes from pipeline — ${TASK_MESSAGE}
+Task: Audit the changes from pipeline — ${task_summary}
 
 ## Instructions
 
@@ -1131,6 +1737,9 @@ main() {
     exit 1
   fi
 
+  # Move task to in-progress (if using task file lifecycle)
+  _task_move_to_in_progress
+
   # Initialize handoff
   init_handoff
 
@@ -1152,6 +1761,30 @@ main() {
     fi
   fi
 
+  # Apply profile or run planner
+  if [[ -n "$PIPELINE_PROFILE" ]]; then
+    apply_profile "$PIPELINE_PROFILE"
+  elif [[ "$SKIP_PLANNER" != true && "$SKIP_ARCHITECT" != true && -z "$FROM_AGENT" && -z "$ONLY_AGENT" ]]; then
+    echo -e "${CYAN}Running planner agent to analyze task complexity...${NC}"
+    local planner_prompt
+    planner_prompt=$(build_prompt "planner")
+    local planner_start
+    planner_start=$(date +%s)
+    if run_agent "planner" "$planner_prompt"; then
+      local planner_dur=$(( $(date +%s) - planner_start ))
+      echo -e "${GREEN}✓ Planner completed in ${planner_dur}s${NC}"
+      if apply_plan "$PLAN_FILE"; then
+        write_checkpoint "planner" "done" "$planner_dur" ""
+      fi
+    else
+      echo -e "${YELLOW}⚠ Planner failed, using standard pipeline${NC}"
+      write_checkpoint "planner" "failed" "$(( $(date +%s) - planner_start ))" ""
+    fi
+    # Clean up plan.json commit (don't pollute git)
+    git -C "$REPO_ROOT" checkout -- "$PLAN_FILE" 2>/dev/null || true
+    echo ""
+  fi
+
   # Get agents to run
   local agents_to_run
   agents_to_run=$(get_agents_to_run)
@@ -1170,8 +1803,6 @@ main() {
   local task_slug
   task_slug=$(echo "$TASK_MESSAGE" | cut -c1-60)
 
-  # Tracking: agent_name:status:duration
-  local report_lines=""
   local pipeline_start
   pipeline_start=$(date +%s)
 
@@ -1190,8 +1821,6 @@ main() {
 
     if run_agent "$agent" "$prompt"; then
       local agent_dur=$(( $(date +%s) - agent_start ))
-      report_lines="${report_lines}| ${agent} | ✓ pass | ${agent_dur}s |
-"
 
       send_telegram "✅ <b>${agent}</b> completed (${agent_dur}s)
 📋 <i>${TASK_MESSAGE}</i>"
@@ -1201,17 +1830,19 @@ main() {
       local commit_hash
       commit_hash=$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo "")
 
-      # Save checkpoint & artifacts
-      write_checkpoint "$agent" "done" "$agent_dur" "$commit_hash"
+      # Save checkpoint & artifacts (with token data)
+      local agent_tokens
+      agent_tokens=$(get_agent_tokens "$agent")
+      write_checkpoint "$agent" "done" "$agent_dur" "$commit_hash" "$agent_tokens"
       save_agent_artifact "$agent" "$agent_log"
 
       # Stage gate: verify coder produced actual code changes
       if [[ "$agent" == "coder" ]]; then
         if ! verify_coder_output; then
           local agent_dur_fail=$(( $(date +%s) - agent_start ))
-          report_lines="${report_lines}| ${agent} | ✗ no-code | ${agent_dur}s |
-"
-          write_checkpoint "$agent" "failed-no-code" "$agent_dur_fail" ""
+          local agent_tokens
+      agent_tokens=$(get_agent_tokens "$agent")
+          write_checkpoint "$agent" "failed-no-code" "$agent_dur_fail" "" "$agent_tokens"
           failed=true
           failed_agent="$agent (no code produced)"
 
@@ -1230,11 +1861,11 @@ main() {
       echo ""
     else
       local agent_dur=$(( $(date +%s) - agent_start ))
-      report_lines="${report_lines}| ${agent} | ✗ fail | ${agent_dur}s |
-"
 
-      # Save failed checkpoint & artifact
-      write_checkpoint "$agent" "failed" "$agent_dur" ""
+      # Save failed checkpoint & artifact (with token data)
+      local agent_tokens
+      agent_tokens=$(get_agent_tokens "$agent")
+      write_checkpoint "$agent" "failed" "$agent_dur" "" "$agent_tokens"
       save_agent_artifact "$agent" "$agent_log"
       failed=true
       failed_agent="$agent"
@@ -1268,11 +1899,53 @@ main() {
     echo ""
     echo "## Agent Results"
     echo ""
-    echo "| Agent | Status | Duration |"
-    echo "|-------|--------|----------|"
-    echo -n "$report_lines"
+    echo "| Agent | Status | Duration | Input Tok | Output Tok | Cache Read | Cache Write |"
+    echo "|-------|--------|----------|-----------|------------|------------|-------------|"
+    # Enhanced report lines with token data from opencode session export
+    for agent in $agents_to_run; do
+      local agent_tokens
+      agent_tokens=$(get_agent_tokens "$agent")
+      local in_tok out_tok cache_r cache_w
+      in_tok=$(echo "$agent_tokens" | jq -r '.input_tokens // 0' 2>/dev/null || echo 0)
+      out_tok=$(echo "$agent_tokens" | jq -r '.output_tokens // 0' 2>/dev/null || echo 0)
+      cache_r=$(echo "$agent_tokens" | jq -r '.cache_read // 0' 2>/dev/null || echo 0)
+      cache_w=$(echo "$agent_tokens" | jq -r '.cache_write // 0' 2>/dev/null || echo 0)
+
+      # Get status from checkpoint
+      local agent_status agent_dur
+      agent_status=$(python3 - "$CHECKPOINT_FILE" "$agent" <<'PYEOF' 2>/dev/null || echo "unknown"
+import json, sys
+with open(sys.argv[1], 'r') as f:
+    data = json.load(f)
+info = data.get('agents', {}).get(sys.argv[2], {})
+print(info.get('status', 'skipped'))
+PYEOF
+)
+      agent_dur=$(python3 - "$CHECKPOINT_FILE" "$agent" <<'PYEOF' 2>/dev/null || echo "0"
+import json, sys
+with open(sys.argv[1], 'r') as f:
+    data = json.load(f)
+info = data.get('agents', {}).get(sys.argv[2], {})
+print(info.get('duration', 0))
+PYEOF
+)
+
+      local status_icon="✓"
+      if [[ "$agent_status" != "done" ]]; then
+        status_icon="✗"
+      fi
+      echo "| ${agent} | ${status_icon} ${agent_status} | ${agent_dur}s | ${in_tok} | ${out_tok} | ${cache_r} | ${cache_w} |"
+    done
     echo ""
-    echo "## Cost"
+    echo "- **Total pipeline cost**: \$${CUMULATIVE_COST}"
+    if [[ -n "$PIPELINE_MAX_COST" ]]; then
+      echo "- **Cost budget**: \$${PIPELINE_MAX_COST}"
+    fi
+    if [[ -n "$PIPELINE_PROFILE" ]]; then
+      echo "- **Profile**: ${PIPELINE_PROFILE}"
+    fi
+    echo ""
+    echo "## OpenCode Stats"
     echo '```'
     opencode stats 2>/dev/null || echo "(stats unavailable)"
     echo '```'
@@ -1305,6 +1978,13 @@ main() {
 📋 <i>${TASK_MESSAGE}</i>
 🌿 Branch: <code>${branch}</code>
 ⏱ Duration: $(( total_duration / 60 ))m"
+  fi
+
+  # Task file lifecycle: move to done or failed
+  if $failed; then
+    _task_move_to_failed "$branch" "$total_duration"
+  else
+    _task_move_to_done "$branch" "$total_duration"
   fi
 
   # Final status

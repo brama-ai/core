@@ -1,0 +1,23 @@
+{
+  "quick-fix": {
+    "agents": ["coder", "validator"],
+    "timeout_overrides": {
+      "coder": 900,
+      "validator": 600
+    },
+    "description": "Typos, config tweaks, single-file fixes, slide updates"
+  },
+  "standard": {
+    "agents": ["architect", "coder", "validator", "tester"],
+    "timeout_overrides": {},
+    "description": "Normal features, moderate changes within one app"
+  },
+  "complex": {
+    "agents": ["architect", "coder", "validator", "tester", "auditor"],
+    "timeout_overrides": {
+      "architect": 3600,
+      "coder": 5400
+    },
+    "description": "Multi-service changes, DB migrations, API changes, new agents"
+  }
+}

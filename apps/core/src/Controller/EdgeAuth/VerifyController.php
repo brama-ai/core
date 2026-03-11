@@ -31,23 +31,33 @@ final class VerifyController extends AbstractController
 
         $requestedUrl = $this->buildRequestedUrl($request);
 
-        return new RedirectResponse($this->buildLoginUrl($requestedUrl), Response::HTTP_FOUND);
+        // Redirect to login on the SAME subdomain so the cookie is host-only.
+        // Traefik routes /edge/auth/ on all subdomains to core.
+        $parsed = parse_url($requestedUrl);
+        if (isset($parsed['scheme'], $parsed['host'])) {
+            $base = sprintf('%s://%s', $parsed['scheme'], $parsed['host']);
+        } else {
+            $base = rtrim($this->loginBaseUrl, '/');
+        }
+        $loginUrl = sprintf('%s/edge/auth/login?rd=%s', $base, urlencode($requestedUrl));
+
+        return new RedirectResponse($loginUrl, Response::HTTP_FOUND);
     }
 
     private function buildRequestedUrl(Request $request): string
     {
+        $host = (string) $request->headers->get('X-Forwarded-Host', '');
         $uri = (string) $request->headers->get('X-Forwarded-Uri', '/');
+        $proto = (string) $request->headers->get('X-Forwarded-Proto', 'http');
+
         if ('' === $uri) {
             $uri = '/';
         }
 
-        return $uri;
-    }
+        if ('' === $host) {
+            return $uri;
+        }
 
-    private function buildLoginUrl(string $requestedUrl): string
-    {
-        $base = rtrim($this->loginBaseUrl, '/');
-
-        return sprintf('%s/edge/auth/login?rd=%s', $base, urlencode($requestedUrl));
+        return sprintf('%s://%s%s', $proto, $host, $uri);
     }
 }
