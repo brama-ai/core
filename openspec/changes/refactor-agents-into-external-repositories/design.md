@@ -86,7 +86,8 @@ Suggested operator workspace:
 ai-community-platform/
   compose.yaml
   compose.core.yaml
-  compose.external-agents.yaml
+  compose.fragments/
+    my-agent.yaml
   projects/
     hello-agent/
     knowledge-agent/

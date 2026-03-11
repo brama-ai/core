@@ -20,36 +20,33 @@ self-hosted AI Community Platform deployment.
 make external-agent-clone repo=https://github.com/your-org/my-agent.git name=my-agent
 ```
 
-This clones the repository into `projects/my-agent/src/`.
+This clones the repository into `projects/my-agent/`.
 
 Alternatively, clone manually:
 
 ```bash
-mkdir -p projects/my-agent
-git clone https://github.com/your-org/my-agent.git projects/my-agent/src
+mkdir -p projects
+git clone https://github.com/your-org/my-agent.git projects/my-agent
 ```
 
 ---
 
 ## 2. Enable the Compose Fragment
 
-Open `compose.external-agents.yaml` and add an include block:
+Copy the agent-provided fragment into the operator-local fragments directory:
 
-```yaml
-include:
-  - path: projects/my-agent/compose.fragment.yaml
-    required: false
+```bash
+cp projects/my-agent/compose.fragment.yaml compose.fragments/my-agent.yaml
 ```
 
-The `required: false` flag means the platform stack starts normally even if the fragment is
-missing (e.g., on a machine where the agent is not checked out).
+The platform `Makefile` auto-loads every `compose.fragments/*.yaml` file into the compose stack.
 
 ---
 
 ## 3. Configure Environment
 
 If the agent requires environment variables beyond the defaults in its `compose.fragment.yaml`,
-create a `.env` file in the agent directory or add an override in `compose.override.yaml`:
+create `projects/my-agent/.env.local` or add an override in `compose.override.yaml`:
 
 ```yaml
 # compose.override.yaml
@@ -79,7 +76,7 @@ If the agent declares a `storage.postgres` block in its manifest, run its migrat
 
 ```bash
 docker compose -f compose.yaml -f compose.core.yaml \
-  -f projects/my-agent/compose.fragment.yaml \
+  -f compose.fragments/my-agent.yaml \
   exec my-agent <migration-command>
 ```
 
@@ -120,14 +117,14 @@ The agent is now active and routing traffic.
 
 ```bash
 # Pull the latest code
-git -C projects/my-agent/src pull
+git -C projects/my-agent pull
 
 # Rebuild and restart
 make external-agent-up name=my-agent
 
 # Run migrations if the agent has a database
 docker compose -f compose.yaml -f compose.core.yaml \
-  -f projects/my-agent/compose.fragment.yaml \
+  -f compose.fragments/my-agent.yaml \
   exec my-agent <migration-command>
 
 # Verify health
@@ -152,7 +149,7 @@ Check the violation details and either fix the agent or roll back.
 
 ```bash
 # Roll back to the previous commit
-git -C projects/my-agent/src checkout <previous-tag-or-commit>
+git -C projects/my-agent checkout <previous-tag-or-commit>
 
 # Rebuild and restart
 make external-agent-up name=my-agent
@@ -166,7 +163,8 @@ make external-agent-up name=my-agent
 # Stop the agent container
 make external-agent-down name=my-agent
 
-# Remove the include block from compose.external-agents.yaml (manual step)
+# Remove the copied compose fragment
+rm -f compose.fragments/my-agent.yaml
 
 # Optionally delete the checkout
 rm -rf projects/my-agent
@@ -192,9 +190,9 @@ make external-agent-list
 Output example:
 
 ```
-Detected external agent compose fragments:
-  projects/hello-agent/compose.fragment.yaml
-  projects/my-agent/compose.fragment.yaml
+External agent compose fragments:
+  hello-agent                     projects/hello-agent
+  my-agent                        projects/my-agent
 ```
 
 ---

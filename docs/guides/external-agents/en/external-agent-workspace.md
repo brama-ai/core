@@ -22,15 +22,14 @@ External agents are checked out into `projects/<agent-name>/` inside the platfor
 ai-community-platform/
   compose.yaml                        # Platform base services
   compose.core.yaml                   # Core service
-  compose.external-agents.yaml        # External agent loader (operator-maintained)
+  compose.fragments/                  # Operator-local external agent fragments
+    my-agent.yaml                     # Copied from projects/my-agent/compose.fragment.yaml
   projects/
-    hello-agent/                      # Pilot external agent
-      compose.fragment.yaml           # Agent compose service definition
-      src/                            # Agent source code (git clone or symlink)
+    my-agent/                         # External agent repository checkout
+      Dockerfile
+      compose.fragment.yaml           # Agent-provided compose service definition
+      .env.local                      # Operator-local secrets
       README.md
-    knowledge-agent/                  # Future external agent
-      compose.fragment.yaml
-      src/
 ```
 
 ### Naming Rules
@@ -38,7 +37,8 @@ ai-community-platform/
 | Item | Convention | Example |
 |------|-----------|---------|
 | Directory | `projects/<agent-name>/` | `projects/hello-agent/` |
-| Compose fragment | `compose.fragment.yaml` | inside the agent directory |
+| Compose fragment template | `compose.fragment.yaml` | inside the agent checkout |
+| Enabled fragment | `compose.fragments/<agent-name>.yaml` | copied into the platform workspace |
 | Service name | Must end with `-agent` | `hello-agent` |
 | Docker label | `ai.platform.agent=true` | required for discovery |
 
@@ -52,7 +52,7 @@ Every external agent repository MUST provide:
 <agent-repo>/
   compose.fragment.yaml     # Compose service definition
   Dockerfile                # Docker build context
-  src/                      # Application source
+  ...                       # Application source owned by the agent repo
   README.md                 # Setup instructions
 ```
 
@@ -71,7 +71,7 @@ Minimal example:
 services:
   my-agent:
     build:
-      context: .
+      context: ./projects/my-agent
       dockerfile: Dockerfile
     labels:
       - ai.platform.agent=true
@@ -83,7 +83,8 @@ services:
 ```
 
 > **Note**: The `networks` block references the platform network. The network is defined in
-> `compose.yaml` and is available to all fragments loaded by `compose.external-agents.yaml`.
+> `compose.yaml` and is available to all fragments loaded from `compose.fragments/*.yaml`
+> by the platform `Makefile`.
 
 ---
 

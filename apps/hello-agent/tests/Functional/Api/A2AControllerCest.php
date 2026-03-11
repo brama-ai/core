@@ -27,6 +27,7 @@ final class A2AControllerCest
         \PHPUnit\Framework\Assert::assertSame($requestId, $response['request_id'] ?? null);
         \PHPUnit\Framework\Assert::assertIsString($response['result']['greeting'] ?? null);
         \PHPUnit\Framework\Assert::assertNotSame('', trim($response['result']['greeting']));
+        \PHPUnit\Framework\Assert::assertStringContainsString('TestUser', $response['result']['greeting']);
     }
 
     public function a2aWithoutIntentReturns422(\FunctionalTester $I): void
@@ -84,6 +85,7 @@ final class A2AControllerCest
         \PHPUnit\Framework\Assert::assertSame($requestId, $response['request_id'] ?? null);
         \PHPUnit\Framework\Assert::assertIsString($response['result']['greeting'] ?? null);
         \PHPUnit\Framework\Assert::assertNotSame('', trim($response['result']['greeting']));
+        \PHPUnit\Framework\Assert::assertStringContainsString('World', $response['result']['greeting']);
     }
 
     public function a2aGreetMeWithUsernameReturnsGreeting(\FunctionalTester $I): void
@@ -107,6 +109,7 @@ final class A2AControllerCest
         \PHPUnit\Framework\Assert::assertSame($requestId, $response['request_id'] ?? null);
         \PHPUnit\Framework\Assert::assertIsString($response['result']['greeting'] ?? null);
         \PHPUnit\Framework\Assert::assertNotSame('', trim($response['result']['greeting']));
+        \PHPUnit\Framework\Assert::assertStringContainsString('@testuser', $response['result']['greeting']);
     }
 
     public function a2aGreetMeWithoutUsernameReturnsWorld(\FunctionalTester $I): void
@@ -129,5 +132,6 @@ final class A2AControllerCest
         \PHPUnit\Framework\Assert::assertSame($requestId, $response['request_id'] ?? null);
         \PHPUnit\Framework\Assert::assertIsString($response['result']['greeting'] ?? null);
         \PHPUnit\Framework\Assert::assertNotSame('', trim($response['result']['greeting']));
+        \PHPUnit\Framework\Assert::assertStringContainsString('World', $response['result']['greeting']);
     }
 }

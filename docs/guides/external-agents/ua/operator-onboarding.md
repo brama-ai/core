@@ -20,29 +20,26 @@
 make external-agent-clone repo=https://github.com/your-org/my-agent.git name=my-agent
 ```
 
-Це клонує репозиторій у `projects/my-agent/src/`.
+Це клонує репозиторій у `projects/my-agent/`.
 
 Або вручну:
 
 ```bash
-mkdir -p projects/my-agent
-git clone https://github.com/your-org/my-agent.git projects/my-agent/src
+mkdir -p projects
+git clone https://github.com/your-org/my-agent.git projects/my-agent
 ```
 
 ---
 
 ## 2. Увімкнення compose-фрагмента
 
-Відкрийте `compose.external-agents.yaml` і додайте блок include:
+Скопіюйте compose-фрагмент агента в операторський каталог фрагментів:
 
-```yaml
-include:
-  - path: projects/my-agent/compose.fragment.yaml
-    required: false
+```bash
+cp projects/my-agent/compose.fragment.yaml compose.fragments/my-agent.yaml
 ```
 
-Прапорець `required: false` означає, що стек платформи запускається нормально, навіть якщо
-фрагмент відсутній.
+`Makefile` платформи автоматично підключає всі файли `compose.fragments/*.yaml` до compose-стеку.
 
 ---
 
@@ -79,7 +76,7 @@ make up
 
 ```bash
 docker compose -f compose.yaml -f compose.core.yaml \
-  -f projects/my-agent/compose.fragment.yaml \
+  -f compose.fragments/my-agent.yaml \
   exec my-agent <команда-міграції>
 ```
 
@@ -120,7 +117,7 @@ make agent-discover
 
 ```bash
 # Отримати останній код
-git -C projects/my-agent/src pull
+git -C projects/my-agent pull
 
 # Перезібрати та перезапустити
 make external-agent-up name=my-agent
@@ -138,7 +135,7 @@ curl -s http://localhost:<порт-агента>/health
 
 ```bash
 # Відкотитися до попереднього коміту
-git -C projects/my-agent/src checkout <попередній-тег-або-коміт>
+git -C projects/my-agent checkout <попередній-тег-або-коміт>
 
 # Перезібрати та перезапустити
 make external-agent-up name=my-agent
@@ -152,7 +149,8 @@ make external-agent-up name=my-agent
 # Зупинити контейнер агента
 make external-agent-down name=my-agent
 
-# Видалити блок include з compose.external-agents.yaml (вручну)
+# Видалити скопійований compose-фрагмент
+rm -f compose.fragments/my-agent.yaml
 
 # За потреби видалити checkout
 rm -rf projects/my-agent

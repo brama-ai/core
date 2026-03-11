@@ -38,6 +38,8 @@ compose.override.yaml
 compose.override.yml
 # External agent checkouts (operator-local, not committed to platform repo)
 projects/
+!projects/
+projects/*
 !projects/.gitkeep
 
 # External agent compose fragments (operator-local, not committed to platform repo)

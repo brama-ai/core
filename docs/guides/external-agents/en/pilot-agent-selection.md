@@ -60,9 +60,9 @@ Each bundled agent was evaluated against three criteria:
 
 The pilot does **not** move `hello-agent` out of `apps/` permanently. Instead, it:
 
-1. Creates `projects/hello-agent/` with a `compose.fragment.yaml` and a `src/` symlink to
-   `apps/hello-agent/`
-2. Proves that the platform can run the agent from the external workspace contract
+1. Uses `hello-agent` as the validation target for the external workspace contract
+2. Proves that the platform can run an agent from an operator-local checkout under
+   `projects/hello-agent/` with a copied fragment in `compose.fragments/hello-agent.yaml`
 3. Documents the migration path for future agents
 
 The in-repo `compose.agent-hello.yaml` remains available. Operators can choose either path.
