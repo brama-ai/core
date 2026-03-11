@@ -2,13 +2,13 @@
 
 ## Deployed Agents
 
-| Agent | Stack | Status | Manifest | PRD |
-|-------|-------|--------|----------|-----|
-| [hello-agent](../apps/hello-agent/) | PHP 8.5 / Symfony 7 | Active | `/api/v1/manifest` | [EN](agents/en/hello-agent.md) · [UA](agents/ua/hello-agent.md) |
-| [knowledge-agent](../apps/knowledge-agent/) | PHP 8.5 / Symfony 7 | Active | `/api/v1/manifest` | — |
-| [news-maker-agent](../apps/news-maker-agent/) | Python / FastAPI | Active | `/api/v1/manifest` | — |
-| [dev-reporter-agent](../apps/dev-reporter-agent/) | PHP 8.5 / Symfony 7 | Active | `/api/v1/manifest` | [EN](agents/en/dev-reporter-agent.md) · [UA](agents/ua/dev-reporter-agent.md) |
-| [wiki-agent](../apps/wiki-agent/) | TypeScript / Node.js | Active | `/api/v1/manifest` | [EN](agents/en/wiki-agent.md) · [UA](agents/ua/wiki-agent.md) |
+| Agent | Stack | Source | Status | Manifest | PRD |
+|-------|-------|--------|--------|----------|-----|
+| [hello-agent](../apps/hello-agent/) | PHP 8.5 / Symfony 7 | in-repo + [external pilot](../projects/hello-agent/) | Active | `/api/v1/manifest` | [EN](agents/en/hello-agent.md) · [UA](agents/ua/hello-agent.md) |
+| [knowledge-agent](../apps/knowledge-agent/) | PHP 8.5 / Symfony 7 | in-repo | Active | `/api/v1/manifest` | — |
+| [news-maker-agent](../apps/news-maker-agent/) | Python / FastAPI | in-repo | Active | `/api/v1/manifest` | — |
+| [dev-reporter-agent](../apps/dev-reporter-agent/) | PHP 8.5 / Symfony 7 | in-repo | Active | `/api/v1/manifest` | [EN](agents/en/dev-reporter-agent.md) · [UA](agents/ua/dev-reporter-agent.md) |
+| [wiki-agent](../apps/wiki-agent/) | TypeScript / Node.js | in-repo | Active | `/api/v1/manifest` | [EN](agents/en/wiki-agent.md) · [UA](agents/ua/wiki-agent.md) |
 
 ## Planned Agents (PRD only)
 
@@ -32,3 +32,7 @@
 - [Local dev guide](local-dev.md)
 - [Production deployment guide](guides/deployment/en/deployment.md)
 - [A2A terminology mapping (EN)](specs/en/a2a-terminology-mapping.md)
+- [External agent workspace](guides/external-agents/en/external-agent-workspace.md)
+- [External agent operator onboarding](guides/external-agents/en/operator-onboarding.md)
+- [External agent migration playbook](guides/external-agents/en/migration-playbook.md)
+- [Pilot agent selection](guides/external-agents/en/pilot-agent-selection.md)

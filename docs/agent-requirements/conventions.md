@@ -270,3 +270,63 @@ Postgres convention:
 6. Core auto-discovers on next discovery cycle (up to 60s) or via "Run Discovery" in admin panel
 
 No manual registration required. No code changes in core needed.
+
+---
+
+## 9. External Agent Repositories
+
+Agents may be maintained in external repositories and checked out into `projects/<agent-name>/`
+in the platform workspace. The runtime contract is identical — source origin does not affect
+discovery or lifecycle management.
+
+### Compose Fragment Contract
+
+An external agent MUST provide a `compose.fragment.yaml` in its repository root. The fragment:
+
+| Requirement | Value |
+|---|---|
+| Service name | Must end with `-agent` |
+| Docker label | `ai.platform.agent=true` |
+| Network | Must attach to `dev-edge` |
+| Build context | Must be self-contained (no dependency on `apps/` path) |
+
+### Workspace Convention
+
+```
+projects/
+  <agent-name>/
+    compose.fragment.yaml   # Loaded by compose.external-agents.yaml
+    src/                    # Agent source (git clone or symlink)
+```
+
+### Operator Workflow
+
+```bash
+# Clone agent repository
+make external-agent-clone repo=<git-url> name=<agent-name>
+
+# Start agent
+make external-agent-up name=<agent-name>
+
+# Stop agent
+make external-agent-down name=<agent-name>
+
+# List detected external agents
+make external-agent-list
+```
+
+### Compatibility Rules
+
+The following MUST remain stable when migrating an agent from `apps/` to `projects/`:
+
+| Contract point | Rule |
+|---|---|
+| Service name | MUST NOT change |
+| Manifest `name` field | MUST match the service name |
+| Health endpoint | MUST remain `/health` |
+| Manifest endpoint | MUST remain `/api/v1/manifest` |
+| A2A endpoint | MUST remain `/api/v1/a2a` (or the path in `url`) |
+| Admin URL shape | MUST remain `/admin/<name>` if previously declared |
+
+See [External Agent Workspace](../guides/external-agents/en/external-agent-workspace.md) and
+[Migration Playbook](../guides/external-agents/en/migration-playbook.md) for full details.

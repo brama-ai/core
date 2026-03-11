@@ -1,8 +1,11 @@
 AGENT_FILES := $(sort $(wildcard compose.agent-*.yaml))
+EXTERNAL_AGENTS_FILE := $(firstword $(wildcard compose.external-agents.yaml))
+EXTERNAL_AGENTS_COMPOSE := $(if $(EXTERNAL_AGENTS_FILE),-f $(EXTERNAL_AGENTS_FILE),)
 OVERRIDE_FILE := $(firstword $(wildcard compose.override.yaml compose.override.yml))
 OVERRIDE_COMPOSE := $(if $(OVERRIDE_FILE),-f $(OVERRIDE_FILE),)
 COMPOSE_FILES := -f compose.yaml -f compose.core.yaml \
         $(addprefix -f ,$(AGENT_FILES)) \
+        $(EXTERNAL_AGENTS_COMPOSE) \
         -f compose.langfuse.yaml -f compose.openclaw.yaml \
         -f compose.slides.yaml \
         $(OVERRIDE_COMPOSE)
@@ -24,6 +27,7 @@ E2E_BASE_URL ?= http://localhost:18080
         dev-reporter-install dev-reporter-migrate dev-reporter-test dev-reporter-analyse dev-reporter-cs-check dev-reporter-cs-fix \
         dev-agent-install dev-agent-migrate dev-agent-test dev-agent-analyse dev-agent-cs-check dev-agent-cs-fix \
         agent-discover conventions-test \
+        external-agent-clone external-agent-up external-agent-down external-agent-list \
         sync-skills pipeline pipeline-batch
 
 help:
@@ -80,6 +84,10 @@ help:
 		'make news-migrate         Run Alembic migrations for news-maker-agent (stack must be up)' \
 		'make agent-discover       Run Traefik-based agent discovery and refresh registry' \
 		'make conventions-test     Run Codecept.js agent-convention compliance tests (AGENT_URL required)' \
+		'make external-agent-clone repo=URL name=X  Clone an external agent repo into projects/<name>/' \
+		'make external-agent-up name=X    Start an external agent from projects/<name>/compose.fragment.yaml' \
+		'make external-agent-down name=X  Stop an external agent from projects/<name>/compose.fragment.yaml' \
+		'make external-agent-list         List detected external agent compose fragments under projects/' \
 		'make e2e                  Run Codecept.js + Playwright E2E tests (full isolated stack)' \
 		'make e2e-smoke            Run smoke-only E2E tests (API checks, no browser)'
 
@@ -370,6 +378,29 @@ e2e-smoke: e2e-prepare
 		HELLO_URL=$${HELLO_URL:-http://localhost:18085} \
 		OPENCLAW_URL=$${OPENCLAW_URL:-http://localhost:28789} \
 		npx codeceptjs run --steps --grep @smoke
+
+external-agent-clone:
+	@test -n "$(repo)" || (echo "Usage: make external-agent-clone repo=<git-url> name=<agent-name>" && exit 1)
+	@test -n "$(name)" || (echo "Usage: make external-agent-clone repo=<git-url> name=<agent-name>" && exit 1)
+	@mkdir -p projects
+	git clone $(repo) projects/$(name)/src
+	@echo "Cloned $(repo) into projects/$(name)/src"
+	@echo "Next: add an include block for projects/$(name)/compose.fragment.yaml in compose.external-agents.yaml"
+	@echo "Then: make external-agent-up name=$(name)"
+
+external-agent-up:
+	@test -n "$(name)" || (echo "Usage: make external-agent-up name=<agent-name>" && exit 1)
+	@test -f projects/$(name)/compose.fragment.yaml || (echo "ERROR: projects/$(name)/compose.fragment.yaml not found" && exit 1)
+	docker compose -f compose.yaml -f compose.core.yaml -f projects/$(name)/compose.fragment.yaml up --build -d $(name)
+
+external-agent-down:
+	@test -n "$(name)" || (echo "Usage: make external-agent-down name=<agent-name>" && exit 1)
+	@test -f projects/$(name)/compose.fragment.yaml || (echo "ERROR: projects/$(name)/compose.fragment.yaml not found" && exit 1)
+	docker compose -f compose.yaml -f compose.core.yaml -f projects/$(name)/compose.fragment.yaml stop $(name)
+
+external-agent-list:
+	@echo "Detected external agent compose fragments:"
+	@find projects -maxdepth 2 -name "compose.fragment.yaml" 2>/dev/null | sort | sed 's|^|  |' || echo "  (none)"
 
 sync-skills:
 	./scripts/sync-skills.sh

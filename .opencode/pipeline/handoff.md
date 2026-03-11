@@ -1,74 +1,68 @@
 # Pipeline Handoff
 
-- **Task**: # Implement Docker self-hosted packaging and upgrade runbook
+- **Task**: # Implement pilot agent externalization
 
-Implement the Docker-focused phase of the approved OpenSpec change
-`add-dual-docker-kubernetes-deployment`.
+Implement the approved OpenSpec change `refactor-agents-into-external-repositories` phase 2 using
+one pilot agent.
 
 ## Goal
 
-Turn the current Compose-based deployment into a supported operator-facing Docker offering with a
-clear install, upgrade, rollback, and verification workflow.
+Prove that the external-agent repository model works in practice by migrating one real agent out of
+the monorepo workflow and documenting the migration path.
 
 ## Scope
 
-- Refine the existing compose topology into an operator-facing Docker packaging model
-- Standardize deployment inputs:
-  - env vars
-  - secrets
-  - public URLs
-  - overrides
-  - optional agent/add-on fragments
-- Improve or document the supported Docker upgrade flow based on the draft runbook
-- Add Docker-specific operator docs:
-  - install
-  - upgrade
-  - rollback
-  - backup/restore
-  - troubleshooting
-- Align the implementation with the current `Makefile` workflow where possible
+- Choose one current agent as the pilot candidate based on coupling and risk
+- Extract or mirror that agent into the external-repository workflow defined by the platform
+- Make the platform able to run the pilot agent from `projects/<agent-name>/`
+- Document the migration playbook for future agents
+- Keep the runtime contract stable:
+  - service name
+  - manifest endpoint
+  - health endpoint
+  - admin URL shape
+  - A2A endpoint path
 
 ## OpenSpec References
 
-- `openspec/changes/add-dual-docker-kubernetes-deployment/proposal.md`
-- `openspec/changes/add-dual-docker-kubernetes-deployment/tasks.md`
-- `openspec/changes/add-dual-docker-kubernetes-deployment/design.md`
-- `openspec/changes/add-dual-docker-kubernetes-deployment/specs/self-hosted-deployment/spec.md`
-- `openspec/changes/add-dual-docker-kubernetes-deployment/runbooks/docker-upgrade-runbook.md`
+- `openspec/changes/refactor-agents-into-external-repositories/proposal.md`
+- `openspec/changes/refactor-agents-into-external-repositories/tasks.md`
+- `openspec/changes/refactor-agents-into-external-repositories/design.md`
 
 ## Relevant Repo Context
 
-- `Makefile`
-- `compose.yaml`
-- `compose.core.yaml`
-- `compose.langfuse.yaml`
-- `compose.openclaw.yaml`
-- `compose.slides.yaml`
-- `docs/guides/deployment/ua/deployment.md`
-- `docs/guides/deployment/en/deployment.md`
-- `docs/local-dev.md`
+- existing agent implementations under `apps/`
+- `compose.agent-hello.yaml`
+- `compose.agent-knowledge.yaml`
+- `compose.agent-dev-reporter.yaml`
+- `compose.agent-dev.yaml`
+- `compose.agent-news-maker.yaml`
+- `compose.agent-wiki.yaml`
+- `docs/index.md`
+- `docs/agents/`
 
 ## Acceptance Criteria
 
-- Docker deployment is documented as an explicit supported mode, not just an emergent dev setup
-- Operator docs include a clear upgrade sequence and rollback path
-- Required migrations and verification steps are documented and consistent with actual repo commands
-- The supported topology and override points are explicit
-- Docker deployment docs stay aligned with the real compose and Makefile behavior
+- One pilot agent is selected and the choice is justified in docs
+- The platform can run the pilot from the external workspace contract rather than only from `apps/`
+- A migration playbook exists for moving future agents to the same model
+- Compatibility checks, manifest discovery, and runtime verification are documented and exercised
+- The transition rules are explicit, especially around naming, URLs, and migrations
 
 ## Constraints
 
-- Do not invent Kubernetes-only assumptions in the Docker path
-- Do not break local development while hardening the self-hosted Docker story
-- Prefer explicit docs and stable commands over clever automation
+- Do not bulk-migrate all agents in one pass
+- Do not introduce a second incompatible runtime contract for external agents
+- Prefer the least coupled pilot agent first
+- Keep docs and platform tooling aligned
 
 ## Validation
 
-- Run relevant tests/checks for changed code and docs
-- Run `openspec validate add-dual-docker-kubernetes-deployment --strict`
-- **Started**: 2026-03-11 10:43:49
-- **Branch**: pipeline/implement-docker-self-hosted-packaging-and-upgrade
-- **Pipeline ID**: 20260311_104344
+- Run relevant tests/checks for the chosen pilot workflow
+- Run `openspec validate refactor-agents-into-external-repositories --strict`
+- **Started**: 2026-03-11 11:06:31
+- **Branch**: pipeline/implement-pilot-agent-externalization
+- **Pipeline ID**: 20260311_110629
 
 ---
 
@@ -82,39 +76,41 @@ clear install, upgrade, rollback, and verification workflow.
 
 ## Coder
 
-- **Status**: pending
-- **Files modified**: —
-- **Migrations created**: —
-- **Deviations**: —
+- **Status**: done
+- **Files modified**:
+  - `Makefile` — added `EXTERNAL_AGENTS_FILE`/`EXTERNAL_AGENTS_COMPOSE` variables, included `compose.external-agents.yaml` in `COMPOSE_FILES`, added `.PHONY` entries and help text for 4 new targets, added `external-agent-clone`, `external-agent-up`, `external-agent-down`, `external-agent-list` targets
+  - `compose.external-agents.yaml` — new file: platform-level compose loader for external agent fragments; includes `projects/hello-agent/compose.fragment.yaml`
+  - `projects/.gitignore` — new file: ignores `*/src/` (external git clones) while tracking compose fragments and READMEs
+  - `projects/hello-agent/compose.fragment.yaml` — new file: pilot external agent compose fragment
+  - `projects/hello-agent/README.md` — new file: pilot workspace documentation
+  - `projects/hello-agent/src` — new symlink → `../../apps/hello-agent` (pilot in-repo source link)
+  - `docs/index.md` — added Source column to agent table, added 4 external-agent guide links
+  - `docs/agent-requirements/conventions.md` — added Section 9: External Agent Repositories (compose fragment contract, workspace convention, operator workflow, compatibility rules)
+  - `docs/guides/external-agents/en/external-agent-workspace.md` — new file: developer-facing workspace convention doc
+  - `docs/guides/external-agents/en/operator-onboarding.md` — new file: operator onboarding guide (EN)
+  - `docs/guides/external-agents/en/migration-playbook.md` — new file: step-by-step migration playbook
+  - `docs/guides/external-agents/en/pilot-agent-selection.md` — new file: pilot selection rationale and agent inventory
+  - `docs/guides/external-agents/en/template/compose.fragment.yaml` — new file: compose fragment template for new external agents
+  - `docs/guides/external-agents/en/template/README.md` — new file: external agent repository template README
+  - `docs/guides/external-agents/ua/operator-onboarding.md` — new file: operator onboarding guide (UA mirror)
+  - `openspec/changes/refactor-agents-into-external-repositories/tasks.md` — all tasks marked `[x]`
+- **Migrations created**: none (hello-agent has no database)
+- **Deviations**:
+  - The pilot `projects/hello-agent/src` is a symlink to `apps/hello-agent` rather than a real git clone. This is intentional: the pilot proves the external workspace contract works without duplicating source. A real external agent would clone its own repository here. This is documented in `projects/hello-agent/README.md`.
+  - `compose.external-agents.yaml` uses Docker Compose `include:` syntax (Compose v2.20+) rather than a shell script. This is cleaner and aligns with the existing `compose.override.yaml` pattern. The `required: false` flag ensures the platform stack starts normally on machines without external agent checkouts.
 
 ## Validator
 
-- **Status**: completed
-- **PHPStan**:
-  - `apps/core/`: pass (`make analyse`)
-  - `apps/hello-agent/`: pass (`make hello-analyse` hit container 128M PHP memory limit; re-ran phpstan with `--memory-limit=512M`)
-  - `apps/knowledge-agent/`: pass (`make knowledge-analyse`)
-- **CS-check**:
-  - `apps/core/`: pass (`make cs-check`)
-  - `apps/hello-agent/`: pass (`make hello-cs-check`)
-  - `apps/knowledge-agent/`: pass (`make knowledge-cs-check`)
-- **Files fixed**:
-  - `docker/openclaw/.env` (added placeholder env file required by compose stack for validation commands)
+- **Status**: pending
+- **PHPStan**: —
+- **CS-check**: —
+- **Files fixed**: —
 
 ## Tester
 
-- **Status**: completed
-- **Apps tested**: `apps/core/`, `apps/hello-agent/`, `apps/knowledge-agent/`
-- **Test results**:
-  - `make test` (`apps/core/`): passed — 225 passed, 0 failed, 0 skipped
-  - `make hello-test` (`apps/hello-agent/`): passed — 21 passed, 0 failed, 0 skipped
-  - `make knowledge-test` (`apps/knowledge-agent/`): passed — 36 passed, 0 failed, 0 skipped
-  - `make conventions-test`: failed when `AGENT_URL` is unset in Makefile path (`AGENT_URL=` defaults to `http://localhost:80` and returns non-agent routes)
-  - Conventions rerun with explicit endpoint: passed — `AGENT_URL=http://localhost:18085 npx codeceptjs run --steps` => 17 passed, 0 failed, 0 skipped
-- **New tests written**: none
-- **Tests updated and why**:
-  - `tests/agent-conventions/tests/a2a_observability_test.js` — replaced `hello.greet` calls with `hello.unknown` in correlation-ID scenarios to remove LLM latency flakiness while preserving TC-03 envelope/request_id assertions
-  - `tests/agent-conventions/package-lock.json` — added missing nested `version` fields for optional detox/react-native entries so `npm install` works with npm 11 (`Invalid Version` fix)
+- **Status**: pending
+- **Test results**: —
+- **New tests written**: —
 
 ## Documenter
 
@@ -123,6 +119,3 @@ clear install, upgrade, rollback, and verification workflow.
 
 ---
 
-- **Commit (coder)**: 5508713
-- **Commit (validator)**: f53ce0e
-- **Commit (tester)**: 96be2b1
