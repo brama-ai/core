@@ -42,9 +42,12 @@
 
 ## Tester
 
-- **Status**: pending
-- **Test results**: —
-- **New tests written**: —
+- **Status**: done
+- **Test results**:
+  - `apps/core/` — `make test` (run twice, final verification): **passed** (225 passed, 0 failed, 0 skipped; 797 assertions)
+  - `make conventions-test`: **skipped** (not required; no agent manifest/compose config changes in this change set)
+- **New tests written**: none (coverage for new stale-agent cleanup logic already present in coder changes)
+- **Tests updated and why**: none (no failures encountered; existing/new tests passed as-is)
 
 ## Documenter
 
@@ -54,3 +57,4 @@
 ---
 
 - **Commit (coder)**: b3fe118
+- **Commit (validator)**: b0e3cf9
