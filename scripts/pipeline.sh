@@ -83,6 +83,9 @@ Options:
   --only <agent>      Run only a specific agent
   --branch <name>     Use specific branch name (default: auto-generated)
   --task-file <path>  Read task prompt from a file instead of CLI argument
+                      If file is in tasks/todo/, it moves through
+                      todo/ → in-progress/ → done/ (or failed/)
+                      so pipeline-monitor.sh can track progress
   --audit             Add auditor as 6th quality gate agent
   --webhook <url>     POST JSON summary to webhook on completion/failure
   --telegram          Send status updates via Telegram bot
@@ -247,6 +250,93 @@ if [[ -z "$TASK_MESSAGE" ]]; then
   exit 1
 fi
 
+# ── Task file lifecycle (tasks/ directory integration) ──────────────
+# When --task-file points to a file in tasks/todo/, manage its lifecycle
+# so pipeline-monitor.sh can track progress in real time.
+TASK_LIFECYCLE=false
+TASK_ACTIVE_FILE=""
+TASKS_DIR=""
+
+_detect_task_lifecycle() {
+  local abs_tasks_dir="$REPO_ROOT/tasks"
+
+  if [[ -n "$TASK_FILE" ]]; then
+    # --task-file mode: check if file is inside tasks/todo/
+    local abs_task
+    abs_task=$(cd "$(dirname "$TASK_FILE")" && pwd)/$(basename "$TASK_FILE")
+    if [[ "$abs_task" == "$abs_tasks_dir/todo/"* ]]; then
+      TASK_LIFECYCLE=true
+      TASKS_DIR="$abs_tasks_dir"
+    fi
+  else
+    # Text mode: auto-create task file in tasks/todo/ so monitor can track it
+    local slug
+    slug=$(echo "$TASK_MESSAGE" | grep -m1 '[^ ]' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | cut -c1-50)
+    [[ -z "$slug" ]] && slug="task-$(date +%s)"
+    local auto_task_file="$abs_tasks_dir/todo/${slug}.md"
+    if [[ -d "$abs_tasks_dir/todo" ]]; then
+      mkdir -p "$abs_tasks_dir/todo"
+      # Write the first line as title, rest as body
+      local title
+      title=$(echo "$TASK_MESSAGE" | head -1)
+      if [[ "$title" != "# "* ]]; then
+        echo "# ${title}" > "$auto_task_file"
+        echo "" >> "$auto_task_file"
+        echo "$TASK_MESSAGE" >> "$auto_task_file"
+      else
+        echo "$TASK_MESSAGE" > "$auto_task_file"
+      fi
+      TASK_FILE="$auto_task_file"
+      TASK_LIFECYCLE=true
+      TASKS_DIR="$abs_tasks_dir"
+    fi
+  fi
+}
+
+_task_move_to_in_progress() {
+  [[ "$TASK_LIFECYCLE" != true ]] && return
+  local src="$TASK_FILE"
+  local dest="${TASKS_DIR}/in-progress/$(basename "$src")"
+  mkdir -p "${TASKS_DIR}/in-progress"
+  mv "$src" "$dest"
+  TASK_ACTIVE_FILE="$dest"
+  echo -e "${BLUE}Task moved: todo/ → in-progress/${NC}"
+}
+
+_task_move_to_done() {
+  [[ "$TASK_LIFECYCLE" != true ]] && return
+  local src="${TASK_ACTIVE_FILE:-$TASK_FILE}"
+  [[ ! -f "$src" ]] && return
+  local branch="${1:-}"
+  local duration="${2:-0}"
+  local dest="${TASKS_DIR}/done/$(basename "$src")"
+  mkdir -p "${TASKS_DIR}/done"
+  {
+    echo "<!-- batch: ${TIMESTAMP} | status: pass | duration: ${duration}s | branch: ${branch} -->"
+    cat "$src"
+  } > "$dest"
+  rm -f "$src"
+  echo -e "${GREEN}Task moved: in-progress/ → done/${NC}"
+}
+
+_task_move_to_failed() {
+  [[ "$TASK_LIFECYCLE" != true ]] && return
+  local src="${TASK_ACTIVE_FILE:-$TASK_FILE}"
+  [[ ! -f "$src" ]] && return
+  local branch="${1:-}"
+  local duration="${2:-0}"
+  local dest="${TASKS_DIR}/failed/$(basename "$src")"
+  mkdir -p "${TASKS_DIR}/failed"
+  {
+    echo "<!-- batch: ${TIMESTAMP} | status: fail | duration: ${duration}s | branch: ${branch} -->"
+    cat "$src"
+  } > "$dest"
+  rm -f "$src"
+  echo -e "${RED}Task moved: in-progress/ → failed/${NC}"
+}
+
+_detect_task_lifecycle
+
 # ── Pre-flight checks ────────────────────────────────────────────────
 
 preflight() {
@@ -292,6 +382,17 @@ preflight() {
   else
     if [[ -n "$(git -C "$REPO_ROOT" status --porcelain 2>/dev/null)" ]]; then
       echo -e "  ${YELLOW}⚠ Git working tree has uncommitted changes${NC}"
+      # Block if openspec/ files have uncommitted changes (P1 sync guard)
+      local openspec_dirty
+      openspec_dirty=$(git -C "$REPO_ROOT" status --porcelain -- openspec/ 2>/dev/null || true)
+      if [[ -n "$openspec_dirty" ]]; then
+        echo -e "  ${RED}✗ openspec/ has uncommitted changes — commit them first${NC}"
+        echo -e "  ${RED}  Pipeline branches from HEAD; uncommitted specs won't be included${NC}"
+        echo "$openspec_dirty" | while IFS= read -r line; do
+          echo -e "    ${RED}${line}${NC}"
+        done
+        errors=$((errors + 1))
+      fi
     else
       echo -e "  ${GREEN}✓ Git working tree clean${NC}"
     fi
@@ -1386,6 +1487,7 @@ Task: ${TASK_MESSAGE}
 - After creating migration files, run \`make migrate\` (or the per-app variant)
 - If migration fails, fix it before proceeding
 - Keep edits minimal and focused on the spec
+- **NEVER delete or modify files that are NOT mentioned in tasks.md** — only touch files required by the spec
 
 ## Handoff
 
@@ -1635,6 +1737,9 @@ main() {
     exit 1
   fi
 
+  # Move task to in-progress (if using task file lifecycle)
+  _task_move_to_in_progress
+
   # Initialize handoff
   init_handoff
 
@@ -1873,6 +1978,13 @@ PYEOF
 📋 <i>${TASK_MESSAGE}</i>
 🌿 Branch: <code>${branch}</code>
 ⏱ Duration: $(( total_duration / 60 ))m"
+  fi
+
+  # Task file lifecycle: move to done or failed
+  if $failed; then
+    _task_move_to_failed "$branch" "$total_duration"
+  else
+    _task_move_to_done "$branch" "$total_duration"
   fi
 
   # Final status
