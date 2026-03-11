@@ -43,7 +43,21 @@ Health state reflects discovery, convention checks, and polling outcomes.
 - Degraded/error/unavailable badges SHOULD link to violation details when available.
 - Admin MUST include a "state legend" block explaining all available states.
 
-## 4. Test Expectations
+## 4. Stale Marketplace Agent Cleanup
+
+Agents discovered via Traefik (e.g. ephemeral E2E test containers) that were **never installed** are automatically hard-deleted when they accumulate too many consecutive health-check failures.
+
+| Condition | Outcome |
+|---|---|
+| `installed_at IS NULL` AND `health_check_failures >= 5` | Agent row is hard-deleted from `agent_registry` |
+| `installed_at IS NOT NULL` (any failure count) | Agent is NOT deleted; remains marked `unavailable` |
+| `installed_at IS NULL` AND `health_check_failures < 5` | Agent is preserved in the marketplace |
+
+- Cleanup runs automatically at the end of each `app:agent-health-poll` cycle.
+- Each auto-deletion is recorded in `agent_registry_audit` with action `stale_deleted`.
+- The stale threshold (default: 5) is separate from the unavailability threshold (default: 3).
+
+## 5. Test Expectations
 
 When updating state rendering:
 

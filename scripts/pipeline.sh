@@ -1056,6 +1056,64 @@ apply_plan() {
     [[ -z "$key" ]] && continue
     swap_agent_model "$key" "$val" 2>/dev/null || true
   done <<< "$model_overrides"
+
+  # Auto-inject auditor for agent-related tasks
+  if [[ "$ENABLE_AUDIT" != true ]]; then
+    auto_inject_auditor "$plan_file"
+  fi
+}
+
+# ── Auto-audit detection for agent tasks ─────────────────────────────
+
+auto_inject_auditor() {
+  local plan_file="$1"
+
+  # Check if planner flagged this as an agent task
+  local is_agent_task="false"
+  if [[ -f "$plan_file" ]]; then
+    is_agent_task=$(jq -r '.is_agent_task // false' "$plan_file" 2>/dev/null || echo "false")
+  fi
+
+  # Fallback: detect agent-related keywords in task message
+  if [[ "$is_agent_task" != "true" ]]; then
+    local task_lower
+    task_lower=$(echo "$TASK_MESSAGE" | tr '[:upper:]' '[:lower:]')
+    if echo "$task_lower" | grep -qE '(agent|агент|-agent\b|new agent|add agent|create agent|modify agent|update agent|refactor agent)'; then
+      is_agent_task="true"
+    fi
+  fi
+
+  # Fallback: check apps_affected for agent directories
+  if [[ "$is_agent_task" != "true" && -f "$plan_file" ]]; then
+    local affected
+    affected=$(jq -r '.apps_affected // [] | .[]' "$plan_file" 2>/dev/null)
+    if echo "$affected" | grep -qE '(-agent$|^agent-)'; then
+      is_agent_task="true"
+    fi
+  fi
+
+  if [[ "$is_agent_task" == "true" ]]; then
+    # Check if auditor is already in the list
+    local has_auditor=false
+    for a in "${AGENTS[@]}"; do
+      [[ "$a" == "auditor" ]] && has_auditor=true
+    done
+
+    if [[ "$has_auditor" == false ]]; then
+      # Insert auditor right after coder
+      local new_agents=()
+      for a in "${AGENTS[@]}"; do
+        new_agents+=("$a")
+        if [[ "$a" == "coder" ]]; then
+          new_agents+=("auditor")
+        fi
+      done
+      AGENTS=("${new_agents[@]}")
+      ENABLE_AUDIT=true
+      echo -e "${CYAN}🔍 Agent task detected — auditor auto-injected after coder${NC}"
+      echo -e "  ${BLUE}Agents: ${AGENTS[*]}${NC}"
+    fi
+  fi
 }
 
 # ── Anti-loop monitor ────────────────────────────────────────────────
@@ -1385,10 +1443,14 @@ Write ONLY a JSON file to \`.opencode/pipeline/plan.json\` with this exact struc
   "apps_affected": ["core"],
   "needs_migration": false,
   "needs_api_change": false,
+  "is_agent_task": false,
   "timeout_overrides": {},
   "model_overrides": {}
 }
 \`\`\`
+
+**Fields**:
+- \`is_agent_task\`: set to \`true\` when the task creates, modifies, or significantly changes an agent (any app in \`apps/\` with \`-agent\` suffix, or agent configs in \`.opencode/agents/\`). When true, the pipeline auto-injects an auditor step after the coder to verify agent compliance.
 
 Agent options: planner, architect, coder, validator, tester, auditor, documenter.
 For quick-fix: typically ["coder", "validator"].

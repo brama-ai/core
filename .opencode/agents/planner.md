@@ -47,16 +47,21 @@ Write `.opencode/pipeline/plan.json` with this structure:
   "apps_affected": ["core"],
   "needs_migration": false,
   "needs_api_change": false,
+  "is_agent_task": false,
   "timeout_overrides": {},
   "model_overrides": {}
 }
 ```
+
+**Fields**:
+- `is_agent_task`: set to `true` when the task creates, modifies, or significantly changes an agent (any app in `apps/` with `-agent` suffix, or agent configs in `.opencode/agents/`). This auto-injects an auditor step after the coder.
 
 ## Rules
 
 - Be conservative: if unsure, choose "standard" over "quick-fix"
 - **If an existing OpenSpec proposal has `tasks.md` (spec is ready) — exclude `architect` from agents.** The coder reads the spec directly from `openspec/changes/<id>/`. Architect is only needed when no spec exists yet.
 - If the task says "Implement openspec change ..." — the spec is definitely ready, skip architect.
+- **If the task involves creating or modifying an agent — set `is_agent_task: true`.** The pipeline will auto-inject the auditor after the coder to verify agent compliance with platform standards.
 - Do NOT create any other files — only plan.json
 - Do NOT explain outside the JSON file
 - Finish quickly — your timeout is 5 minutes

@@ -233,6 +233,8 @@ e2e-register-agents:
 		&& echo "  registered dev-reporter-agent" || echo "  FAILED dev-reporter-agent"
 	@$(E2E_COMPOSE) exec -T postgres psql -U app -d ai_community_platform_test -q \
 		-c "UPDATE agent_registry SET enabled = true, installed_at = now() WHERE name IN ('hello-agent', 'knowledge-agent', 'news-maker-agent', 'dev-reporter-agent')"
+	@$(E2E_COMPOSE) exec -T postgres psql -U app -d ai_community_platform_test -q \
+		-c "INSERT INTO scheduled_jobs (agent_name, job_name, skill_id, payload, cron_expression, next_run_at, max_retries, retry_delay_seconds, timezone) VALUES ('hello-agent', 'daily-greeting', 'hello.greet', '{\"name\": \"Дмитро\"}', '0 9 * * *', now() + interval '1 day', 2, 120, 'Europe/Kyiv') ON CONFLICT (agent_name, job_name) DO NOTHING"
 	@echo "E2E agents registered and enabled."
 
 e2e-prepare: e2e-db-init e2e-rabbitmq-init

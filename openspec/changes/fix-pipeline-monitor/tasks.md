@@ -65,6 +65,16 @@
 - Esc/Backspace returns to task list
 - **Verify**: Enter on selected task shows detail, Esc returns
 
+### 8b. Implement task log viewer (`[l]` key)
+- `l` on a failed or in-progress task opens log view mode
+- `find_task_log()` searches `$LOG_DIR` and worktree log dirs by task filename slug
+- Falls back to title-based slug matching
+- Renders colorized log tail in the overview area (reuses `render_log_lines`)
+- `q` or `Esc` returns to task list (does not quit the monitor)
+- Shows "No log file found" when no matching log exists
+- Shows warning when pressed on todo/done tasks
+- **Verify**: select failed task, press `l`, see logs; press `q`, return to list
+
 ### 9. Wire main loop
 - `render` → `read_key` → `handle_key` → repeat
 - 3s refresh interval when no key pressed

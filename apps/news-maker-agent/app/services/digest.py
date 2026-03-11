@@ -5,6 +5,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 
+import requests
 from openai import OpenAI
 
 from app.config import settings
@@ -202,6 +203,9 @@ def run_digest() -> uuid.UUID | None:
             request_id,
             trace_id,
         )
+
+        _publish_to_channel(digest.id, title, body, len(eligible_items), request_id, trace_id)
+
         return digest.id
 
     except Exception as exc:
@@ -210,3 +214,60 @@ def run_digest() -> uuid.UUID | None:
         return None
     finally:
         db.close()
+
+
+def _publish_to_channel(
+    digest_id: uuid.UUID,
+    title: str,
+    body: str,
+    item_count: int,
+    request_id: str,
+    trace_id: str,
+) -> None:
+    """Publish digest to channel via Core A2A -> OpenClaw route.
+
+    Failures are logged but do NOT roll back the digest.
+    """
+    token = settings.openclaw_gateway_token
+    if not token:
+        logger.warning("Digest publish skipped: OPENCLAW_GATEWAY_TOKEN not configured (digest_id=%s)", digest_id)
+        return
+
+    url = f"{settings.platform_core_url}/api/v1/a2a/send-message"
+    payload = {
+        "tool": "openclaw.send_message",
+        "input": {
+            "title": title,
+            "body": body,
+        },
+        "metadata": {
+            "digest_id": str(digest_id),
+            "item_count": item_count,
+            "source": SERVICE_NAME,
+        },
+    }
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "x-request-id": request_id,
+    }
+    if trace_id:
+        headers["x-trace-id"] = trace_id
+
+    try:
+        resp = requests.post(url, json=payload, headers=headers, timeout=10)
+        resp.raise_for_status()
+        logger.info(
+            "Digest published to channel: digest_id=%s status=%d (request_id=%s)",
+            digest_id,
+            resp.status_code,
+            request_id,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Digest channel delivery failed (digest preserved): digest_id=%s error=%s (request_id=%s, trace_id=%s)",
+            digest_id,
+            exc,
+            request_id,
+            trace_id,
+        )

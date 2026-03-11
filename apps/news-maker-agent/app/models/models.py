@@ -133,11 +133,57 @@ class AgentSettings(Base):
     # Models
     ranker_model: Mapped[str] = mapped_column(String(128), default="minimax/minimax-m2.5")
     rewriter_model: Mapped[str] = mapped_column(String(128), default="minimax/minimax-m2.5")
+    # Digest
+    digest_prompt: Mapped[str] = mapped_column(
+        Text,
+        default=(
+            "You are a Ukrainian-language tech journalist. "
+            "Compile the provided news items into a single cohesive digest article."
+        ),
+    )
+    digest_guardrail: Mapped[str] = mapped_column(
+        Text,
+        default=(
+            "Always write in Ukrainian. Never fabricate facts. "
+            "Preserve source references. Keep the digest focused and factual."
+        ),
+    )
+    digest_model: Mapped[str] = mapped_column(String(128), default="minimax/minimax-m2.5")
+    digest_source_statuses: Mapped[str] = mapped_column(String(256), default="ready,moderated")
+    digest_cron: Mapped[str] = mapped_column(String(64), default="0 8 * * *")
+    embedding_model: Mapped[str] = mapped_column(String(128), default="text-embedding-3-small")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class Digest(Base):
+    __tablename__ = "digests"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    language: Mapped[str] = mapped_column(String(16), default="uk")
+    item_count: Mapped[int] = mapped_column(Integer, default=0)
+    source_statuses_used: Mapped[str] = mapped_column(String(256), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    items: Mapped[list["DigestItem"]] = relationship(back_populates="digest", cascade="all, delete-orphan")
+
+
+class DigestItem(Base):
+    __tablename__ = "digest_items"
+
+    digest_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("digests.id", ondelete="CASCADE"), primary_key=True
+    )
+    curated_news_item_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("curated_news_items.id", ondelete="CASCADE"), primary_key=True
+    )
+
+    digest: Mapped["Digest"] = relationship(back_populates="items")
 
 
 class SchedulerRun(Base):

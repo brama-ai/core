@@ -22,7 +22,9 @@ Patching further will not fix the core issue — bash 3.2 is not suited for inte
 3. **Log viewer**: Tab 2 shows the latest `.log` file from `.opencode/pipeline/logs/` with colorized tail output. Auto-refreshes every 3s.
 4. **Worker count in status**: `"Running (3m 42s, PID 12345, 2 workers)"`.
 5. **Smart start prompt**: `"Not running — 3 tasks waiting, press [s] to start"` when tasks in todo/.
-6. **Clean architecture**: Each section (render, input, actions) is self-contained. No global state leaking between render cycles.
+6. **Task log viewer**: Press `[l]` on a failed or in-progress task to see its pipeline logs inline. `[q]` or `Esc` returns to the task list.
+7. **Full-height log display**: Logs, Worker, and Task Log views use a compact layout (tab bar + 1 info line + footer = 4 lines chrome) so log content fills the remaining terminal height.
+8. **Clean architecture**: Each section (render, input, actions) is self-contained. No global state leaking between render cycles.
 
 ### Data Sources
 
@@ -51,9 +53,10 @@ The monitor reads from the filesystem only — no live process communication:
 | `k` | Kill batch |
 | `x` | Stop in-progress task |
 | `+/-` | Change priority of todo task |
+| `l` | View logs for selected failed/in-progress task |
 | `d` | Delete todo/failed task |
 | `a` | Archive completed tasks |
-| `q` | Quit |
+| `q` | Quit (or back from log/detail view) |
 
 ## Impact
 

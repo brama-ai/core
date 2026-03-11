@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Scheduler;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Types\Types;
 
 final class ScheduledJobRepository implements ScheduledJobRepositoryInterface
 {
@@ -42,13 +43,14 @@ final class ScheduledJobRepository implements ScheduledJobRepositoryInterface
         int $retryDelaySeconds,
         string $timezone,
         string $nextRunAt,
+        string $source = 'manifest',
     ): void {
         $this->connection->executeStatement(
             <<<'SQL'
             INSERT INTO scheduled_jobs
-                (agent_name, job_name, skill_id, payload, cron_expression, next_run_at, max_retries, retry_delay_seconds, timezone)
+                (agent_name, job_name, skill_id, payload, cron_expression, next_run_at, max_retries, retry_delay_seconds, timezone, source)
             VALUES
-                (:agentName, :jobName, :skillId, :payload, :cronExpression, :nextRunAt, :maxRetries, :retryDelaySeconds, :timezone)
+                (:agentName, :jobName, :skillId, :payload, :cronExpression, :nextRunAt, :maxRetries, :retryDelaySeconds, :timezone, :source)
             ON CONFLICT (agent_name, job_name) DO UPDATE SET
                 skill_id             = EXCLUDED.skill_id,
                 payload              = EXCLUDED.payload,
@@ -70,6 +72,7 @@ final class ScheduledJobRepository implements ScheduledJobRepositoryInterface
                 'maxRetries' => $maxRetries,
                 'retryDelaySeconds' => $retryDelaySeconds,
                 'timezone' => $timezone,
+                'source' => $source,
             ],
         );
     }
@@ -109,6 +112,9 @@ final class ScheduledJobRepository implements ScheduledJobRepositoryInterface
         );
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
     public function findByAgent(string $agentName): array
     {
         /* @var list<array<string, mixed>> */
@@ -193,11 +199,20 @@ final class ScheduledJobRepository implements ScheduledJobRepositoryInterface
         );
     }
 
+    public function deleteJob(string $id): void
+    {
+        $this->connection->executeStatement(
+            'DELETE FROM scheduled_jobs WHERE id = :id',
+            ['id' => $id],
+        );
+    }
+
     public function toggleEnabled(string $id, bool $enabled): void
     {
         $this->connection->executeStatement(
             'UPDATE scheduled_jobs SET enabled = :enabled, updated_at = now() WHERE id = :id',
-            ['id' => $id, 'enabled' => $enabled ? 'TRUE' : 'FALSE'],
+            ['id' => $id, 'enabled' => $enabled],
+            ['enabled' => Types::BOOLEAN],
         );
     }
 }

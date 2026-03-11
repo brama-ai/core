@@ -7,12 +7,14 @@
     <div class="glass-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
             <span style="font-size:.85rem;color:var(--text-secondary);">Всього завдань: {{ jobs|length }}</span>
+            <button class="btn btn-primary" style="font-size:.8rem;padding:.4rem .8rem;" onclick="document.getElementById('createJobModal').classList.add('active')">+ Створити завдання</button>
         </div>
 
         <div style="overflow-x:auto;">
             <table class="admin-table">
                 <thead>
                     <tr>
+                        <th></th>
                         <th>Агент</th>
                         <th>Завдання</th>
                         <th>Скіл</th>
@@ -26,7 +28,14 @@
                 </thead>
                 <tbody>
                     {% for job in jobs %}
-                        <tr>
+                        <tr{% if job._stale %} style="background:rgba(239,68,68,.08);"{% endif %}>
+                            <td style="width:1.5rem;text-align:center;">
+                                {% if job._stale %}
+                                    <span title="{{ job._stale_reason }}" style="cursor:help;color:#ef4444;font-size:1.1rem;">&#9888;</span>
+                                {% elseif (job.source ?? 'manifest') == 'admin' %}
+                                    <span title="Створено в адмінці" style="cursor:help;color:var(--text-muted);font-size:.85rem;">&#9998;</span>
+                                {% endif %}
+                            </td>
                             <td>{{ job.agent_name }}</td>
                             <td>{{ job.job_name }}</td>
                             <td style="font-family:monospace;font-size:.8rem;">{{ job.skill_id }}</td>
@@ -34,7 +43,9 @@
                             <td style="font-size:.85rem;white-space:nowrap;">{{ job.next_run_at ? job.next_run_at|slice(0, 19)|replace({'T': ' '}) : '—' }}</td>
                             <td style="font-size:.85rem;white-space:nowrap;">{{ job.last_run_at ? job.last_run_at|slice(0, 19)|replace({'T': ' '}) : '—' }}</td>
                             <td>
-                                {% if job.last_status == 'completed' %}
+                                {% if job._stale %}
+                                    <span class="badge badge-log-critical" title="{{ job._stale_reason }}">stale</span>
+                                {% elseif job.last_status == 'completed' %}
                                     <span class="badge badge-log-info">completed</span>
                                 {% elseif job.last_status == 'failed' %}
                                     <span class="badge badge-log-error">failed</span>
@@ -55,28 +66,115 @@
                                 <button
                                     class="btn btn-settings"
                                     style="font-size:.75rem;padding:.25rem .6rem;"
-                                    onclick="runNow('{{ job.id }}')"
+                                    onclick="runNow('{{ job.id|e('js') }}')"
                                 >Запустити</button>
                                 <button
                                     class="btn btn-settings"
                                     style="font-size:.75rem;padding:.25rem .6rem;margin-left:.25rem;"
-                                    onclick="toggleJob('{{ job.id }}', {{ job.enabled ? 'false' : 'true' }})"
+                                    onclick="toggleJob('{{ job.id|e('js') }}', {{ job.enabled ? 'false' : 'true' }})"
                                 >{{ job.enabled ? 'Вимкнути' : 'Увімкнути' }}</button>
+                                {% if (job.source ?? 'manifest') == 'admin' %}
+                                    <button
+                                        class="btn btn-settings"
+                                        style="font-size:.75rem;padding:.25rem .6rem;margin-left:.25rem;color:#ef4444;"
+                                        onclick="deleteJob('{{ job.id|e('js') }}', '{{ job.job_name|e('js') }}')"
+                                    >Видалити</button>
+                                {% endif %}
                             </td>
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="9" class="empty-row">Завдань не знайдено</td>
+                            <td colspan="10" class="empty-row">Завдань не знайдено</td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+    <div id="createJobModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('active')">
+        <div class="modal" style="max-width:560px;">
+            <h3>Створити завдання</h3>
+            <form id="createJobForm" onsubmit="createJob(event)">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem;">
+                    <div>
+                        <label class="form-label" for="cj_agent">Агент</label>
+                        <select id="cj_agent" class="form-input" required onchange="onAgentChange()">
+                            <option value="">— Оберіть —</option>
+                            {% for agent in agents %}
+                                <option value="{{ agent }}">{{ agent }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label" for="cj_skill">Скіл</label>
+                        <select id="cj_skill" class="form-input" required disabled>
+                            <option value="">— Спочатку оберіть агента —</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem;">
+                    <div>
+                        <label class="form-label" for="cj_job_name">Назва завдання</label>
+                        <input type="text" id="cj_job_name" class="form-input" required placeholder="daily-greeting">
+                    </div>
+                    <div>
+                        <label class="form-label" for="cj_cron">Cron (порожнє = одноразовий)</label>
+                        <input type="text" id="cj_cron" class="form-input" placeholder="0 9 * * *">
+                    </div>
+                </div>
+                <div style="margin-bottom:.75rem;">
+                    <label class="form-label" for="cj_payload">Payload (JSON)</label>
+                    <input type="text" id="cj_payload" class="form-input" placeholder='{"name": "Дмитро"}'>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:1rem;">
+                    <div>
+                        <label class="form-label" for="cj_timezone">Timezone</label>
+                        <input type="text" id="cj_timezone" class="form-input" value="UTC" placeholder="Europe/Kyiv">
+                    </div>
+                    <div>
+                        <label class="form-label" for="cj_retries">Макс. спроб</label>
+                        <input type="number" id="cj_retries" class="form-input" value="3" min="0" max="10">
+                    </div>
+                    <div>
+                        <label class="form-label" for="cj_delay">Затримка (сек)</label>
+                        <input type="number" id="cj_delay" class="form-input" value="60" min="1">
+                    </div>
+                </div>
+                <div style="display:flex;gap:.5rem;align-items:center;justify-content:flex-end;">
+                    <span id="createJobResult" style="font-size:.85rem;display:none;"></span>
+                    <button type="button" class="btn btn-settings" onclick="document.getElementById('createJobModal').classList.remove('active')">Скасувати</button>
+                    <button type="submit" class="btn btn-primary" id="createJobBtn">Створити</button>
+                </div>
+            </form>
+        </div>
+    </div>
 {% endblock %}
 
 {% block javascripts %}
 <script>
+var agentSkillMap = {{ agent_skill_map|json_encode|raw }};
+
+function onAgentChange() {
+    var agentName = document.getElementById('cj_agent').value;
+    var skillSelect = document.getElementById('cj_skill');
+    skillSelect.innerHTML = '';
+
+    if (!agentName || !agentSkillMap[agentName] || agentSkillMap[agentName].length === 0) {
+        skillSelect.innerHTML = '<option value="">— Немає скілів —</option>';
+        skillSelect.disabled = true;
+        return;
+    }
+
+    var skills = agentSkillMap[agentName];
+    skillSelect.disabled = false;
+    skills.forEach(function(sid) {
+        var opt = document.createElement('option');
+        opt.value = sid;
+        opt.textContent = sid;
+        skillSelect.appendChild(opt);
+    });
+}
+
 function runNow(id) {
     fetch('/api/v1/internal/scheduler/' + id + '/run', {method: 'POST'})
         .then(r => r.json())
@@ -93,6 +191,65 @@ function toggleJob(id, enable) {
         .then(r => r.json())
         .then(() => location.reload())
         .catch(e => alert('Error: ' + e));
+}
+
+function deleteJob(id, name) {
+    if (!confirm('Видалити завдання "' + name + '"?')) return;
+    fetch('/api/v1/internal/scheduler/' + id, {method: 'DELETE'})
+        .then(function(r) { return r.json().then(function(b) { return {ok: r.ok, body: b}; }); })
+        .then(function(res) {
+            if (res.ok) {
+                location.reload();
+            } else {
+                alert(res.body.error || 'Помилка видалення');
+            }
+        })
+        .catch(e => alert('Error: ' + e));
+}
+
+function createJob(e) {
+    e.preventDefault();
+    var btn = document.getElementById('createJobBtn');
+    var result = document.getElementById('createJobResult');
+    btn.disabled = true;
+    btn.textContent = 'Створення...';
+    result.style.display = 'none';
+
+    var data = {
+        agent_name: document.getElementById('cj_agent').value,
+        job_name: document.getElementById('cj_job_name').value,
+        skill_id: document.getElementById('cj_skill').value,
+        cron_expression: document.getElementById('cj_cron').value,
+        payload: document.getElementById('cj_payload').value,
+        timezone: document.getElementById('cj_timezone').value,
+        max_retries: parseInt(document.getElementById('cj_retries').value, 10),
+        retry_delay_seconds: parseInt(document.getElementById('cj_delay').value, 10)
+    };
+
+    fetch('/api/v1/internal/scheduler/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(function(r) { return r.json().then(function(b) { return {ok: r.ok, body: b}; }); })
+    .then(function(res) {
+        if (res.ok) {
+            location.reload();
+        } else {
+            result.textContent = res.body.error || 'Помилка';
+            result.style.color = 'var(--danger)';
+            result.style.display = 'inline';
+        }
+    })
+    .catch(function() {
+        result.textContent = 'Помилка мережі';
+        result.style.color = 'var(--danger)';
+        result.style.display = 'inline';
+    })
+    .finally(function() {
+        btn.disabled = false;
+        btn.textContent = 'Створити';
+    });
 }
 </script>
 {% endblock %}

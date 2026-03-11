@@ -15,6 +15,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class AgentHealthPollerCommand extends Command
 {
     private const FAILURE_THRESHOLD = 3;
+    private const STALE_THRESHOLD = 5;
 
     public function __construct(
         private readonly AgentRegistryInterface $registry,
@@ -70,6 +71,12 @@ final class AgentHealthPollerCommand extends Command
         }
 
         $output->writeln(sprintf('Polled %d agent(s).', $polled));
+
+        $cleaned = $this->registry->deleteStaleMarketplaceAgents(self::STALE_THRESHOLD);
+        if ($cleaned > 0) {
+            $this->logger->info('Stale marketplace agents cleaned up', ['count' => $cleaned]);
+            $output->writeln(sprintf('Cleaned up %d stale marketplace agent(s).', $cleaned));
+        }
 
         return Command::SUCCESS;
     }
