@@ -33,10 +33,12 @@
 
 ## Validator
 
-- **Status**: pending
-- **PHPStan**: —
-- **CS-check**: —
-- **Files fixed**: —
+- **Status**: done
+- **PHPStan**:
+  - `apps/core/`: pass
+- **CS-check**:
+  - `apps/core/`: pass
+- **Files fixed**: none
 
 ## Tester
 
@@ -51,3 +53,4 @@
 
 ---
 
+- **Commit (coder)**: b3fe118
