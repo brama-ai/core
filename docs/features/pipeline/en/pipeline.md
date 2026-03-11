@@ -2,10 +2,10 @@
 
 ## Overview
 
-The pipeline is an automated task execution system that runs a sequence of AI agents. Each agent has a specific role: planning, architecture, code, validation, tests, audit, documentation.
+The pipeline is an automated task execution system that runs a sequence of AI agents. Each agent has a specific role: planning, architecture, code, audit, validation, tests, documentation, and a final task summary.
 
 ```
-Task → Planner → Architect → Coder → Validator → Tester → [Auditor] → [Documenter]
+Task → Planner → Architect → Coder → [Auditor] → Validator → Tester → [Documenter] → Summarizer
 ```
 
 The pipeline automatically determines task complexity and selects the appropriate set of agents.
@@ -34,9 +34,9 @@ The first step is the **Planner** agent (Sonnet, 5 min limit). It analyzes the t
 
 | Profile | When | Agents |
 |---------|------|--------|
-| `quick-fix` | Minor fixes, config, 1-3 files | coder → validator |
-| `standard` | New feature, single app, multiple files | architect → coder → validator → tester |
-| `complex` | Cross-service changes, migrations, API, new agents | architect → coder → validator → tester → auditor |
+| `quick-fix` | Minor fixes, config, 1-3 files | coder → validator → summarizer |
+| `standard` | New feature, single app, multiple files | architect → coder → validator → tester → summarizer |
+| `complex` | Cross-service changes, migrations, API, new agents | architect → coder → auditor → validator → tester → summarizer |
 
 ### How Planner Decides
 
@@ -53,7 +53,7 @@ The first step is the **Planner** agent (Sonnet, 5 min limit). It analyzes the t
 {
   "profile": "standard",
   "reasoning": "New feature in single app, needs spec and tests",
-  "agents": ["architect", "coder", "validator", "tester"],
+  "agents": ["architect", "coder", "validator", "tester", "summarizer"],
   "skip_openspec": false,
   "estimated_files": 8,
   "apps_affected": ["knowledge-agent"],
@@ -116,6 +116,12 @@ The first step is the **Planner** agent (Sonnet, 5 min limit). It analyzes the t
 - **Role**: updates bilingual documentation (UA + EN)
 - **Not needed by default**: coder writes docs from tasks.md
 
+### Summarizer (15 min)
+- **Model**: GPT-5.4
+- **Role**: writes the final markdown summary for every agent that actually worked on the task
+- **Output**: `task/<timestamp>-<task-slug>.md`
+- **Includes**: what each agent did, difficulties, remaining fixes, and one proposed follow-up task
+
 ## Auto-Audit for Agent Tasks
 
 When a task involves creating or modifying an agent, the pipeline **automatically injects the auditor after coder**. This works through three mechanisms:
@@ -126,7 +132,7 @@ When a task involves creating or modifying an agent, the pipeline **automaticall
 
 ```
 standard + agent task:
-  architect → coder → [auditor] → validator → tester
+  architect → coder → [auditor] → validator → tester → summarizer
 ```
 
 The auditor checks changes against checklists:
@@ -152,6 +158,7 @@ The file `.opencode/pipeline/handoff.md` is a shared document updated by each ag
 | Tester | test results, new tests |
 | Auditor | audit verdict, recommendations |
 | Documenter | docs created, final status |
+| Summarizer | summary file path, per-agent summary, next-task recommendation |
 
 ## CLI Options
 
@@ -172,21 +179,41 @@ The file `.opencode/pipeline/handoff.md` is a shared document updated by each ag
 
 ## Monitoring
 
-### Console Monitoring
+### Console Monitor
 
 ```bash
-# Ink TUI (React-based, recommended)
-./scripts/pipeline-monitor-ink.sh
-
-# Bash monitor (legacy)
 ./scripts/pipeline-monitor.sh
 ```
 
-The TUI monitor shows:
-- Current agent and its status
-- Execution time per agent
-- Task progress (for batch runs)
-- Real-time logs
+Interactive TUI monitor with tabs:
+
+| Tab | Description |
+|-----|-------------|
+| 1:Overview | Task status, progress bar, batch state |
+| 2:Logs | Latest log file from `.opencode/pipeline/logs/` |
+| 3+:worker-N | Per-worker logs (dynamic, appear when workers are active) |
+
+Keyboard shortcuts:
+
+| Key | Action |
+|-----|--------|
+| `←/→` | Switch tabs |
+| `↑/↓` | Select task in list |
+| `Enter` | View task details |
+| `Esc/q` | Back / quit |
+| `s` | Start batch (or extra worker for selected task) |
+| `f` | Retry failed tasks |
+| `k` | Kill batch |
+| `l` | View logs for selected task (failed/in-progress) |
+| `d` | Delete task |
+| `a` | Archive completed tasks |
+| `+/-` | Change priority of todo task |
+
+Batch status shows elapsed time, PID, and worker count:
+`Running (3m 42s, PID 12345, 2 workers)`
+
+When tasks are waiting and no batch is running:
+`Not running — 3 tasks waiting, press [s] to start`
 
 ### Dev Reporter Monitoring
 
@@ -234,6 +261,8 @@ Each agent: executes → commits → checkpoint
 Result: COMPLETED or FAILED at <agent>
     ↓
 Report: .opencode/pipeline/reports/<timestamp>.md
+    ↓
+Task summary: task/<timestamp>-<task-slug>.md
 ```
 
 ### Checkpoint & Resume
@@ -358,8 +387,7 @@ scripts/
 ├── pipeline.sh              # Main orchestrator
 ├── pipeline-batch.sh        # Batch runner
 ├── pipeline-run-task.sh     # Single task in worktree
-├── pipeline-monitor.sh      # Bash monitor (legacy)
-├── pipeline-monitor-ink.sh  # TUI monitor (Ink/React)
+├── pipeline-monitor.sh      # Interactive TUI monitor
 └── pipeline-stats.sh        # Statistics
 
 .opencode/

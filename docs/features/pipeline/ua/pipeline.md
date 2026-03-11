@@ -2,10 +2,10 @@
 
 ## Огляд
 
-Пайплайн — це автоматизована система виконання задач через послідовність AI-агентів. Кожен агент має свою роль: планування, архітектура, код, валідація, тести, аудит, документація.
+Пайплайн — це автоматизована система виконання задач через послідовність AI-агентів. Кожен агент має свою роль: планування, архітектура, код, аудит, валідація, тести, документація і фінальний підсумок по задачі.
 
 ```
-Задача → Planner → Architect → Coder → Validator → Tester → [Auditor] → [Documenter]
+Задача → Planner → Architect → Coder → [Auditor] → Validator → Tester → [Documenter] → Summarizer
 ```
 
 Пайплайн автоматично визначає складність задачі та підбирає потрібний набір агентів.
@@ -34,9 +34,9 @@ make pipeline-batch FILE=tasks.txt
 
 | Профіль | Коли | Агенти |
 |---------|------|--------|
-| `quick-fix` | Дрібні правки, конфіг, 1-3 файли | coder → validator |
-| `standard` | Нова фіча, один додаток, кілька файлів | architect → coder → validator → tester |
-| `complex` | Міжсервісні зміни, міграції, API, нові агенти | architect → coder → validator → tester → auditor |
+| `quick-fix` | Дрібні правки, конфіг, 1-3 файли | coder → validator → summarizer |
+| `standard` | Нова фіча, один додаток, кілька файлів | architect → coder → validator → tester → summarizer |
+| `complex` | Міжсервісні зміни, міграції, API, нові агенти | architect → coder → auditor → validator → tester → summarizer |
 
 ### Як Planner вирішує
 
@@ -53,7 +53,7 @@ make pipeline-batch FILE=tasks.txt
 {
   "profile": "standard",
   "reasoning": "New feature in single app, needs spec and tests",
-  "agents": ["architect", "coder", "validator", "tester"],
+  "agents": ["architect", "coder", "validator", "tester", "summarizer"],
   "skip_openspec": false,
   "estimated_files": 8,
   "apps_affected": ["knowledge-agent"],
@@ -116,6 +116,12 @@ make pipeline-batch FILE=tasks.txt
 - **Роль**: оновлює двомовну документацію (UA + EN)
 - **Не потрібен за замовчуванням**: coder сам пише docs з tasks.md
 
+### Summarizer (15 хв)
+- **Модель**: GPT-5.4
+- **Роль**: формує фінальний markdown-підсумок по всіх агентах, які реально працювали над задачею
+- **Вихід**: `task/<timestamp>-<task-slug>.md`
+- **Що містить**: хто що зробив, складнощі, що ще треба виправити, і пропозицію до наступної задачі
+
 ## Автоматичний аудит для агентів
 
 Коли задача стосується створення або зміни агента, пайплайн **автоматично додає auditor після coder**. Це працює через три механізми:
@@ -126,7 +132,7 @@ make pipeline-batch FILE=tasks.txt
 
 ```
 standard + agent task:
-  architect → coder → [auditor] → validator → tester
+  architect → coder → [auditor] → validator → tester → summarizer
 ```
 
 Аудитор перевіряє зміни за чеклістами:
@@ -152,6 +158,7 @@ standard + agent task:
 | Tester | test results, new tests |
 | Auditor | audit verdict, recommendations |
 | Documenter | docs created, final status |
+| Summarizer | summary file path, підсумок по агентах, next-task recommendation |
 
 ## Опції запуску
 
@@ -172,21 +179,41 @@ standard + agent task:
 
 ## Моніторинг
 
-### Консольний моніторинг
+### Консольний монітор
 
 ```bash
-# Ink TUI (React-based, рекомендовано)
-./scripts/pipeline-monitor-ink.sh
-
-# Bash monitor (legacy)
 ./scripts/pipeline-monitor.sh
 ```
 
-TUI-монітор показує:
-- Поточний агент та його статус
-- Час виконання кожного агента
-- Прогрес по задачах (для batch)
-- Логи в реальному часі
+Інтерактивний TUI-монітор з вкладками:
+
+| Вкладка | Опис |
+|---------|------|
+| 1:Overview | Статус задач, прогрес-бар, стан батчу |
+| 2:Logs | Останній лог-файл з `.opencode/pipeline/logs/` |
+| 3+:worker-N | Логи кожного паралельного воркера (динамічні) |
+
+Клавіші навігації:
+
+| Клавіша | Дія |
+|---------|-----|
+| `←/→` | Перемикання вкладок |
+| `↑/↓` | Вибір задачі у списку |
+| `Enter` | Деталі задачі |
+| `Esc/q` | Назад / вихід |
+| `s` | Запустити батч (або додатковий воркер) |
+| `f` | Перезапустити зафейлені задачі |
+| `k` | Зупинити батч |
+| `l` | Переглянути логи обраної задачі (failed/in-progress) |
+| `d` | Видалити задачу |
+| `a` | Архівувати завершені |
+| `+/-` | Змінити пріоритет todo-задачі |
+
+Статус батчу показує час виконання, PID і кількість воркерів:
+`Running (3m 42s, PID 12345, 2 workers)`
+
+Коли задачі чекають і батч не запущено:
+`Not running — 3 tasks waiting, press [s] to start`
 
 ### Моніторинг через Dev Reporter
 
@@ -234,6 +261,8 @@ pipeline.sh створює гілку: pipeline/<task-slug>
 Результат: COMPLETED або FAILED at <agent>
     ↓
 Звіт: .opencode/pipeline/reports/<timestamp>.md
+    ↓
+Task summary: task/<timestamp>-<task-slug>.md
 ```
 
 ### Checkpoint & Resume
@@ -358,8 +387,7 @@ scripts/
 ├── pipeline.sh              # Основний оркестратор
 ├── pipeline-batch.sh        # Пакетний запуск
 ├── pipeline-run-task.sh     # Запуск однієї задачі в worktree
-├── pipeline-monitor.sh      # Bash-монітор (legacy)
-├── pipeline-monitor-ink.sh  # TUI-монітор (Ink/React)
+├── pipeline-monitor.sh      # Інтерактивний TUI-монітор
 └── pipeline-stats.sh        # Статистика
 
 .opencode/
