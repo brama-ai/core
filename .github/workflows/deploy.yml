@@ -9,8 +9,8 @@ on:
         default: ""
   push:
     branches:
+      - main
       - wiki-agent
-      - staging
 
 concurrency:
   group: deploy-${{ github.ref }}
