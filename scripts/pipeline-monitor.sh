@@ -2,8 +2,9 @@
 # shellcheck disable=SC2034
 #
 # Interactive pipeline monitor with tab-based TUI.
-# Version: 0.6.0
+# Version: 0.6.1
 #
+MONITOR_VERSION="0.6.1"
 # Usage:
 #   ./scripts/pipeline-monitor.sh              # auto-detect tasks/ folder
 #   ./scripts/pipeline-monitor.sh tasks/       # monitor specific tasks folder
@@ -315,7 +316,7 @@ render_overview() {
   local total=$((todo_count + in_progress_count + done_count + failed_count))
   local completed=$((done_count + failed_count))
 
-  buf_line "${CYAN}${BOLD}  Pipeline Monitor${RESET}  $(date '+%H:%M:%S')"
+  buf_line "${CYAN}${BOLD}  Pipeline Monitor${RESET} ${DIM}v${MONITOR_VERSION}${RESET}  $(date '+%H:%M:%S')"
   buf_line "${DIM}$(hline)${RESET}"
   buf_line "$(render_tabs_str)"
   buf_line ""
@@ -501,7 +502,7 @@ find_task_log() {
 render_logs_tab() {
   get_terminal_size
   buf_reset
-  buf_line "$(render_tabs_str)  ${DIM}$(date '+%H:%M:%S')${RESET}"
+  buf_line "$(render_tabs_str)  ${DIM}v${MONITOR_VERSION}  $(date '+%H:%M:%S')${RESET}"
 
   local log_file=""
   [[ -d "$LOG_DIR" ]] && log_file=$(ls -t "$LOG_DIR"/*.log 2>/dev/null | head -1 || true)
@@ -527,7 +528,7 @@ render_worker_tab() {
   local worker_name="worker-${1}"
   get_terminal_size
   buf_reset
-  buf_line "$(render_tabs_str)  ${DIM}$(date '+%H:%M:%S')${RESET}"
+  buf_line "$(render_tabs_str)  ${DIM}v${MONITOR_VERSION}  $(date '+%H:%M:%S')${RESET}"
 
   local log_file=""
   local wt_log_dir="$WORKTREE_BASE/$worker_name/.opencode/pipeline/logs"
