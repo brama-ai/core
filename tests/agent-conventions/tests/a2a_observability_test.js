@@ -35,8 +35,8 @@ Scenario('A2A preserves provided request_id and returns structured envelope', as
     assert.ok(HEX32_RE.test(traceId), 'test trace_id must be 32-hex');
 
     const res = await I.sendPostRequest('/api/v1/a2a', {
-        intent: 'hello.greet',
-        payload: { name: 'ConventionAudit' },
+        intent: 'hello.unknown',
+        payload: {},
         request_id: requestId,
         trace_id: traceId,
     });
@@ -53,8 +53,8 @@ Scenario('A2A generates request_id when omitted', async ({ I }) => {
     }
 
     const res = await I.sendPostRequest('/api/v1/a2a', {
-        intent: 'hello.greet',
-        payload: { name: 'NoRequestId' },
+        intent: 'hello.unknown',
+        payload: {},
         trace_id: '00000000000000000000000000000002',
     });
 

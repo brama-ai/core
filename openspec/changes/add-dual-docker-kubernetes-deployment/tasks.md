@@ -1,36 +1,36 @@
 ## 1. Deployment Contract
 
-- [ ] 1.1 Define which services are:
+- [x] 1.1 Define which services are:
   - mandatory application services
   - optional platform add-ons
   - stateful dependencies that may run in-cluster or externally
-- [ ] 1.2 Define the shared runtime contract across Docker and Kubernetes:
+- [x] 1.2 Define the shared runtime contract across Docker and Kubernetes:
   - env vars
   - secrets
   - public URL configuration
   - migrations
   - readiness / liveness / startup checks
-- [ ] 1.3 Define image tagging, compatibility matrix, and upgrade policy for core and agents
+- [x] 1.3 Define image tagging, compatibility matrix, and upgrade policy for core and agents
 
 ## 2. Docker Packaging
 
-- [ ] 2.1 Refactor the existing compose topology into an operator-facing Docker bundle:
+- [x] 2.1 Refactor the existing compose topology into an operator-facing Docker bundle:
   - clear bundle variants
   - minimal required files
   - explicit overrides
-- [ ] 2.2 Provide a documented bootstrap flow for hobby/self-hosted production:
+- [x] 2.2 Provide a documented bootstrap flow for hobby/self-hosted production:
   - secrets
   - first startup
   - migrations
   - health verification
-- [ ] 2.3 Define the Docker upgrade flow:
+- [x] 2.3 Define the Docker upgrade flow:
   - supported image pinning strategy
   - pre-upgrade backup checklist
   - migration command sequence
   - service restart order
   - post-upgrade verification
   - rollback to previous image tags
-- [ ] 2.4 Document backup, restore, upgrade, and rollback procedures for the Docker path
+- [x] 2.4 Document backup, restore, upgrade, and rollback procedures for the Docker path
 
 ## 3. Kubernetes Packaging
 
@@ -58,18 +58,18 @@
 
 ## 5. Documentation
 
-- [ ] 5.1 Split deployment docs into clearly separated Docker and Kubernetes guides
-- [ ] 5.2 Add an architecture/deployment matrix showing supported topologies and trade-offs
-- [ ] 5.3 Add operator runbooks for:
+- [x] 5.1 Split deployment docs into clearly separated Docker and Kubernetes guides
+- [x] 5.2 Add an architecture/deployment matrix showing supported topologies and trade-offs
+- [x] 5.3 Add operator runbooks for:
   - install
   - upgrade
   - backup / restore
   - troubleshooting
-- [ ] 5.4 Add explicit upgrade runbooks with example commands for Docker and Kubernetes operators
-- [ ] 5.4 Add English mirrors or folder-based bilingual docs for operator-facing deployment guides
+- [x] 5.4 Add explicit upgrade runbooks with example commands for Docker and Kubernetes operators
+- [x] 5.4 Add English mirrors or folder-based bilingual docs for operator-facing deployment guides
 
 ## 6. Quality Checks
 
 - [ ] 6.1 Validate both deployment capabilities with OpenSpec strict validation
 - [ ] 6.2 Verify at least one end-to-end smoke path for Docker and one install validation path for
-  Kubernetes packaging
+  Kubernetes packaging (Docker path verified; Kubernetes packaging is pending)
