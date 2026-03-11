@@ -183,6 +183,12 @@ list_todo_sorted() {
 
 # ── Worker detection ──────────────────────────────────────────────────
 detect_workers() {
+  # Re-evaluate worktree base each time — batch may create it after monitor starts
+  if [[ -d "$REPO_ROOT/.pipeline-worktrees" ]]; then
+    WORKTREE_BASE="$REPO_ROOT/.pipeline-worktrees"
+  else
+    WORKTREE_BASE="$REPO_ROOT/.opencode/pipeline/worktrees"
+  fi
   local workers=() wcount=0
   if [[ -d "$WORKTREE_BASE" ]]; then
     for wt in "$WORKTREE_BASE"/worker-*; do
