@@ -2,9 +2,9 @@
 # shellcheck disable=SC2034
 #
 # Interactive pipeline monitor with tab-based TUI.
-# Version: 0.6.1
+# Version: 0.7.0
 #
-MONITOR_VERSION="0.6.1"
+MONITOR_VERSION="0.7.0"
 # Usage:
 #   ./scripts/pipeline-monitor.sh              # auto-detect tasks/ folder
 #   ./scripts/pipeline-monitor.sh tasks/       # monitor specific tasks folder
@@ -250,29 +250,31 @@ build_task_list() {
 }
 
 # ── Tab bar ───────────────────────────────────────────────────────────
-render_tabs_str() {
-  local workers=()
+# Must be called in the parent shell (NOT inside $(...)) to update globals
+update_worker_state() {
+  DETECTED_WORKERS=()
   local raw; raw=$(detect_workers)
-  [[ -n "$raw" ]] && read -ra workers <<< "$raw"
-  ACTIVE_WORKER_COUNT=${#workers[@]}
+  [[ -n "$raw" ]] && read -ra DETECTED_WORKERS <<< "$raw"
+  ACTIVE_WORKER_COUNT=${#DETECTED_WORKERS[@]}
   MAX_TABS=$((2 + ACTIVE_WORKER_COUNT))
+}
+
+render_tabs_str() {
+  # Uses DETECTED_WORKERS set by update_worker_state (called in parent shell)
 
   local out="  "
-  # Tab 1: Overview
   if [[ $CURRENT_TAB -eq 1 ]]; then
     out+="${REV}${BOLD} 1:Overview ${RESET}"
   else
     out+="${DIM} 1:Overview ${RESET}"
   fi
-  # Tab 2: Logs
   if [[ $CURRENT_TAB -eq 2 ]]; then
     out+="${REV}${BOLD} 2:Logs ${RESET}"
   else
     out+="${DIM} 2:Logs ${RESET}"
   fi
-  # Tabs 3+: Workers
   local idx=3
-  for w in "${workers[@]}"; do
+  for w in "${DETECTED_WORKERS[@]}"; do
     local task_hint; task_hint=$(get_worker_active_task "$w")
     local label="${idx}:${w}"
     [[ -n "$task_hint" ]] && label="${idx}:${w} ${task_hint}"
@@ -306,6 +308,7 @@ render_log_lines() {
 render_overview() {
   get_terminal_size
   buf_reset
+  update_worker_state
   build_task_list
 
   local todo_count in_progress_count done_count failed_count
@@ -502,6 +505,7 @@ find_task_log() {
 render_logs_tab() {
   get_terminal_size
   buf_reset
+  update_worker_state
   buf_line "$(render_tabs_str)  ${DIM}v${MONITOR_VERSION}  $(date '+%H:%M:%S')${RESET}"
 
   local log_file=""
@@ -528,6 +532,7 @@ render_worker_tab() {
   local worker_name="worker-${1}"
   get_terminal_size
   buf_reset
+  update_worker_state
   buf_line "$(render_tabs_str)  ${DIM}v${MONITOR_VERSION}  $(date '+%H:%M:%S')${RESET}"
 
   local log_file=""
@@ -708,12 +713,10 @@ render() {
   elif [[ $CURRENT_TAB -eq 2 ]]; then
     render_logs_tab
   else
-    local workers=()
-    local raw; raw=$(detect_workers)
-    [[ -n "$raw" ]] && read -ra workers <<< "$raw"
+    # DETECTED_WORKERS is set by update_worker_state inside render_worker_tab
     local worker_idx=$((CURRENT_TAB - 2))
-    if [[ ${#workers[@]} -gt 0 && $worker_idx -le ${#workers[@]} ]]; then
-      local worker_num; worker_num=$(echo "${workers[$((worker_idx - 1))]}" | sed 's/worker-//')
+    if [[ ${#DETECTED_WORKERS[@]} -gt 0 && $worker_idx -le ${#DETECTED_WORKERS[@]} ]]; then
+      local worker_num; worker_num=$(echo "${DETECTED_WORKERS[$((worker_idx - 1))]}" | sed 's/worker-//')
       render_worker_tab "$worker_num"
     else
       render_logs_tab
