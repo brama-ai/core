@@ -7,6 +7,7 @@ from app.config import settings
 from app.logging_handler import OpenSearchHandler
 from app.middleware.trace import TraceMiddleware
 from app.routers import health
+from app.routers.admin import news as admin_news
 from app.routers.admin import settings as admin_settings
 from app.routers.admin import sources as admin_sources
 from app.routers.api import manifest as api_manifest
@@ -45,6 +46,7 @@ app.add_middleware(TraceMiddleware)
 app.include_router(health.router)
 app.include_router(api_manifest.router)
 app.include_router(api_news.router)
+app.include_router(admin_news.router)
 app.include_router(admin_sources.router)
 app.include_router(admin_settings.router)
 app.include_router(web_news.router)
