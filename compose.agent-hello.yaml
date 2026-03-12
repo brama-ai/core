@@ -1,8 +1,9 @@
 services:
   hello-agent:
+    image: ghcr.io/nmdimas/a2a-hello-agent:main
     build:
-      context: .
-      dockerfile: docker/hello-agent/Dockerfile
+      context: ./apps/hello-agent
+      dockerfile: Dockerfile
     labels:
       - traefik.enable=true
       - traefik.http.routers.hello-agent.rule=PathPrefix(`/`)
@@ -33,9 +34,10 @@ services:
 
   hello-agent-e2e:
     profiles: [e2e]
+    image: ghcr.io/nmdimas/a2a-hello-agent:main
     build:
-      context: .
-      dockerfile: docker/hello-agent/Dockerfile
+      context: ./apps/hello-agent
+      dockerfile: Dockerfile
     environment:
       LANGFUSE_ENABLED: "false"
       LITELLM_BASE_URL: http://litellm:4000

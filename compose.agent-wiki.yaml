@@ -1,8 +1,9 @@
 services:
   wiki-agent:
+    image: ghcr.io/nmdimas/a2a-wiki-agent:main
     build:
-      context: .
-      dockerfile: docker/wiki-agent/Dockerfile
+      context: ./apps/wiki-agent
+      dockerfile: Dockerfile
     labels:
       - traefik.enable=true
       - traefik.http.routers.wiki-agent-web.rule=PathPrefix(`/wiki`) || PathPrefix(`/wiki-admin`) || PathPrefix(`/api/v1/wiki`)
@@ -43,9 +44,10 @@ services:
 
   wiki-agent-e2e:
     profiles: [e2e]
+    image: ghcr.io/nmdimas/a2a-wiki-agent:main
     build:
-      context: .
-      dockerfile: docker/wiki-agent/Dockerfile
+      context: ./apps/wiki-agent
+      dockerfile: Dockerfile
     environment:
       PORT: "3000"
       DATABASE_URL: postgresql://app:app@postgres:5432/ai_community_platform_test
