@@ -1,71 +1,73 @@
 # AI Community Platform
 
-## Опис
+[🇺🇦 Українська версія](README.ua.md)
 
-**AI Community Platform** — це інноваційна архітектурна екосистема для побудови масштабованих **агентно-орієнтованих рішень** (Agentic Solutions). Платформа пропонує універсальний модульний підхід, де автономні AI-агенти та класичні мікросервіси виступають у ролі гнучких «будівельних блоків» (цеглинок) для конструювання систем будь-якої складності.
+## Description
 
-Незалежно від того, що саме ви будуєте — платформу для оркестрації складної логіки десятків агентів, просунутий веб-додаток із потужним API чи комплексне гібридне рішення — наша платформа забезпечує надійний фундамент для їх запуску та безшовної взаємодії. 
+**AI Community Platform** is an innovative architectural ecosystem for building scalable **Agentic Solutions**. The platform offers a universal, modular approach where autonomous AI agents and classical microservices act as flexible "building blocks" (bricks) to construct systems of any complexity.
 
-Найголовніше: **платформа не обмежує вас у виборі технологій (Language & Framework Agnostic).** Агенти та мікросервіси можуть бути написані на будь-якій мові програмування (Python, TypeScript, Go, PHP, Rust тощо) та з використанням будь-яких фреймворків. Усе об'єднується через стандартизовані протоколи.
+Whether you are building a platform to orchestrate complex logic for dozens of agents, an advanced web application with a powerful API, or a comprehensive hybrid solution — our platform provides a reliable foundation to run and seamlessly integrate them.
 
-## Ідея
+Most importantly: **the platform does not limit your technology choices (Language & Framework Agnostic).** Agents and microservices can be written in any programming language (Python, TypeScript, Go, PHP, Rust, etc.) using any framework. Everything is unified via standardized protocols.
 
-Світ стрімко рухається від традиційних застосунків до екосистем автономних агентів, які здатні самостійно вирішувати завдання, спілкуватися між собою та з користувачами. Наша глобальна амбіція — надати розробникам, стартапам та бізнесам єдиний, потужний і повністю відкритий стандарт для злиття класичної розробки та ШІ.
+## Idea
 
-**Ключові концепції та потенціал:**
-- **Архітектура «цеглинок»:** Будуйте продукти з незалежних компонентів. Сьогодні ви можете розгорнути Knowledge Extractor (Wiki) або News Digest, а завтра — інтегрувати власного кастомного агента для аналітики або автоматизації бізнес-процесів.
-- **Гібридність без меж:** Платформа дозволяє органічно поєднувати AI-агентів, традиційні бекенд-сервіси (Core Symfony App), фронтенд-панелі та зовнішні API в єдиний монолітний досвід для користувача.
-- **Агентна оркестрація (a2a):** Протоколи платформи дозволяють агентам не лише слухати запити користувачів, а й делегувати завдання один одному (Agent-to-Agent комунікація).
-- **Enterprise-ready інфраструктура:** Завдяки інтегрованим рішенням, таким як **OpenClaw** (runtime та середовище обробки повідомлень) та **LiteLLM Gateway** (єдине вікно для доступу та контролю витрат на будь-які LLM у світі — OpenRouter, Anthropic, OpenAI), система готова до серйозних навантажень. 
+The world is rapidly moving from traditional applications to ecosystems of autonomous agents capable of independently solving tasks, communicating with each other, and interacting with users. Our global ambition is to provide developers, startups, and businesses with a unified, powerful, and fully open standard for merging classical development with AI.
 
-Платформа дає вам інструменти для створення агентів-співробітників майбутнього вже сьогодні.
+**Key Concepts and Potential:**
+- **"Bricks" Architecture:** Build products from independent components. Today, you can deploy a Knowledge Extractor (Wiki) or a News Digest, and tomorrow you can integrate a custom agent for analytics or business process automation.
+- **Boundless Hybridization:** The platform organically combines AI agents, traditional backend services (Core Symfony App), frontend dashboards, and external APIs into a single monolithic user experience.
+- **Agent Orchestration (a2a):** Platform protocols allow agents not only to listen to user queries but also to delegate tasks to each other (Agent-to-Agent communication).
+- **Enterprise-ready Infrastructure:** With integrated solutions like **OpenClaw** (runtime and message processing environment) and **LiteLLM Gateway** (a single control pane for accessing and managing costs for any LLM globally — OpenRouter, Anthropic, OpenAI), the system is ready for heavy workloads.
 
-## Як сетапимо в локал
+The platform gives you the tools to create the digital employees of the future, today.
 
-Для швидкого розгортання всього середовища використовується Docker Compose. Детальні інструкції та опис паролів знаходяться у файлі [docs/local-dev.md](docs/local-dev.md).
+## How to setup locally
 
-**Швидкий старт:**
+We use Docker Compose for rapid deployment of the entire environment. Detailed instructions and default credentials can be found in [docs/local-dev.md](docs/local-dev.md).
+
+**Quick Start:**
 
 ```bash
-# 1. Завантажуємо репозиторій з кодом
+# 1. Clone the repository
 git clone https://github.com/nmdimas/ai-community-platform.git
 cd ai-community-platform
 
-# 2. Налаштовуємо секрети (достатньо зробити один раз)
+# 2. Configure secrets (one-time setup)
 cp .env.local.example .env.local
-# Обов'язково відредагуйте .env.local — додайте свій ключ до LLM (напр., OPENROUTER_API_KEY)
-# та токен Telegram-бота (TELEGRAM_BOT_TOKEN).
+# Make sure to edit .env.local — add your LLM key (e.g., OPENROUTER_API_KEY)
+# and Telegram Bot token (TELEGRAM_BOT_TOKEN).
 
-# 3. Ініціалізуємо базову конфігурацію (генерує ключі та розподіляє секрети)
+# 3. Bootstrap configuration (generates keys and distributes secrets)
 make bootstrap
 
-# 4. Збираємо та піднімаємо Docker-стек платформи
+# 4. Build and start the platform's Docker stack
 make setup
 make up
 
-# 5. Ініціалізуємо базу даних для LiteLLM
+# 5. Initialize the database for LiteLLM
 make litellm-db-init
 
-# 6. Запускаємо міграції бази даних
+# 6. Run database migrations
 make migrate
 
-# 7. Запускаємо тести для перевірки працездатності
+# 7. Run tests to verify the setup
 make test
 ```
 
-Після успішного запуску середовище буде доступне за адресами:
-- **Платформа:** `http://localhost/`
+After a successful launch, the environment will be accessible at:
+- **Platform:** `http://localhost/`
 - **Core Admin:** `http://localhost/admin/login`
 - **Wiki Agent:** `http://localhost/wiki`
 - **OpenClaw UI:** `http://localhost:8082/`
 - **LiteLLM API:** `http://localhost:4000/`
 
-## Як сетапимо в куб (поки драфт і ми працюємо над цим)
+## How to setup in Kubernetes (Draft / WIP)
 
-> **Драфт:** Цей розділ та процес деплою знаходяться в активній стадії розробки (WIP). 
+> **Draft:** This section and the deployment process are currently under active development (WIP).
 
-Оскільки платформа розрахована на enterprise підхід, ми активно готуємо Helm-чарти та конфігурації для безперебійного розгортання в Kubernetes. У майбутньому цей розділ покриватиме:
-- Підняття Ingress-контролерів для роутингу трафіку між агентами та веб-поверхнями.
-- Надійне управління секретами (External Secrets або Sealed Secrets).
-- Налаштування Persistent Volume Claims для стійкості даних (Postgres, Redis, OpenSearch).
-- CI/CD-пайплайни для автоматичного випуску нових версій агентів («цеглинок») в K8s-кластер.
+Since the platform is designed for an enterprise approach, we are actively preparing Helm charts and configurations for seamless deployment in Kubernetes. In the future, this section will cover:
+- Setting up Ingress controllers for traffic routing between agents and web surfaces.
+- Secure secret management (External Secrets or Sealed Secrets).
+- Configuring Persistent Volume Claims for data durability (Postgres, Redis, OpenSearch).
+- CI/CD pipelines for automatic releases of new agent versions ("bricks") into the K8s cluster.
