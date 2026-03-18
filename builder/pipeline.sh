@@ -360,10 +360,11 @@ preflight() {
     echo -e "  ${GREEN}✓ opencode $(opencode --version 2>/dev/null)${NC}"
   fi
 
-  # 2. Docker daemon
-  if ! docker info &>/dev/null; then
-    echo -e "  ${RED}✗ Docker daemon not running${NC}"
-    errors=$((errors + 1))
+  # 2. Docker daemon (optional - only required for tests)
+  if ! command -v docker &>/dev/null; then
+    echo -e "  ${YELLOW}⚠ Docker not installed (tests will be skipped)${NC}"
+  elif ! docker info &>/dev/null; then
+    echo -e "  ${YELLOW}⚠ Docker daemon not running (tests will be skipped)${NC}"
   else
     echo -e "  ${GREEN}✓ Docker daemon${NC}"
   fi

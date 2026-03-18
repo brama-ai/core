@@ -7,6 +7,8 @@ services:
       - ..:/workspaces/ai-community-platform:cached
       - vscode-server:/home/vscode/.vscode-server
       - claude-config:/home/vscode/.claude
+      # Docker-in-Docker support
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENCODE_API_KEY=${OPENCODE_API_KEY}
@@ -14,7 +16,10 @@ services:
       - CLAUDE_CODE_AUTO_APPROVE=true
       - CLAUDE_DANGER_MODE=true
       - CLAUDE_AUTO_APPROVE_ALL=true
+      - DOCKER_HOST=unix:///var/run/docker.sock
     command: sleep infinity
+    # Required for Docker-in-Docker
+    privileged: true
 
   codex:
     image: ghcr.io/semanser/codel:latest

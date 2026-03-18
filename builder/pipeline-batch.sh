@@ -24,6 +24,14 @@ SCRIPT_DIR="$REPO_ROOT/scripts"
 BATCH_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RESULTS_FILE="$REPO_ROOT/.opencode/pipeline/reports/batch_${BATCH_TIMESTAMP}.md"
 
+# Colors (defined early for use in functions)
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
 # ── Single-instance guard ─────────────────────────────────────────────
 LOCKFILE="$REPO_ROOT/.opencode/pipeline/.batch.lock"
 
@@ -50,14 +58,6 @@ release_lock() {
 
 acquire_lock
 trap 'release_lock' EXIT
-
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
 
 # Parse arguments
 TASK_SOURCE=""
@@ -527,8 +527,9 @@ pipeline_args() {
 # Always uses a single git worktree to avoid polluting the main repo's branch.
 # ---------------------------------------------------------------------------
 run_sequential() {
-  local WORKTREE_BASE="$REPO_ROOT/.pipeline-worktrees"
-  local wt="$WORKTREE_BASE/worker-1"
+  # Use non-local vars so cleanup_sequential can access them
+  WORKTREE_BASE="$REPO_ROOT/.pipeline-worktrees"
+  wt="$WORKTREE_BASE/worker-1"
 
   # Cleanup on exit
   cleanup_sequential() {

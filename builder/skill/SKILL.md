@@ -90,19 +90,126 @@ Background, dependencies, patterns to follow.
 - Unit/functional tests pass
 ```
 
-### Step 3 — Confirm to User
+### Step 3 — Start Monitor & Verify Worker
 
-After creating the file, tell the user:
+After creating the task file, **automatically start the pipeline monitor** to verify the worker picks up the task:
 
-1. Task file path created
-2. Priority level
-3. How to monitor: `./builder/monitor/pipeline-monitor.sh` (auto-starts workers)
-4. Where results will appear:
+1. **Start monitor with timeout** to check initial status:
+   ```bash
+   timeout 10 ./builder/monitor/pipeline-monitor.sh 2>&1 | head -50
+   ```
+
+2. **Check worker started**:
+   ```bash
+   ps aux | grep -E "pipeline-batch|pipeline-monitor" | grep -v grep
+   ```
+
+3. **Verify task moved to in-progress** (may take a few seconds):
+   ```bash
+   ls -la builder/tasks/in-progress/
+   ```
+
+4. **Report to user**:
+   - ✅ Worker started successfully → task is being executed
+   - ⚠️ Worker not started → troubleshoot (see below)
+   - Task file path, priority, expected results location
+
+### Step 4 — Confirm to User
+
+Tell the user:
+
+1. ✅ **Worker status**: Started successfully / Not started (with troubleshooting)
+2. **Task file**: `builder/tasks/todo/<slug>.md`
+3. **Priority**: N
+4. **How to monitor live**: `./builder/monitor/pipeline-monitor.sh`
+5. **Where results will appear**:
    - **Branch**: `pipeline/<slug>` (with commits)
    - **Summary**: `builder/tasks/summary/<timestamp>-<slug>.md`
    - **Reports**: `.opencode/pipeline/reports/`
    - **Logs**: `.opencode/pipeline/logs/`
    - **Task moves**: `builder/tasks/todo/` → `builder/tasks/in-progress/` → `builder/tasks/done/` or `builder/tasks/failed/`
+
+## Troubleshooting Worker Start
+
+If worker didn't start after creating task:
+
+### Common Issues & Fixes
+
+1. **Monitor not running**:
+   ```bash
+   # Check if monitor is alive
+   ps aux | grep pipeline-monitor | grep -v grep
+
+   # If not running, start manually:
+   ./builder/monitor/pipeline-monitor.sh
+   ```
+
+2. **Task format error** (invalid markdown, missing priority):
+   ```bash
+   # Check task file syntax
+   cat builder/tasks/todo/<slug>.md
+
+   # Look for monitor logs
+   tail -50 .opencode/pipeline/logs/monitor_*.log
+   ```
+
+3. **Worker limit reached** (MONITOR_WORKERS=1 by default):
+   ```bash
+   # Check running workers
+   ps aux | grep pipeline-batch
+
+   # Check in-progress tasks
+   ls builder/tasks/in-progress/
+
+   # Solution: Wait for current task to finish, or increase MONITOR_WORKERS
+   export MONITOR_WORKERS=2
+   ./builder/monitor/pipeline-monitor.sh
+   ```
+
+4. **Permission issues**:
+   ```bash
+   # Ensure script is executable
+   chmod +x ./builder/monitor/pipeline-monitor.sh
+   chmod +x ./builder/pipeline-batch.sh
+   ```
+
+5. **OpenRouter API issues**:
+   ```bash
+   # Check API key is set
+   echo $OPENROUTER_API_KEY | head -c 20
+
+   # Check API quota/limits
+   cat .opencode/pipeline/reports/batch_*.md | grep -i "error\|limit\|quota"
+   ```
+
+### Verification Checklist
+
+When troubleshooting, check:
+- [ ] Task file created in `builder/tasks/todo/`
+- [ ] Task file has valid markdown format
+- [ ] Priority comment present: `<!-- priority: N -->`
+- [ ] Monitor script is executable
+- [ ] No other tasks blocking (check `in-progress/`)
+- [ ] OpenRouter API key configured
+- [ ] No syntax errors in monitor logs
+
+### User Response Template
+
+If worker didn't start, tell user:
+
+```
+⚠️ Worker не стартував автоматично.
+
+**Можливі причини:**
+- [Причина на основі діагностики]
+
+**Як виправити:**
+1. [Команда 1]
+2. [Команда 2]
+
+**Або запустіть монітор вручну:**
+./builder/monitor/pipeline-monitor.sh
+```
 
 ## Priority & Task Ordering
 

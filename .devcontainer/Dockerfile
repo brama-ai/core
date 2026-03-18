@@ -5,6 +5,19 @@ RUN chmod 1777 /tmp
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Install Docker CLI for Docker-in-Docker
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       ca-certificates curl gnupg lsb-release \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+    && chmod a+r /etc/apt/keyrings/docker.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+       $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Install Node.js LTS
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
@@ -24,6 +37,7 @@ RUN apt-get update \
        php8.5-imagick php8.5-protobuf php8.5-opentelemetry \
        php8.5-yaml php8.5-uuid php8.5-msgpack \
        php8.5-lz4 php8.5-zstd php8.5-pcov php8.5-ssh2 php8.5-http php8.5-ds \
+       sox \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
