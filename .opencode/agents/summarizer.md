@@ -1,7 +1,7 @@
 ---
 description: "Summarizer agent: writes final per-task markdown summaries from pipeline handoff, checkpoint, and logs"
 mode: primary
-model: openai/gpt-5.4
+model: claude-sonnet-4-20250514
 temperature: 0.1
 tools:
   edit: true

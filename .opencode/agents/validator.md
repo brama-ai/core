@@ -1,7 +1,7 @@
 ---
 description: "Validator agent: runs PHPStan, CS-check, and other static analysis — fixes all issues found"
 mode: primary
-model: openai/gpt-5.3-codex
+model: claude-sonnet-4-20250514
 temperature: 0
 tools:
   edit: true

@@ -1,7 +1,7 @@
 ---
 description: "Documenter agent: writes bilingual docs (UA+EN) for completed work following project conventions"
 mode: primary
-model: anthropic/claude-sonnet-4-6
+model: claude-opus-4-20250514
 temperature: 0.2
 tools:
   edit: true

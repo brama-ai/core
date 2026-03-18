@@ -1,7 +1,7 @@
 ---
 description: "Architect agent: brainstorms ideas and creates OpenSpec proposals with specs, tasks, and design docs"
 mode: primary
-model: anthropic/claude-opus-4-6
+model: claude-sonnet-4-20250514
 temperature: 0.3
 tools:
   edit: true

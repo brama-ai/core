@@ -1067,7 +1067,7 @@ apply_profile() {
 
 PLAN_FILE="$PIPELINE_DIR/plan.json"
 PIPELINE_TIMEOUT_PLANNER="${PIPELINE_TIMEOUT_PLANNER:-300}"  # 5 min
-FALLBACK_PLANNER="${PIPELINE_FALLBACK_PLANNER:-openai/gpt-5.3-codex,free,cheap}"
+FALLBACK_PLANNER="${PIPELINE_FALLBACK_PLANNER:-openrouter/google/gemini-2.0-flash-exp,free,cheap}"
 
 apply_plan() {
   local plan_file="$1"
