@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Dedicated Core E2E Runtime Surface
 The local development topology SHALL provide a dedicated E2E runtime surface for ALL platform services, configured independently from the default runtime.

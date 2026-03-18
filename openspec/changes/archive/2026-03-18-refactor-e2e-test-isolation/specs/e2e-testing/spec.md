@@ -17,6 +17,8 @@ of HTTP endpoints against a fully isolated E2E Docker Compose stack.
 - **WHEN** `codecept run` executes
 - **THEN** Playwright tests are not included in the Codeception run
 
+## ADDED Requirements
+
 ### Requirement: Isolated Core Database For E2E
 The E2E workflow SHALL execute Core-facing tests against a dedicated Core database separate from the default local development database.
 
@@ -39,8 +41,6 @@ The E2E workflow SHALL apply all service migrations to the dedicated E2E databas
 - **WHEN** any E2E DB provisioning or migration fails
 - **THEN** the E2E command exits non-zero
 - **AND** no E2E test scenarios are started
-
-## ADDED Requirements
 
 ### Requirement: Full-Stack E2E Isolation
 The E2E workflow SHALL provide isolated duplicates of ALL application services (Core, agents, OpenClaw gateway) that connect to test data stores.

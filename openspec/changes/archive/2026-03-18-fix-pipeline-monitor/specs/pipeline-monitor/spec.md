@@ -263,7 +263,7 @@ The pipeline monitor MUST handle empty array expansion safely under `set -u` on 
 - When `build_activity_events()` is called
 - Then it returns early before iterating, avoiding unbound variable errors
 
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Tab Navigation Layout
 
