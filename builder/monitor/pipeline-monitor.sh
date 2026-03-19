@@ -981,8 +981,15 @@ detect_live_agent() {
       local agent_name="${fname##*_}"
       local log_size
       log_size=$(wc -c < "$log_file" 2>/dev/null | tr -d ' ')
-      local started_epoch
-      started_epoch=$(stat -c '%Y' "$log_file" 2>/dev/null || stat -f '%m' "$log_file" 2>/dev/null || echo "0")
+      # Extract start time from filename (YYYYMMDD_HHMMSS_agent.log) — immutable
+      local ts_part="${fname%_*}"  # "20260319_064919"
+      local started_epoch=0
+      if [[ "$ts_part" =~ ^([0-9]{4})([0-9]{2})([0-9]{2})_([0-9]{2})([0-9]{2})([0-9]{2})$ ]]; then
+        local dt="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]} ${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:${BASH_REMATCH[6]}"
+        started_epoch=$(date -d "$dt" +%s 2>/dev/null || date -jf '%Y-%m-%d %H:%M:%S' "$dt" +%s 2>/dev/null || echo "0")
+      fi
+      # Fallback to file birth/creation time if filename parse failed
+      [[ "$started_epoch" -eq 0 ]] && started_epoch=$(stat -c '%W' "$log_file" 2>/dev/null || stat -c '%Y' "$log_file" 2>/dev/null || echo "0")
       echo "${agent_name}|${started_epoch}|${log_size}"
       return
     fi
