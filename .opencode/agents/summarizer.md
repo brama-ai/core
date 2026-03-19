@@ -26,7 +26,7 @@ You write the final per-task summary after the pipeline run. Your output is a co
 3. Read `.opencode/pipeline/plan.json` (if exists) for profile/agents/reasoning
 4. Read the available agent logs and `.meta.json` files in `.opencode/pipeline/logs/`
 5. Read the pipeline report if it exists
-6. Write a final markdown summary — the exact file path will be provided in the task message
+6. Write a final markdown summary into `builder/tasks/summary/<timestamp>-<slug>.md`
 
 ## Summary Format
 

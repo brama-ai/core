@@ -2,8 +2,10 @@
 vendor/
 node_modules/
 
-# Pipeline task queue (local-only, created by builder setup)
-builder/tasks/
+# Pipeline task queue — keep todo/in-progress/failed local, commit done/summary/artifacts
+builder/tasks/todo/
+builder/tasks/in-progress/
+builder/tasks/failed/
 
 # Environment - only root-level .env; apps/core/.env is committed as Symfony dev defaults
 /.env

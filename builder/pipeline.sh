@@ -614,8 +614,8 @@ init_artifacts() {
   local branch="$2"
   ARTIFACTS_DIR="$ARTIFACTS_BASE/$slug"
   CHECKPOINT_FILE="$ARTIFACTS_DIR/checkpoint.json"
-  TASK_SUMMARY_DIR="$REPORT_DIR"
-  TASK_SUMMARY_FILE="$TASK_SUMMARY_DIR/${TIMESTAMP}-${slug}-summary.md"
+  TASK_SUMMARY_DIR="$REPO_ROOT/builder/tasks/summary"
+  TASK_SUMMARY_FILE="$TASK_SUMMARY_DIR/${TIMESTAMP}-${slug}.md"
 
   mkdir -p "$ARTIFACTS_DIR"
   mkdir -p "$TASK_SUMMARY_DIR"
