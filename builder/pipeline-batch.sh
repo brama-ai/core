@@ -438,6 +438,9 @@ move_to_done() {
   rm -f "$src"
   # Clean up leftover failed copy from a previous attempt (e.g. auto-fix retry)
   rm -f "${TASK_SOURCE}/failed/${basename_f}"
+
+  # Extract summary from pipeline branch into local summary dir
+  extract_summary_from_branch "$task_branch"
 }
 
 move_to_failed() {
