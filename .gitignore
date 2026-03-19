@@ -68,3 +68,4 @@ tests/e2e/output/
 .php-cs-fixer.cache
 .pipeline-worktrees/
 .opencode/pipeline/reports/
+pipeline-plan.json

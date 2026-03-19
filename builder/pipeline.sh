@@ -1092,7 +1092,7 @@ apply_profile() {
 
 # ── Planner agent integration ──────────────────────────────────────
 
-PLAN_FILE="$PIPELINE_DIR/plan.json"
+PLAN_FILE="$REPO_ROOT/pipeline-plan.json"
 PIPELINE_TIMEOUT_PLANNER="${PIPELINE_TIMEOUT_PLANNER:-300}"  # 5 min
 FALLBACK_PLANNER="${PIPELINE_FALLBACK_PLANNER:-openrouter/google/gemini-2.0-flash-exp,free,cheap}"
 
@@ -1524,7 +1524,7 @@ Analyze the task and output a JSON pipeline configuration. Do NOT write any code
 
 ## Output
 
-Write ONLY a JSON file to \`.opencode/pipeline/plan.json\` with this exact structure:
+Write ONLY a JSON file to \`pipeline-plan.json\` (in the repo root) with this exact structure:
 
 \`\`\`json
 {

@@ -54,7 +54,7 @@ Profiles are starting points. You MUST customize the `agents` list based on what
 
 ## Output
 
-Write `.opencode/pipeline/plan.json` with this structure:
+Write `pipeline-plan.json` (in the repo root) with this structure:
 
 ```json
 {
@@ -93,6 +93,6 @@ Write `.opencode/pipeline/plan.json` with this structure:
 - Task says "Write docs" or "Update documentation" → `docs-only`
 - Task modifies `apps/*-agent/` → add `auditor` after `coder`
 
-- Do NOT create any other files — only plan.json
+- Do NOT create any other files — only pipeline-plan.json in repo root
 - Do NOT explain outside the JSON file
 - Finish quickly — your timeout is 5 minutes
