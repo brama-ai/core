@@ -1982,7 +1982,11 @@ main() {
       echo -e "${YELLOW}⚠ Planner failed, using standard pipeline${NC}"
       write_checkpoint "planner" "failed" "$(( $(date +%s) - planner_start ))" ""
     fi
-    # Clean up plan.json commit (don't pollute git)
+    # Archive plan.json for this task, then clean up git
+    if [[ -f "$PLAN_FILE" ]]; then
+      local plan_archive="$LOG_DIR/${TIMESTAMP}_plan.json"
+      cp "$PLAN_FILE" "$plan_archive" 2>/dev/null || true
+    fi
     git -C "$REPO_ROOT" checkout -- "$PLAN_FILE" 2>/dev/null || true
     echo ""
   fi
