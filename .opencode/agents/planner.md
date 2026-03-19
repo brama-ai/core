@@ -29,6 +29,7 @@ Analyze the incoming task and produce a JSON pipeline configuration file. You do
 
 | Profile | When to use | Agents |
 |---------|-------------|--------|
+| docs-only | Documentation, README, bilingual docs, no code changes | documenter, summarizer |
 | quick-fix | Typos, config, 1-3 files, single app, no migrations | coder, validator, summarizer |
 | standard | Normal feature, multiple files, one app, may need spec | architect, coder, validator, tester, summarizer |
 | complex | Multi-service, migrations, API changes, new agents | architect, coder, auditor, validator, tester, summarizer |
