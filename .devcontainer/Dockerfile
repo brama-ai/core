@@ -4,6 +4,7 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu
 RUN chmod 1777 /tmp
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # Install Docker CLI for Docker-in-Docker
 RUN apt-get update \
@@ -40,6 +41,11 @@ RUN apt-get update \
        sox \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Install PostgreSQL client, Redis CLI, tmux
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-16 redis-tools tmux \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Install Composer
 RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
     && php composer-setup.php --install-dir=/usr/local/bin --filename=composer \
@@ -52,6 +58,16 @@ RUN ARCH=$(dpkg --print-architecture) && \
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Install global npm tools
-RUN npm install -g @anthropic-ai/claude-code opencode-ai bun typescript ts-node @fission-ai/openspec
+RUN npm install -g opencode-ai bun typescript ts-node @fission-ai/openspec intelephense @anthropic-ai/claude-code
 
-# Claude Code: cannot use --dangerously-skip-permissions with root user
+# Preinstall Playwright browser dependencies and binaries so they cache in the image.
+COPY tests/e2e/package.json tests/e2e/package-lock.json /tmp/tests-e2e/
+RUN cd /tmp/tests-e2e \
+    && npm ci \
+    && npx playwright install --with-deps \
+    && rm -rf /tmp/tests-e2e
+
+# Ensure Claude config dir exists with correct ownership (volume mounts as root otherwise)
+RUN mkdir -p /home/vscode/.claude && chown vscode:vscode /home/vscode/.claude \
+    && mkdir -p "${PLAYWRIGHT_BROWSERS_PATH}" \
+    && chown -R vscode:vscode "${PLAYWRIGHT_BROWSERS_PATH}"

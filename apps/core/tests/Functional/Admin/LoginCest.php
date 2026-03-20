@@ -44,7 +44,7 @@ class LoginCest
             '_password' => 'wrong-password',
         ]);
         $I->seeResponseCodeIs(200);
-        $I->seeResponseContains('Invalid credentials');
+        $I->seeResponseContains('Невірні автентифікаційні дані');
     }
 
     public function dashboardAccessibleAfterLogin(\FunctionalTester $I): void

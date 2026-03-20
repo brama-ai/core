@@ -1,7 +1,7 @@
 ---
 description: "Validator: runs PHPStan, CS-check, fixes all issues"
 mode: primary
-model: openai/codex-mini-latest
+model: minimax/MiniMax-M2.5-highspeed
 temperature: 0
 tools:
   edit: true

@@ -14,7 +14,7 @@ use NeuronAI\HttpClient\GuzzleHttpClient;
 use NeuronAI\Providers\AIProviderInterface;
 use NeuronAI\Providers\OpenAILike;
 
-final class KnowledgeExtractionAgent extends Agent
+class KnowledgeExtractionAgent extends Agent
 {
     public function __construct(
         private readonly string $litellmBaseUrl,

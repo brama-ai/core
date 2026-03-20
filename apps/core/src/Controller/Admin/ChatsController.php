@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Chat\ChatRepository;
-use App\Security\AdminUser;
+use App\Security\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,7 +20,7 @@ final class ChatsController extends AbstractController
     }
 
     #[Route('/admin/chats', name: 'admin_chats')]
-    public function __invoke(#[CurrentUser] AdminUser $user, Request $request): Response
+    public function __invoke(#[CurrentUser] User $user, Request $request): Response
     {
         $page = max(1, $request->query->getInt('page', 1));
         $agent = (string) $request->query->get('agent', '');

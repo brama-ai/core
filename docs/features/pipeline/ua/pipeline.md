@@ -10,6 +10,22 @@
 
 Пайплайн автоматично визначає складність задачі та підбирає потрібний набір агентів.
 
+```mermaid
+flowchart LR
+    A[Task] --> B[planner]
+    B --> C[architect]
+    C --> D[coder]
+    D --> E{agent task?}
+    E -- yes --> F[auditor]
+    E -- no --> G[validator]
+    F --> G
+    G --> H[tester]
+    H --> I{docs needed?}
+    I -- yes --> J[documenter]
+    I -- no --> K[summarizer]
+    J --> K
+```
+
 ## Швидкий старт
 
 ```bash
@@ -28,7 +44,7 @@ make pipeline-batch FILE=tasks.txt
 
 ## Автоматичне планування
 
-Перший крок — **Planner** агент (Sonnet, 5 хв ліміт). Він аналізує задачу і генерує `plan.json` з конфігурацією пайплайну.
+Перший крок — **Planner** агент (Opus 4.6, 5 хв ліміт). Він аналізує задачу і генерує `plan.json` з конфігурацією пайплайну.
 
 ### Профілі
 
@@ -77,8 +93,23 @@ make pipeline-batch FILE=tasks.txt
 
 ## Агенти
 
+### Таблиця моделей Builder
+
+Для shared ролей Builder навмисно повторює ті самі `primary` і базові fallback-и, що й Ultraworks.
+
+| Агент | Workflow | Primary | Fallback 1 | Fallback 2 | Fallback 3 |
+|-------|----------|---------|------------|------------|------------|
+| `planner` | `Builder only` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
+| `architect` | `Builder + Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
+| `coder` | `Builder + Ultraworks` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.3-codex` | `opencode-go/glm-5` |
+| `validator` | `Builder + Ultraworks` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.2` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` |
+| `tester` | `Builder + Ultraworks` | `opencode-go/kimi-k2.5` | `openai/gpt-5.3-codex` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` |
+| `auditor` | `Builder + Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
+| `documenter` | `Builder + Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-sonnet-4-6` | `google/gemini-3-flash-preview` | `minimax/MiniMax-M2.5` |
+| `summarizer` | `Builder + Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-opus-4-6` | `google/gemini-3.1-pro-preview` | `minimax/MiniMax-M2.7` |
+
 ### Planner (5 хв)
-- **Модель**: Sonnet 4.6
+- **Модель**: Opus 4.6
 - **Роль**: аналізує складність, генерує план
 - **Вихід**: `.opencode/pipeline/plan.json`
 
@@ -95,24 +126,24 @@ make pipeline-batch FILE=tasks.txt
 - **Stage gate**: перевіряє, що coder реально змінив файли
 
 ### Validator (20 хв)
-- **Модель**: Codex
+- **Модель**: MiniMax M2.5 Highspeed
 - **Роль**: PHPStan level 8 + CS Fixer, виправляє всі помилки
 - **Цикл**: cs-fix → cs-check → analyse → повторити до нуля помилок
 
 ### Tester (30 хв)
-- **Модель**: Codex
+- **Модель**: Kimi K2.5
 - **Роль**: запускає тести, пише відсутні, виправляє помилки
 - **Цілі**: Codeception (PHP), pytest (Python), convention-test
 
 ### Auditor (20 хв)
-- **Модель**: Sonnet 4.6
+- **Модель**: Opus 4.6
 - **Роль**: перевірка якості та відповідності стандартам платформи
 - **Чекліст**: Structure, Testing, Config, Security, Observability, Docs
 - **Вихід**: звіт з вердиктами PASS/WARN/FAIL
 - **Активація**: `--audit`, профіль `complex`, або автоматично для задач з агентами
 
 ### Documenter (15 хв)
-- **Модель**: Sonnet 4.6
+- **Модель**: GPT-5.4
 - **Роль**: оновлює двомовну документацію (UA + EN)
 - **Не потрібен за замовчуванням**: coder сам пише docs з tasks.md
 

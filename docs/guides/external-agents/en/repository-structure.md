@@ -10,7 +10,8 @@ my-agent/                       ← repository root
   Dockerfile                    ← required: builds the agent container image
   compose.fragment.yaml         ← required: compose service definition for platform integration
   .env.local.example            ← required: documents all required env vars (no secrets)
-  README.md                     ← recommended: setup and usage instructions
+  README.md                     ← recommended: setup and usage instructions with a GHCR badge
+  .github/workflows/            ← recommended: docker-publish.yml CI for building images
 ```
 
 ## compose.fragment.yaml
@@ -23,19 +24,14 @@ workspace. It defines the service, labels, environment, and healthcheck.
 ```yaml
 services:
   my-agent:
+    image: ghcr.io/<your-org>/my-agent:main
     build:
       context: ./projects/my-agent
       dockerfile: Dockerfile
     labels:
-      - ai.platform.agent=true
-      - traefik.enable=true
-      - traefik.http.routers.my-agent.rule=PathPrefix(`/`)
-      - traefik.http.routers.my-agent.entrypoints=my-agent
-      - traefik.http.routers.my-agent.middlewares=edge-auth@docker
-      - traefik.http.services.my-agent.loadbalancer.server.port=80
-    environment:
-      PLATFORM_CORE_URL: http://core
-      APP_INTERNAL_TOKEN: dev-internal-token
+      - com.a2a.agent=true
+      - com.a2a.agent.id=my-agent
+      - com.a2a.agent.network=a2a-network
     env_file:
       - path: ./projects/my-agent/.env.local
         required: false
@@ -46,16 +42,17 @@ services:
       retries: 3
       start_period: 30s
     networks:
-      - dev-edge
+      - a2a-network
 ```
 
 **Rules:**
 
-- `build.context` MUST point to `./projects/<agent-name>/` (relative to platform repo root)
-- Service name MUST end with `-agent`
-- Label `ai.platform.agent=true` MUST be present
-- Network MUST be `dev-edge` (do NOT redefine the network — it is declared in `compose.yaml`)
-- Healthcheck MUST be configured
+- `image` MUST point to a published GHCR image.
+- `build.context` MUST point to `./projects/<agent-name>/` as a fallback.
+- Service name MUST end with `-agent`.
+- Label `com.a2a.agent=true` MUST be present.
+- Network MUST be `a2a-network`.
+- Healthcheck MUST be configured.
 
 ## .env.local.example
 
@@ -138,4 +135,19 @@ bundled agent (PHP/Symfony, no database, no workers) and serves as the reference
 for the external checkout workflow.
 
 When `hello-agent` is extracted to its own repository, its `compose.fragment.yaml` will follow
-the template above with `build.context: ./projects/hello-agent`.
+the template above with `build.context: ./projects/hello-agent` and GHCR image.
+
+---
+
+## Best Practices
+
+### Dockerfile
+- Keep your image as small as possible. Use multi-stage builds.
+- Ensure your entrypoints handle SIGTERM gracefully.
+
+### CI: GitHub Actions
+- Use a `.github/workflows/docker-publish.yml` workflow to automatically build and push your Docker image to GHCR upon pushing to `main`. This ensures the platform can use the latest version using `docker pull`.
+
+### README.md
+- Use a **GHCR packaging badge** at the top of your agent's `README.md` linked to your image packages page.
+- Explicitly instruct users to pull the GHCR image for local run.

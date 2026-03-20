@@ -92,4 +92,51 @@ final class SendMessageControllerCest
         $I->seeResponseJsonMatchesJsonPath('$.trace_id');
         $I->seeResponseJsonMatchesJsonPath('$.request_id');
     }
+
+    public function sendMessageWithValidInputStructure(\FunctionalTester $I): void
+    {
+        $I->haveHttpHeader('Authorization', 'Bearer '.$this->gatewayToken());
+        $I->haveHttpHeader('Content-Type', 'application/json');
+        $I->sendPost('/api/v1/a2a/send-message', json_encode([
+            'tool' => 'test.tool',
+            'input' => [
+                'query' => 'test query',
+                'options' => ['mode' => 'test'],
+            ],
+            'trace_id' => 'test-trace-123',
+            'request_id' => 'test-req-456',
+        ], JSON_THROW_ON_ERROR));
+
+        $I->seeResponseCodeIs(200);
+        $I->seeResponseIsJson();
+        $I->seeResponseContainsJson([
+            'trace_id' => 'test-trace-123',
+            'request_id' => 'test-req-456',
+        ]);
+
+        // Should return failed for unknown tool, but with proper structure
+        $I->seeResponseContainsJson(['status' => 'failed']);
+        $I->seeResponseJsonMatchesJsonPath('$.reason');
+    }
+
+    public function sendMessageResponseIncludesRequiredFields(\FunctionalTester $I): void
+    {
+        $I->haveHttpHeader('Authorization', 'Bearer '.$this->gatewayToken());
+        $I->haveHttpHeader('Content-Type', 'application/json');
+        $I->sendPost('/api/v1/a2a/send-message', json_encode([
+            'tool' => 'unknown.tool',
+            'input' => [],
+        ], JSON_THROW_ON_ERROR));
+
+        $I->seeResponseCodeIs(200);
+        $I->seeResponseIsJson();
+
+        // Verify response structure
+        $I->seeResponseMatchesJsonType([
+            'status' => 'string',
+            'reason' => 'string',
+            'trace_id' => 'string',
+            'request_id' => 'string',
+        ]);
+    }
 }

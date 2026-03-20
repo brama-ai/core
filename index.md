@@ -39,8 +39,9 @@ Agent-facing memory index for `AI Community Platform`. Always load this file fir
 
 ## Features
 
-- `docs/features/README.md` — feature documentation index
-- `docs/features/litellm.md` — LiteLLM gateway, credentials, and operational checks
+- `docs/features/overview/ua/README.md` — feature documentation index (UA)
+- `docs/features/litellm/ua/litellm.md` — LiteLLM gateway, credentials, and operational checks (UA)
+- `docs/features/litellm/en/litellm.md` — LiteLLM gateway, credentials, and operational checks (EN)
 
 ## Delivery Plans
 
@@ -54,16 +55,25 @@ Agent-facing memory index for `AI Community Platform`. Always load this file fir
 
 ## Frameworks
 
-- `docs/neuron-ai/index.md` — Neuron AI framework documentation for building AI agents
+- `docs/neuron-ai/reference/index.md` — Neuron AI framework documentation for building AI agents
+
+### Neuron AI Reference Projects
+
+- [Deep Research Agent](https://github.com/neuron-core/deep-research-agent) — Reference implementation for multi-step research workflows using neuron-ai
+  - Key files: `src/Workflow/ResearchWorkflow.php`, `src/Node/`, `config/services.yaml`
+  - Usage patterns: Multi-step workflows, external API integration, structured output
+- [Travel Planner Agent](https://github.com/neuron-core/travel-planner-agent) — Reference implementation for complex planning workflows
+  - Key files: `src/Workflow/PlanningWorkflow.php`, `src/Service/`, `src/Entity/`
+  - Usage patterns: State management, conditional branching, data persistence
 
 ## Templates
 
-- `docs/templates/agent-prd-template.md` — template for new agent PRDs
-- `docs/templates/development-plan-template.md` — template for development plans
+- `docs/templates/general/agent-prd-template.md` — template for new agent PRDs
+- `docs/templates/general/development-plan-template.md` — template for development plans
 
 ## Local Runtime
 
-- `docs/local-dev.md` — local Docker Compose development environment (includes OpenClaw + Telegram setup)
+- `docs/setup/local-dev/en/local-dev.md` — local Docker Compose development environment (includes OpenClaw + Telegram setup)
 
 ## Recommended Build Order
 

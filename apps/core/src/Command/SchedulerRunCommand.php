@@ -16,7 +16,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 #[AsCommand(name: 'scheduler:run', description: 'Run the central scheduler polling loop')]
 final class SchedulerRunCommand extends Command implements SignalableCommandInterface
 {
-    private const POLL_INTERVAL_SECONDS = 10;
+    private const DEFAULT_POLL_INTERVAL_SECONDS = 10;
 
     private bool $shouldStop = false;
 
@@ -24,6 +24,7 @@ final class SchedulerRunCommand extends Command implements SignalableCommandInte
         private readonly SchedulerService $schedulerService,
         private readonly Connection $connection,
         private readonly LoggerInterface $logger,
+        private readonly int $pollIntervalSeconds = self::DEFAULT_POLL_INTERVAL_SECONDS,
     ) {
         parent::__construct();
     }
@@ -46,7 +47,7 @@ final class SchedulerRunCommand extends Command implements SignalableCommandInte
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $output->writeln('Scheduler started. Polling every '.self::POLL_INTERVAL_SECONDS.' seconds.');
+        $output->writeln('Scheduler started. Polling every '.$this->pollIntervalSeconds.' seconds.');
         $this->logger->info('Scheduler started');
 
         while (!$this->shouldStop) {
@@ -63,7 +64,11 @@ final class SchedulerRunCommand extends Command implements SignalableCommandInte
                 $output->writeln(sprintf('[%s] Tick error: %s', date('Y-m-d H:i:s'), $e->getMessage()));
             }
 
-            sleep(self::POLL_INTERVAL_SECONDS);
+            if ($this->shouldStop) {
+                break;
+            }
+
+            sleep($this->pollIntervalSeconds);
         }
 
         $output->writeln('Scheduler stopped gracefully.');

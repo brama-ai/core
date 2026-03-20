@@ -24,7 +24,7 @@ The platform SHALL support Telegram channels where the bot is an admin with `can
 ---
 
 ### Requirement: Channel Post Buttons
-Each published channel post MAY include an `InlineKeyboardMarkup` with interactive buttons that trigger callback queries when pressed by channel subscribers.
+Each published channel post SHALL support an optional `InlineKeyboardMarkup` with interactive buttons that trigger callback queries when pressed by channel subscribers.
 
 #### Scenario: Post with action buttons
 - **WHEN** the platform publishes a post with `reply_markup` containing inline keyboard buttons

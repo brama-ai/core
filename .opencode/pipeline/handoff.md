@@ -1,61 +1,71 @@
 # Pipeline Handoff
 
-- **Task**: implement change add-marketplace-stale-agent-cleanup
-- **Started**: 2026-03-11 10:43:29
-- **Branch**: pipeline/implement-change-add-marketplace-stale-agent-clean
-- **Pipeline ID**: 20260311_104327
+- **Task**: Finish change: add-a2a-trace-sequence-visualization (remaining 4 tasks)
+- **Started**: 2026-03-20 16:30:00
+- **Branch**: main
+- **Pipeline ID**: finish-a2a-trace-viz
+- **Profile**: standard
 
 ---
 
-## Architect
+## Task Description
 
-- **Status**: pending
-- **Change ID**: —
-- **Apps affected**: —
-- **DB changes**: —
-- **API changes**: —
+Завершити 4 залишені задачі з OpenSpec change `add-a2a-trace-sequence-visualization`.
+
+### Remaining Tasks
+
+1. **5.3** — Add integration coverage for discovery snapshot and invoke step event fields
+2. **7.1** — `vendor/bin/phpstan analyse` (core + hello-agent) passes with zero errors
+3. **7.2** — `vendor/bin/php-cs-fixer check --diff --allow-risky=yes` passes
+4. **7.3** — `vendor/bin/codecept run` (core + hello-agent functional + unit) passes
+
+### References
+
+- OpenSpec tasks: `openspec/changes/add-a2a-trace-sequence-visualization/tasks.md`
+- Spec deltas: `openspec/changes/add-a2a-trace-sequence-visualization/specs/`
+
+### Technical Context
+
+- Apps: `apps/core`, `apps/hello-agent`
+- Test framework: Codeception 5, PHPStan level 8
+- Existing tests in `apps/core/tests/` and `apps/hello-agent/tests/`
+
+---
 
 ## Coder
 
 - **Status**: done
-- **Files modified**:
-  - `apps/core/src/AgentRegistry/AgentRegistryInterface.php` — added `deleteStaleMarketplaceAgents(int $failureThreshold): int` method signature
-  - `apps/core/src/AgentRegistry/AgentRegistryRepository.php` — implemented `deleteStaleMarketplaceAgents()`: fetches stale agents, deletes each, inserts `stale_deleted` audit entries, invalidates cache
-  - `apps/core/src/Command/AgentHealthPollerCommand.php` — added `STALE_THRESHOLD = 5` constant; calls `deleteStaleMarketplaceAgents()` after poll loop
-  - `apps/core/tests/Unit/AgentRegistry/AgentRegistryRepositoryTest.php` — added 3 unit tests (deletes eligible, skips installed, preserves below threshold)
-  - `apps/core/tests/Functional/Command/AgentHealthPollerCommandCest.php` — new functional test: inserts stale agent, runs command, asserts deletion and audit entry
-  - `docs/agent-requirements/agent-state-model.md` — added section 4 documenting stale marketplace agent cleanup behavior
-  - `openspec/changes/add-marketplace-stale-agent-cleanup/tasks.md` — all tasks marked `[x]`
-- **Migrations created**: none (no schema changes required)
-- **Deviations**:
-  - Audit logging is done directly via `Connection::executeStatement` inside the repository (not via `AgentRegistryAuditLogger`) to avoid adding a new constructor dependency to the repository. The SQL is identical to what `AgentRegistryAuditLogger::log()` executes.
-  - The implementation uses a SELECT-then-DELETE loop (per agent) rather than a single bulk DELETE, to enable per-agent audit logging as required by the spec.
-
-## Validator
-
-- **Status**: done
-- **PHPStan**:
-  - `apps/core/`: pass
-- **CS-check**:
-  - `apps/core/`: pass
-- **Files fixed**: none
-
-## Tester
-
-- **Status**: done
-- **Test results**:
-  - `apps/core/` — `make test` (run twice, final verification): **passed** (225 passed, 0 failed, 0 skipped; 797 assertions)
-  - `make conventions-test`: **skipped** (not required; no agent manifest/compose config changes in this change set)
-- **New tests written**: none (coverage for new stale-agent cleanup logic already present in coder changes)
-- **Tests updated and why**: none (no failures encountered; existing/new tests passed as-is)
-
-## Documenter
-
-- **Status**: pending
-- **Docs created/updated**: —
+- **Task**: Write integration tests (task 5.3)
+- **Result**: Added 17 integration tests across 2 new test files. All pass (17/17, 123 assertions).
+- **Files changed**:
+  - `apps/core/tests/Integration/Logging/DiscoverySnapshotEventFieldsTest.php` (new, 4 tests)
+  - `apps/core/tests/Integration/Logging/InvokeStepEventFieldsTest.php` (new, 13 tests)
+  - `openspec/changes/add-a2a-trace-sequence-visualization/tasks.md` (marked 5.3 done)
+- **Verification**: `vendor/bin/codecept run Integration --filter "DiscoverySnapshot|InvokeStep"` → OK (17 tests, 123 assertions). Unit suite: OK (283 tests, 950 assertions). Pre-existing failures in AsyncA2ADispatcherIntegrationTest (timing) and AgentRegistryApiCest are unrelated.
 
 ---
 
-- **Commit (coder)**: b3fe118
-- **Commit (validator)**: b0e3cf9
-- **Commit (tester)**: f2356d2
+## Validator
+
+- **Status**: pending (awaiting reviewer)
+- **Task**: PHPStan + CS-Fixer (tasks 7.1, 7.2)
+
+---
+
+## Tester
+
+- **Status**: pending (awaiting reviewer)
+- **Task**: Run full test suite (task 7.3)
+
+---
+
+## Reviewer
+
+- **Status**: in_progress
+- **Task**: Review integration-test changes from task 5.3 before validation/test phases
+
+---
+
+## Summarizer
+
+- **Status**: pending

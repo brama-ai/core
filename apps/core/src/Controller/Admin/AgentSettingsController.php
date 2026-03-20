@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\AgentRegistry\AgentRegistryInterface;
-use App\Security\AdminUser;
+use App\Security\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -20,7 +20,7 @@ final class AgentSettingsController extends AbstractController
     }
 
     #[Route('/admin/agents/{name}/settings', name: 'admin_agent_settings')]
-    public function __invoke(string $name, #[CurrentUser] AdminUser $user): Response
+    public function __invoke(string $name, #[CurrentUser] User $user): Response
     {
         $agent = $this->registry->findByName($name);
 

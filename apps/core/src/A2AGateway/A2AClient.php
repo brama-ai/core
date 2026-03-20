@@ -6,12 +6,15 @@ namespace App\A2AGateway;
 
 use App\AgentRegistry\AgentRegistryInterface;
 use App\AgentRegistry\ManifestValidator;
+use App\Locale\LocaleSubscriber;
 use App\Logging\PayloadSanitizer;
 use App\Logging\TraceEvent;
 use App\Observability\LangfuseIngestionClient;
 use App\Observability\TraceContext;
+use App\Tenant\TenantContext;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 final class A2AClient implements A2AClientInterface
 {
@@ -21,6 +24,8 @@ final class A2AClient implements A2AClientInterface
         private readonly LangfuseIngestionClient $langfuse,
         private readonly PayloadSanitizer $payloadSanitizer,
         private readonly LoggerInterface $logger,
+        private readonly TenantContext $tenantContext,
+        private readonly RequestStack $requestStack,
         private readonly string $internalToken = '',
     ) {
     }
@@ -152,11 +157,14 @@ final class A2AClient implements A2AClientInterface
         $agentRunId = 'run_'.bin2hex(random_bytes(8));
         $payload['agent_run_id'] = $agentRunId;
         $payload['hop'] = 1;
+        $currentRequest = $this->requestStack->getCurrentRequest();
+        $locale = $currentRequest?->getLocale() ?? LocaleSubscriber::DEFAULT_LOCALE;
         $headers = [
             'traceparent' => TraceContext::buildTraceparent($traceId),
             'x-request-id' => $requestId,
             'x-agent-run-id' => $agentRunId,
             'x-a2a-hop' => '1',
+            'Accept-Language' => $locale,
         ];
         if ('' !== $this->internalToken) {
             $headers['X-Platform-Internal-Token'] = $this->internalToken;
@@ -327,12 +335,14 @@ final class A2AClient implements A2AClientInterface
         ?string $errorCode = null,
         string $actor = 'openclaw',
     ): void {
+        $tenantId = $this->tenantContext->isSet() ? $this->tenantContext->getTenantId() : null;
+
         $this->dbal->executeStatement(
             <<<'SQL'
             INSERT INTO a2a_message_audit
-                (skill, agent, trace_id, request_id, duration_ms, status, http_status_code, error_code, actor, created_at)
+                (skill, agent, trace_id, request_id, duration_ms, status, http_status_code, error_code, actor, tenant_id, created_at)
             VALUES
-                (:skill, :agent, :traceId, :requestId, :durationMs, :status, :httpStatusCode, :errorCode, :actor, now())
+                (:skill, :agent, :traceId, :requestId, :durationMs, :status, :httpStatusCode, :errorCode, :actor, :tenantId, now())
             SQL,
             [
                 'skill' => $skill,
@@ -344,6 +354,7 @@ final class A2AClient implements A2AClientInterface
                 'httpStatusCode' => $httpStatusCode > 0 ? $httpStatusCode : null,
                 'errorCode' => $errorCode,
                 'actor' => $actor,
+                'tenantId' => $tenantId,
             ],
         );
     }

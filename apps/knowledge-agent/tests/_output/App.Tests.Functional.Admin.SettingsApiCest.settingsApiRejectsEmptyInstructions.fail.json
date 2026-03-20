@@ -1,1 +1,1 @@
-{"error":"\u0411\u0430\u0437\u043e\u0432\u0456 \u0456\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0456\u0457 \u043d\u0435 \u043c\u043e\u0436\u0443\u0442\u044c \u0431\u0443\u0442\u0438 \u043f\u043e\u0440\u043e\u0436\u043d\u0456\u043c\u0438"}
+{"error":"An exception occurred in the driver: SQLSTATE[08006] [7] could not translate host name \u0022postgres\u0022 to address: Name or service not known"}

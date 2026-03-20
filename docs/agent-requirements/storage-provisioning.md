@@ -123,7 +123,7 @@ This enables multi-instance deployments with different credentials per environme
 
 Agents can declare periodic or one-shot tasks in their manifest under `scheduled_jobs`. These are registered into the platform's central scheduler during install and removed during uninstall.
 
-See [docs/scheduler.md](../scheduler.md) for the full manifest format, retry policy, and admin UI documentation.
+See [docs/features/scheduler/en/scheduler.md](../features/scheduler/en/scheduler.md) for the full manifest format, retry policy, and admin UI documentation.
 
 ```json
 {

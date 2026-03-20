@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\AgentRegistry;
 
 use App\AgentRegistry\AgentRegistryRepository;
+use App\Tenant\Tenant;
+use App\Tenant\TenantContext;
 use Codeception\Test\Unit;
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -17,6 +19,7 @@ final class AgentRegistryRepositoryTest extends Unit
     private Connection&MockObject $connection;
     private CacheItemPoolInterface&MockObject $cache;
     private LoggerInterface&MockObject $logger;
+    private TenantContext $tenantContext;
     private AgentRegistryRepository $repository;
 
     protected function setUp(): void
@@ -24,7 +27,9 @@ final class AgentRegistryRepositoryTest extends Unit
         $this->connection = $this->createMock(Connection::class);
         $this->cache = $this->createMock(CacheItemPoolInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
-        $this->repository = new AgentRegistryRepository($this->connection, $this->cache, $this->logger);
+        $this->tenantContext = new TenantContext();
+        $this->tenantContext->set(new Tenant('test-tenant-id', 'Test', 'test', true, new \DateTimeImmutable(), new \DateTimeImmutable()));
+        $this->repository = new AgentRegistryRepository($this->connection, $this->cache, $this->logger, $this->tenantContext);
     }
 
     public function testRegisterInsertsNewAgentAndInvalidatesCache(): void
@@ -155,7 +160,7 @@ final class AgentRegistryRepositoryTest extends Unit
 
     public function testDeleteStaleMarketplaceAgentsDeletesEligibleAgents(): void
     {
-        $staleAgents = [['name' => 'stale-agent-1'], ['name' => 'stale-agent-2']];
+        $staleAgents = [['name' => 'stale-agent-1', 'tenant_id' => 'test-tenant-id'], ['name' => 'stale-agent-2', 'tenant_id' => 'test-tenant-id']];
 
         $this->connection->expects($this->once())
             ->method('fetchAllAssociative')

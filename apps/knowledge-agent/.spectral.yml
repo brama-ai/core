@@ -1,0 +1,37 @@
+extends: ["spectral:oas"]
+
+rules:
+  # Enable all OpenAPI 3.x rules
+  oas3-api-servers: true
+  oas3-examples-value-or-externalValue: true
+  oas3-operation-security-defined: true
+  oas3-parameter-description: true
+  oas3-schema: true
+  oas3-server-not-example.com: true
+  oas3-server-trailing-slash: true
+  oas3-valid-media-example: true
+  oas3-valid-schema-example: true
+  
+  # Additional validation rules
+  contact-properties: true
+  duplicated-entry-in-enum: true
+  info-contact: true
+  info-description: true
+  info-license: true
+  license-url: true
+  no-eval-in-markdown: true
+  no-script-tags-in-markdown: true
+  openapi-tags: true
+  operation-description: true
+  operation-operationId: true
+  operation-operationId-unique: true
+  operation-operationId-valid-in-url: true
+  operation-parameters: true
+  operation-success-response: true
+  operation-tags: true
+  path-declarations-must-exist: true
+  path-keys-no-trailing-slash: true
+  path-not-include-query: true
+  path-params: true
+  tag-description: true
+  typed-enum: true

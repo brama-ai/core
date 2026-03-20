@@ -1,4 +1,4 @@
-# AI Community Platform — Agent Index
+# Brama Agent Platform — Agent Index
 
 ## Deployed Agents
 
@@ -29,11 +29,19 @@
 
 - [Agent conventions](agent-requirements/conventions.md)
 - [Multi-agent pipeline](features/pipeline/en/pipeline.md)
+- [Dashboard platform metrics](features/dashboard-metrics/en/dashboard-metrics.md)
+- [i18n Locale Cookie](features/i18n-locale/en/i18n-locale.md)
 - [Agent Card schema](../apps/core/config/agent-card.schema.json)
-- [Local dev guide](local-dev.md)
+- [Local dev guide](setup/local-dev/en/local-dev.md)
 - [Production deployment guide](guides/deployment/en/deployment.md)
+- [Deployment overview](guides/deployment/en/deployment-overview.md)
 - [A2A terminology mapping (EN)](specs/en/a2a-terminology-mapping.md)
 - [External agent workspace](guides/external-agents/en/external-agent-workspace.md)
 - [External agent operator onboarding](guides/external-agents/en/operator-onboarding.md)
 - [External agent migration playbook](guides/external-agents/en/migration-playbook.md)
 - [Pilot agent selection](guides/external-agents/en/pilot-agent-selection.md)
+- [Oh My OpenCode (OmO) integration](guides/oh-my-opencode/en/oh-my-opencode.md)
+- [Oh My OpenCode — Quick Start](guides/oh-my-opencode/en/quickstart.md)
+
+Brama Agent Platform is the public product name for this repository. Legacy runtime identifiers may
+still use `ai-community-platform` until the infrastructure rename is handled separately.

@@ -39,9 +39,7 @@ do_claude() {
 }
 
 do_cursor() {
-  # Uncomment when Cursor/Antigravity is set up:
-  # sync_target "Cursor" "$REPO_ROOT/.cursor/skills"
-  echo "Cursor sync not yet configured. Uncomment in script when ready."
+  sync_target "Cursor" "$REPO_ROOT/.cursor/skills"
 }
 
 do_codex() {

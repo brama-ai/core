@@ -1,16 +1,12 @@
 {
-  "profile": "complex",
-  "reasoning": "Multi-service change: new DB table with migration, new Symfony services (ScheduledJobRepository, CronExpressionHelper, SchedulerService, SchedulerRunCommand), new admin UI and internal API endpoints, modifications to 4 existing controllers, new Docker Compose service, and new Composer dependency. Crosses DB, backend, admin UI, and infrastructure layers. OpenSpec proposal is complete with tasks.md ready — architect not needed.",
-  "agents": ["coder", "validator", "tester", "auditor"],
+  "profile": "standard+e2e",
+  "reasoning": "OpenSpec for add-e2e-cuj-coverage is already prepared, so the pipeline should skip architect, initialize handoff for this task, then run coder -> reviewer -> validate || test -> e2e -> audit loop -> docs || summary. Scope includes new E2E page objects, eight new test files, Codecept config updates, and CUJ matrix updates for UI coverage.",
+  "agents": ["coder", "reviewer", "validator", "tester", "e2e", "auditor", "documenter", "summarizer"],
   "skip_openspec": true,
-  "estimated_files": 25,
+  "skip_architect": true,
+  "estimated_files": 16,
   "apps_affected": ["core"],
-  "needs_migration": true,
-  "needs_api_change": true,
-  "timeout_overrides": {
-    "coder": 1800,
-    "tester": 900,
-    "auditor": 600
-  },
-  "model_overrides": {}
+  "needs_migration": false,
+  "needs_api_change": false,
+  "change_id": "add-e2e-cuj-coverage"
 }

@@ -1,0 +1,39 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Редагувати тенант — Admin{% endblock %}
+{% block page_title %}Редагувати: {{ tenant.name }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:500px;">
+    {% if error %}
+    <div style="margin-bottom:1rem;padding:.6rem;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:#ef4444;font-size:.85rem;">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="{{ path('admin_tenant_edit', {id: tenant.id}) }}">
+        <div style="margin-bottom:1rem;">
+            <label style="display:block;font-size:.85rem;margin-bottom:.35rem;color:var(--text-muted);">Назва тенанта</label>
+            <input type="text" name="name" required value="{{ tenant.name }}"
+                   style="width:100%;padding:.5rem .75rem;background:var(--input-bg,#1a1a2e);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.9rem;">
+        </div>
+        <div style="margin-bottom:1rem;">
+            <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:var(--text-muted);cursor:pointer;">
+                <input type="checkbox" name="enabled" value="1" {{ tenant.enabled ? 'checked' : '' }}>
+                Активний
+            </label>
+        </div>
+        <div style="margin-bottom:.75rem;font-size:.8rem;color:var(--text-muted);">
+            Slug: <code>{{ tenant.slug }}</code>
+        </div>
+        <div style="display:flex;gap:.5rem;">
+            <button type="submit" style="padding:.5rem 1.25rem;background:var(--accent,#3b82f6);color:#fff;border:none;border-radius:6px;font-size:.85rem;cursor:pointer;">
+                Зберегти
+            </button>
+            <a href="{{ path('admin_tenants') }}" style="padding:.5rem 1.25rem;font-size:.85rem;color:var(--text-muted);text-decoration:none;">
+                Скасувати
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

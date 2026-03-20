@@ -122,7 +122,7 @@ The platform SHALL support a moderation workflow where user-submitted content is
 ---
 
 ### Requirement: Mini App Rich Forms (optional)
-The platform MAY provide Telegram Mini App (WebApp) forms as an alternative to multi-step DM conversations for complex input scenarios.
+The platform SHALL support optional Telegram Mini App (WebApp) forms as an alternative to multi-step DM conversations for complex input scenarios.
 
 #### Scenario: Mini App button opens form
 - **WHEN** a user presses an inline button with `WebAppInfo: {url: "https://platform/telegram/mini-app/create-ad"}`

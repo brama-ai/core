@@ -1,0 +1,28 @@
+# Tasks: Agent Storage Provisioning
+
+- [x] Add `installed_at` column migration to `agent_registry`
+- [x] Add provisioner DBAL connection (doctrine.yaml, .env)
+- [x] Add `markInstalled()` to `AgentRegistryInterface` and `AgentRegistryRepository`
+- [x] Extend `ManifestValidator` with `storage` section validation
+- [x] Unit tests for storage validation
+- [x] Create `InstallStrategyInterface`
+- [x] Implement `PostgresInstallStrategy`
+- [x] Implement `RedisInstallStrategy`
+- [x] Implement `OpenSearchInstallStrategy`
+- [x] Create `AgentInstallerService` orchestrator
+- [x] Create `AgentInstallException`
+- [x] Wire services in `services.yaml`
+- [x] Unit tests for all strategies and orchestrator
+- [x] Create `AgentMigrationTrigger`
+- [x] Create knowledge-agent `MigrateController`
+- [x] Rewire `AgentEnableController` with provisioning flow
+- [x] Functional test for enable flow
+- [x] Update knowledge-agent manifest with `storage` section
+- [x] Update hello-agent manifest with missing required fields
+- [x] Update `compose.yaml` with per-agent env vars
+- [x] Migrate knowledge-agent to own DB (env, test env)
+- [x] Add initial data migration in knowledge-agent
+- [x] Soft-deprecate `AgentConfigController`
+- [x] Update admin settings page for agent-managed config
+- [x] Create `docs/agent-requirements/storage-provisioning.md`
+- [x] Run phpstan, cs-check, codecept tests

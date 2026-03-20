@@ -6,7 +6,7 @@ Building a universal, modular ecosystem where autonomous AI agents and classical
 
 ## ⚠️ Current Status: MVP Development Phase
 
-> **Important:** The platform is actively developing core features. We follow strict OpenSpec proposal workflow with mandatory migrations, TDD, and quality gates. Check [Workflow Guidelines](docs/WORKFLOW_GUIDELINES.md) for development practices.
+> **Important:** The platform is actively developing core features. We follow strict OpenSpec proposal workflow with mandatory migrations, TDD, and quality gates. Check [Workflow Guidelines](docs/plans/workflow-guidelines.md) for development practices.
 
 ---
 

@@ -1,53 +1,53 @@
 {% extends 'admin/layout.html.twig' %}
 
-{% block title %}Логи — Admin{% endblock %}
-{% block page_title %}Логи{% endblock %}
+{% block title %}{{ 'logs.title'|trans }} — Admin{% endblock %}
+{% block page_title %}{{ 'logs.title'|trans }}{% endblock %}
 
 {% block content %}
     <div class="glass-card" style="margin-bottom:1rem;">
         <form method="get" action="{{ path('admin_logs') }}" class="log-filter-form">
             <div class="log-filter-row">
                 <div class="log-filter-field" style="flex:2;">
-                    <label class="form-label" for="q">Пошук</label>
-                    <input type="text" id="q" name="q" class="form-input" value="{{ q }}" placeholder="Повідомлення, trace_id, URI…">
+                    <label class="form-label" for="q">{{ 'logs.search'|trans }}</label>
+                    <input type="text" id="q" name="q" class="form-input" value="{{ q }}" placeholder="{{ 'logs.search_placeholder'|trans }}">
                 </div>
                 <div class="log-filter-field">
-                    <label class="form-label" for="level">Рівень</label>
+                    <label class="form-label" for="level">{{ 'logs.level'|trans }}</label>
                     <select id="level" name="level" class="form-input">
-                        <option value="">Всі</option>
+                        <option value="">{{ 'logs.all'|trans }}</option>
                         {% for l in levels %}
                             <option value="{{ l }}" {{ level == l ? 'selected' : '' }}>{{ l }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="log-filter-field">
-                    <label class="form-label" for="category">Категорія</label>
+                    <label class="form-label" for="category">{{ 'logs.category'|trans }}</label>
                     <select id="category" name="category" class="form-input">
-                        <option value="">Всі</option>
+                        <option value="">{{ 'logs.all'|trans }}</option>
                         {% for key, cat in categories %}
                             <option value="{{ key }}" {{ category == key ? 'selected' : '' }}>{{ cat.label }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="log-filter-field">
-                    <label class="form-label" for="app">Додаток</label>
+                    <label class="form-label" for="app">{{ 'logs.app'|trans }}</label>
                     <select id="app" name="app" class="form-input">
-                        <option value="">Всі</option>
+                        <option value="">{{ 'logs.all'|trans }}</option>
                         {% for a in apps %}
                             <option value="{{ a }}" {{ app_filter == a ? 'selected' : '' }}>{{ a }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="log-filter-field">
-                    <label class="form-label" for="from">Від</label>
+                    <label class="form-label" for="from">{{ 'logs.date_from'|trans }}</label>
                     <input type="date" id="from" name="from" class="form-input" value="{{ date_from }}">
                 </div>
                 <div class="log-filter-field">
-                    <label class="form-label" for="to">До</label>
+                    <label class="form-label" for="to">{{ 'logs.date_to'|trans }}</label>
                     <input type="date" id="to" name="to" class="form-input" value="{{ date_to }}">
                 </div>
                 <div class="log-filter-field" style="align-self:flex-end;">
-                    <button type="submit" class="btn btn-primary">Шукати</button>
+                    <button type="submit" class="btn btn-primary">{{ 'logs.submit'|trans }}</button>
                 </div>
             </div>
         </form>
@@ -55,18 +55,18 @@
 
     <div class="glass-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
-            <span style="font-size:.85rem;color:var(--text-secondary);">Знайдено: {{ total }}</span>
+            <span style="font-size:.85rem;color:var(--text-secondary);">{{ 'logs.found'|trans({total: total}) }}</span>
         </div>
 
         <div style="overflow-x:auto;">
             <table class="admin-table">
                 <thead>
                     <tr>
-                        <th style="width:160px;">Час</th>
-                        <th style="width:80px;">Рівень</th>
-                        <th style="width:130px;">Додаток</th>
-                        <th>Повідомлення</th>
-                        <th style="width:100px;">Trace</th>
+                        <th style="width:160px;">{{ 'logs.table.time'|trans }}</th>
+                        <th style="width:80px;">{{ 'logs.table.level'|trans }}</th>
+                        <th style="width:130px;">{{ 'logs.table.app'|trans }}</th>
+                        <th>{{ 'logs.table.message'|trans }}</th>
+                        <th style="width:100px;">{{ 'logs.table.trace'|trans }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -100,7 +100,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="5" class="empty-row">Логів не знайдено</td>
+                            <td colspan="5" class="empty-row">{{ 'logs.empty'|trans }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -110,11 +110,11 @@
         {% if pages > 1 %}
             <div class="log-pagination">
                 {% if page > 1 %}
-                    <a href="{{ path('admin_logs', {q: q, level: level, category: category, app: app_filter, from: date_from, to: date_to, page: page - 1}) }}" class="btn btn-settings">&laquo; Назад</a>
+                    <a href="{{ path('admin_logs', {q: q, level: level, category: category, app: app_filter, from: date_from, to: date_to, page: page - 1}) }}" class="btn btn-settings">{{ 'logs.prev'|trans }}</a>
                 {% endif %}
-                <span style="color:var(--text-secondary);font-size:.85rem;">Сторінка {{ page }} з {{ pages }}</span>
+                <span style="color:var(--text-secondary);font-size:.85rem;">{{ 'logs.page_info'|trans({page: page, pages: pages}) }}</span>
                 {% if page < pages %}
-                    <a href="{{ path('admin_logs', {q: q, level: level, category: category, app: app_filter, from: date_from, to: date_to, page: page + 1}) }}" class="btn btn-settings">Далі &raquo;</a>
+                    <a href="{{ path('admin_logs', {q: q, level: level, category: category, app: app_filter, from: date_from, to: date_to, page: page + 1}) }}" class="btn btn-settings">{{ 'logs.next'|trans }}</a>
                 {% endif %}
             </div>
         {% endif %}

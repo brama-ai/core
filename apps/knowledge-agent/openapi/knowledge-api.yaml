@@ -1,0 +1,735 @@
+openapi: 3.1.0
+info:
+  title: Knowledge Base Agent API
+  description: |
+    API for the Knowledge Base Agent that extracts, stores, and searches knowledge from community chat messages.
+    
+    The agent provides:
+    - Message ingestion and chunking
+    - Knowledge extraction using AI workflows
+    - Hybrid search (BM25 + vector similarity)
+    - Hierarchical knowledge tree
+    - CRUD operations for knowledge entries
+    - A2A (Agent-to-Agent) communication
+  version: 1.0.0
+  contact:
+    name: AI Community Platform
+    url: https://github.com/nmdimas/ai-community-platform
+    email: support@ai-community-platform.dev
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8083
+    description: Local development server
+  - url: http://localhost/knowledge
+    description: Local development via Traefik
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the knowledge agent service
+      operationId: getHealth
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: knowledge-agent
+                required:
+                  - status
+                  - service
+
+  /api/v1/knowledge/upload:
+    post:
+      summary: Upload message batch for processing
+      description: |
+        Uploads a batch of chat messages for knowledge extraction. Messages are chunked,
+        deduplicated, and queued for processing by the knowledge extraction workflow.
+      operationId: uploadMessages
+      tags:
+        - Ingestion
+      security:
+        - InternalToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                messages:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Message'
+                  minItems: 1
+                  description: Array of chat messages to process
+                chunk_meta:
+                  type: object
+                  description: Optional metadata for the message chunk
+                  properties:
+                    chat_id:
+                      type: string
+                      description: Telegram chat ID
+                    created_by:
+                      type: string
+                      description: User who initiated the upload
+              required:
+                - messages
+      responses:
+        '202':
+          description: Messages accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: accepted
+                  chunks_created:
+                    type: integer
+                    description: Number of chunks created from the messages
+                  chunks_published:
+                    type: integer
+                    description: Number of chunks published to the queue
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/knowledge/search:
+    get:
+      summary: Search knowledge entries
+      description: |
+        Search knowledge entries using hybrid (BM25 + vector), keyword-only, or vector-only search modes.
+        Hybrid search provides the best results by combining text matching with semantic similarity.
+      operationId: searchKnowledge
+      tags:
+        - Search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+            example: "Symfony cache configuration"
+        - name: mode
+          in: query
+          required: false
+          description: Search mode
+          schema:
+            type: string
+            enum: [hybrid, keyword, vector]
+            default: hybrid
+        - name: size
+          in: query
+          required: false
+          description: Maximum number of results to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query:
+                    type: string
+                    description: The search query
+                  mode:
+                    type: string
+                    description: The search mode used
+                  total:
+                    type: integer
+                    description: Number of results returned
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KnowledgeEntry'
+                required:
+                  - query
+                  - mode
+                  - total
+                  - results
+        '400':
+          description: Bad request - missing query parameter
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Query parameter q is required"
+
+  /api/v1/knowledge/tree:
+    get:
+      summary: Get knowledge tree
+      description: |
+        Returns the hierarchical knowledge tree with document counts for each path.
+        The tree is built from the tree_path field of all knowledge entries.
+      operationId: getKnowledgeTree
+      tags:
+        - Tree
+      responses:
+        '200':
+          description: Knowledge tree
+          headers:
+            Cache-Control:
+              description: Response is cached for 60 seconds
+              schema:
+                type: string
+                example: "max-age=60, public"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tree:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TreeNode'
+                required:
+                  - tree
+
+  /api/v1/knowledge/entries:
+    get:
+      summary: List knowledge entries
+      description: |
+        List knowledge entries with optional filtering by tree path, category, or tags.
+        Supports pagination with from/size parameters.
+      operationId: listKnowledgeEntries
+      tags:
+        - Entries
+      parameters:
+        - name: from
+          in: query
+          required: false
+          description: Starting offset for pagination
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          description: Number of entries to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: tree_path
+          in: query
+          required: false
+          description: Filter by exact tree path
+          schema:
+            type: string
+            example: "Technology/PHP/Symfony"
+        - name: category
+          in: query
+          required: false
+          description: Filter by category
+          schema:
+            type: string
+            example: "Technology"
+        - name: tags
+          in: query
+          required: false
+          description: Filter by tags (comma-separated)
+          schema:
+            type: string
+            example: "symfony,cache,redis"
+      responses:
+        '200':
+          description: List of knowledge entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KnowledgeEntry'
+                  count:
+                    type: integer
+                    description: Number of entries returned
+                  from:
+                    type: integer
+                    description: Starting offset
+                  size:
+                    type: integer
+                    description: Requested page size
+                required:
+                  - entries
+                  - count
+                  - from
+                  - size
+
+    post:
+      summary: Create knowledge entry
+      description: |
+        Create a new knowledge entry. The entry will be indexed in OpenSearch
+        and an embedding will be generated for vector search.
+      operationId: createKnowledgeEntry
+      tags:
+        - Entries
+      security:
+        - InternalToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateKnowledgeEntry'
+      responses:
+        '201':
+          description: Knowledge entry created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Generated entry ID
+                  status:
+                    type: string
+                    example: created
+                required:
+                  - id
+                  - status
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/knowledge/entries/{id}:
+    get:
+      summary: Get knowledge entry by ID
+      description: Retrieve a specific knowledge entry by its ID
+      operationId: getKnowledgeEntry
+      tags:
+        - Entries
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Knowledge entry ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Knowledge entry
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entry:
+                    $ref: '#/components/schemas/KnowledgeEntry'
+                required:
+                  - entry
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update knowledge entry
+      description: |
+        Update an existing knowledge entry. If title or body is changed,
+        the embedding will be regenerated for vector search.
+      operationId: updateKnowledgeEntry
+      tags:
+        - Entries
+      security:
+        - InternalToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Knowledge entry ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateKnowledgeEntry'
+      responses:
+        '200':
+          description: Knowledge entry updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: updated
+                  id:
+                    type: string
+                    description: Entry ID
+                required:
+                  - status
+                  - id
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      summary: Delete knowledge entry
+      description: Delete a knowledge entry from the index
+      operationId: deleteKnowledgeEntry
+      tags:
+        - Entries
+      security:
+        - InternalToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Knowledge entry ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Knowledge entry deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/knowledge/a2a:
+    post:
+      summary: Agent-to-Agent communication
+      description: |
+        Handle A2A requests from other platform agents. Supports intents:
+        - search_knowledge: Search for knowledge entries
+        - extract_from_messages: Extract knowledge from message batch
+        - get_tree: Get the knowledge tree
+      operationId: handleA2ARequest
+      tags:
+        - A2A
+      security:
+        - InternalToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/A2AEnvelope'
+                - $ref: '#/components/schemas/A2ADirectRequest'
+      responses:
+        '200':
+          description: A2A response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/A2AResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    InternalToken:
+      type: apiKey
+      in: header
+      name: X-Platform-Internal-Token
+      description: Internal platform token for authenticated endpoints
+
+  schemas:
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Message ID
+        from:
+          type: string
+          description: Message sender username
+        username:
+          type: string
+          description: Alternative field for sender username
+        text:
+          type: string
+          description: Message text content
+        message:
+          type: string
+          description: Alternative field for message content
+        timestamp:
+          type: string
+          format: date-time
+          description: Message timestamp
+      required:
+        - id
+
+    KnowledgeEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Entry ID
+        title:
+          type: string
+          description: Entry title
+        body:
+          type: string
+          description: Entry body in Markdown format
+        tags:
+          type: array
+          items:
+            type: string
+          description: Entry tags
+        category:
+          type: string
+          description: Entry category
+        tree_path:
+          type: string
+          description: Hierarchical path in knowledge tree
+        source_message_ids:
+          type: array
+          items:
+            type: string
+          description: Source message IDs
+        message_link:
+          type: string
+          nullable: true
+          description: Link to source message (Telegram deep link)
+        created_by:
+          type: string
+          description: User who created the entry
+        source_type:
+          type: string
+          description: Source type (e.g., telegram)
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - title
+        - body
+        - tags
+        - category
+        - tree_path
+
+    CreateKnowledgeEntry:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Entry title
+        body:
+          type: string
+          description: Entry body in Markdown format
+        tags:
+          type: array
+          items:
+            type: string
+          description: Entry tags
+        category:
+          type: string
+          description: Entry category
+        tree_path:
+          type: string
+          description: Hierarchical path in knowledge tree
+        source_message_ids:
+          type: array
+          items:
+            type: string
+          description: Source message IDs
+        message_link:
+          type: string
+          nullable: true
+          description: Link to source message
+        created_by:
+          type: string
+          description: User who created the entry
+        source_type:
+          type: string
+          description: Source type
+      required:
+        - title
+        - body
+
+    UpdateKnowledgeEntry:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Entry title
+        body:
+          type: string
+          description: Entry body in Markdown format
+        tags:
+          type: array
+          items:
+            type: string
+          description: Entry tags
+        category:
+          type: string
+          description: Entry category
+        tree_path:
+          type: string
+          description: Hierarchical path in knowledge tree
+        source_message_ids:
+          type: array
+          items:
+            type: string
+          description: Source message IDs
+        message_link:
+          type: string
+          nullable: true
+          description: Link to source message
+        created_by:
+          type: string
+          description: User who created the entry
+        source_type:
+          type: string
+          description: Source type
+
+    TreeNode:
+      type: object
+      properties:
+        path:
+          type: string
+          description: Tree path (e.g., "Technology/PHP/Symfony")
+        count:
+          type: integer
+          description: Number of entries in this path
+      required:
+        - path
+        - count
+
+    A2AEnvelope:
+      type: object
+      properties:
+        request:
+          type: object
+          properties:
+            intent:
+              type: string
+              description: A2A intent
+            payload:
+              type: object
+              description: Request payload
+          required:
+            - intent
+        request_id:
+          type: string
+          description: Request ID for tracking
+      required:
+        - request
+
+    A2ADirectRequest:
+      type: object
+      properties:
+        intent:
+          type: string
+          description: A2A intent
+        request_id:
+          type: string
+          description: Request ID for tracking
+        payload:
+          type: object
+          description: Request payload
+      required:
+        - intent
+        - request_id
+
+    A2AResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, failed]
+          description: Response status
+        request_id:
+          type: string
+          description: Request ID from the request
+        data:
+          type: object
+          description: Response data (present on success)
+        error:
+          type: string
+          description: Error message (present on failure)
+      required:
+        - status
+        - request_id
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - missing or invalid token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Unauthorized
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Not found
+
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: title and body are required
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Ingestion
+    description: Message ingestion and processing
+  - name: Search
+    description: Knowledge search operations
+  - name: Tree
+    description: Knowledge tree operations
+  - name: Entries
+    description: Knowledge entry CRUD operations
+  - name: A2A
+    description: Agent-to-Agent communication

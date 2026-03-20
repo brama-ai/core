@@ -1,0 +1,95 @@
+# Python/FastAPI Agent Checklist
+
+Checks for agents built with Python + FastAPI.
+
+## S: Structure & Build
+
+| ID | Check | How to Verify | PASS | WARN | FAIL |
+|----|-------|---------------|------|------|------|
+| S-01 | `app/` directory exists | Glob `apps/<agent>/app/` | Exists | — | Missing |
+| S-02 | `tests/` directory exists | Glob `apps/<agent>/tests/` | Exists | — | Missing |
+| S-03 | `app/main.py` exists | Glob | Exists | — | Missing |
+| S-04 | Dockerfile exists | Glob `docker/<agent>/Dockerfile` | Exists | — | Missing |
+| S-05 | Dockerfile uses slim Python base | Read Dockerfile FROM line | `python:3.x-slim` | Non-slim image | No Dockerfile |
+| S-06 | Compose service defined | Grep compose.yaml for service name | Found | — | Missing |
+| S-07 | `requirements.txt` exists | Glob `apps/<agent>/requirements.txt` | Exists | — | Missing |
+| S-08 | Dependencies pinned (`==`) | Read requirements.txt, check for `==` | All pinned | Some unpinned | No pins |
+| S-09 | `__init__.py` in app/ | Glob `apps/<agent>/app/__init__.py` | Exists | — | Missing |
+| S-10 | `conftest.py` in tests/ | Glob `apps/<agent>/tests/conftest.py` | Exists | — | Missing |
+
+## T: Testing
+
+| ID | Check | How to Verify | PASS | WARN | FAIL |
+|----|-------|---------------|------|------|------|
+| T-01 | Test files exist | Glob `apps/<agent>/tests/test_*.py` | >= 1 file | — | 0 files |
+| T-02 | Test-to-module ratio | Count .py in app/ vs test_*.py | > 0.2 | 0.05 – 0.2 | < 0.05 |
+| T-03 | pytest in requirements | Grep requirements.txt for `pytest` | Found | — | Missing |
+| T-04 | httpx in requirements | Grep for `httpx` (FastAPI test client) | Found | — | Missing |
+| T-05 | Makefile has test target | Grep Makefile for `<agent>-test` | Found | — | Missing |
+
+## C: Configuration & Agent Card (agents only)
+
+| ID | Check | How to Verify | PASS | WARN | FAIL |
+|----|-------|---------------|------|------|------|
+| C-01 | Manifest route exists | Grep app/ for `"/api/v1/manifest"` | Found | — | Missing |
+| C-02 | Agent Card has required fields | Read manifest route, check for `name`, `version` | Both present | — | Missing required |
+| C-03 | Agent Card has `url` field | Check manifest response for `url` (valid URL) | Present | Only deprecated `a2a_endpoint` | Neither |
+| C-04 | Agent Card has structured skills | Check `skills` array contains AgentSkill objects `{id, name, description}` | Structured objects | Legacy string array | No skills |
+| C-05 | Agent Card has `capabilities` | Check for `capabilities` object `{streaming, pushNotifications}` | Present | — | Missing |
+| C-06 | Agent Card has `provider` | Check for `provider` object `{organization, url}` | Present | — | Missing |
+| C-07 | Agent Card has I/O modes | Check for `defaultInputModes`, `defaultOutputModes` arrays | Both present | One only | Neither |
+| C-08 | Compose label `ai.platform.agent=true` | Grep compose.yaml | Found | — | Missing |
+| C-09 | Config module exists | Glob `apps/<agent>/app/config.py` | Exists | — | Missing |
+| C-10 | Pydantic settings for config | Grep for `BaseSettings` or `pydantic-settings` | Found | — | Not found |
+
+## X: Security
+
+| ID | Check | How to Verify | PASS | WARN | FAIL |
+|----|-------|---------------|------|------|------|
+| X-01 | No hardcoded secrets in app/ | Grep for `password=`, `secret=`, `api_key=`, `token=` literals | None found | — | Found |
+| X-02 | `.gitignore` covers sensitive files | Check for `__pycache__/`, `.env`, `*.pyc` | Covered | Partial | Missing |
+| X-03 | Auth for protected endpoints | Grep for token/header validation | Found | — | Missing |
+
+## O: Observability
+
+| ID | Check | How to Verify | PASS | WARN | FAIL |
+|----|-------|---------------|------|------|------|
+| O-01 | Health endpoint exists | Grep for `"/health"` route | Found | — | Missing |
+| O-02 | Logging configured | Grep for `logging` or `logger` imports | Found | — | Not found |
+| O-03 | Langfuse / observability | Grep for `langfuse` or `opentelemetry` | Found | — | Not found |
+| O-04 | Compose env has observability vars | Grep compose.yaml for LANGFUSE_ vars | Present | — | Missing |
+| O-05 | Log messages include `trace_id` | Grep app/ for `trace_id` in logger calls; every route handler receiving trace_id must pass it to log context | All pass trace_id | Some missing | No trace_id usage |
+| O-06 | Log messages include `request_id` | Grep app/ for `request_id` in logger calls | All pass request_id | Some missing | No request_id usage |
+| O-07 | Error/warning paths include context | Grep app/ for `logger.warning` and `logger.error` calls; check they include relevant identifiers not just a bare string | All have context | Some bare | Majority bare |
+| O-08 | LLM calls log duration and model | If agent calls external LLM, grep for `duration` and `model` near LLM call code | Both logged | One of two | Neither |
+| O-09 | OpenSearch logging handler | Grep for OpenSearch or opensearch logging handler in app or config | Configured | — | Missing |
+| O-10 | LLM calls include `tags` field | If agent calls LLM, grep app/ for `"tags"` near LLM call code; must contain `agent:<name>` and `method:<feature>` (both in `extra_body.tags` and inside `metadata.tags`) | Both tags present | Partial | No tags |
+| O-11 | LLM metadata is Langfuse-compatible | If agent calls LLM, grep app/ for `"metadata"` near LLM call code; must contain `trace_id`, `trace_name`, `session_id`, `generation_name`, `tags`, `trace_user_id`, `trace_metadata` (see `docs/features/litellm-requests/tracing-contract.md`) | All required fields | Has trace_id but missing others | No metadata |
+
+## D: Documentation
+
+| ID | Check | How to Verify | PASS | WARN | FAIL |
+|----|-------|---------------|------|------|------|
+| D-01 | Agent PRD exists | Glob `docs/agents/en/*<slug>*` | Exists | — | Missing |
+| D-02 | PRD in both languages | Both ua/ and en/ | Both | One only | Neither |
+| D-03 | Listed in index.md | Grep index.md | Found | — | Missing |
+| D-04 | OpenAPI / API documentation | Grep for `/docs` or `/openapi.json` endpoint | Found | — | Missing |
+
+## M: Database & Migrations
+
+| ID | Check | How to Verify | PASS | WARN | FAIL |
+|----|-------|---------------|------|------|------|
+| M-01 | `alembic/` directory exists | Glob `apps/<agent>/alembic/` | Exists | — | Missing (if has DB) |
+| M-02 | `alembic.ini` exists | Glob | Exists | — | Missing (if has DB) |
+| M-03 | Migration files exist | Glob `apps/<agent>/alembic/versions/*.py` | >= 1 | 0 files | No versions dir |
+| M-04 | Compose env has DATABASE_URL | Grep compose.yaml | Present | — | Missing (if has DB) |
+| M-05 | Makefile has migrate target | Grep Makefile | Found | — | Missing (if has DB) |
+
+## Q: Standards
+
+| ID | Check | How to Verify | PASS | WARN | FAIL |
+|----|-------|---------------|------|------|------|
+| Q-01 | Type hints on routes | Grep routers/ for `->` return type hints | Most have | Some missing | None |
+| Q-02 | Pydantic models for schemas | Glob for `schemas.py` or models/ | Found | — | Missing |
+| Q-03 | `.editorconfig` exists | Glob root or app dir | Exists | — | Missing |
+| Q-04 | No direct agent-to-agent calls | Grep `app/` for hardcoded URLs to other agent service names (e.g. `http://knowledge-agent`, `http://hello-agent`). All inter-agent communication must go via `PLATFORM_CORE_URL` through the A2A gateway. | No matches | — | Direct agent URL found |

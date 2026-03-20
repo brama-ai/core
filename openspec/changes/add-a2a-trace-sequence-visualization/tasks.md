@@ -30,7 +30,7 @@
 
 - [x] 5.1 Add unit tests for sequence projection from log events.
 - [x] 5.2 Add functional tests for trace page rendering sequence nodes/edges and detail inspector payload visibility.
-- [ ] 5.3 Add integration coverage for discovery snapshot and invoke step event fields.
+- [x] 5.3 Add integration coverage for discovery snapshot and invoke step event fields.
 
 ## 6. Documentation
 

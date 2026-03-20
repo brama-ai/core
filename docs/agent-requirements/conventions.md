@@ -167,6 +167,21 @@ Rules:
 - MUST handle unknown `tool` values with `status: "failed"` + descriptive `error`
 - MUST be idempotent for the same `request_id`
 
+### Accept-Language Header
+
+Agents SHOULD read the `Accept-Language` header from incoming A2A requests to provide localized responses:
+
+```php
+$locale = $request->headers->get('Accept-Language', 'uk');
+```
+
+The platform core sets `Accept-Language` based on the user's `locale` cookie (`ua` → `uk`, `en` → `en`). Agents can use this header to:
+- Respond inthe user's preferred language
+- Format dates, numbers, and messages appropriately
+- Select language-specific content
+
+This is a **recommendation** (WARN level in auditor), not a hard requirement.
+
 ---
 
 ## 5. Inter-Agent Communication

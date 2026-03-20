@@ -13,6 +13,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+
 use function React\Async\async;
 use function React\Async\await;
 
@@ -37,10 +38,10 @@ final class OpenspecProposeCommand extends Command
         if ($isAsync) {
             $output->writeln(sprintf('<info>Starting async openspec propose for "%s" in the background...</info>', $changeId));
             $output->writeln('<comment>Task detached. You can continue using your terminal while generating the proposal.</comment>');
-            
+
             // In a full implementation, we would detach the process here (e.g., using pcntl_fork,
             // launching a separate shell command via react/child-process, or dispatching to a queue).
-            
+
             return Command::SUCCESS;
         }
 
@@ -85,7 +86,7 @@ final class OpenspecProposeCommand extends Command
         await($runTask());
 
         $progressBar->finish();
-        
+
         $output->writeln('');
         $output->writeln('');
         $output->writeln('<info>✅ OpenSpec proposal generated successfully!</info>');

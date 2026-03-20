@@ -13,13 +13,14 @@ use App\Telegram\Service\TelegramUpdateNormalizer;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Command\SignalableCommandInterface;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(name: 'app:telegram:poll', description: 'Poll Telegram for updates (local development mode)')]
-final class TelegramPollCommand extends Command
+final class TelegramPollCommand extends Command implements SignalableCommandInterface
 {
     private bool $running = true;
 
@@ -33,6 +34,22 @@ final class TelegramPollCommand extends Command
         private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function getSubscribedSignals(): array
+    {
+        return [\SIGTERM, \SIGINT];
+    }
+
+    public function handleSignal(int $signal, int|false $previousExitCode = 0): int|false
+    {
+        $this->running = false;
+        $this->logger->info('Telegram poll command received signal, stopping gracefully', ['signal' => $signal]);
+
+        return false;
     }
 
     protected function configure(): void

@@ -16,12 +16,12 @@ Task → Planner → Architect → Coder → Validator → Tester → Documenter
 
 | Агент | Роль | Вендор | Модель |
 |-------|------|--------|--------|
-| **planner** | Аналізує задачу, обирає profile та список агентів | Anthropic | claude-opus-4 |
-| **architect** | Створює OpenSpec proposal (specs, design, tasks) | Anthropic | claude-opus-4 |
-| **coder** | Пише код на основі specs | Anthropic | claude-sonnet-4 |
-| **auditor** | Quality gate — перевіряє якість agent-related змін | Anthropic | claude-sonnet-4 |
-| **validator** | Запускає PHPStan, CS-Fixer, виправляє помилки | OpenAI | codex-mini |
-| **tester** | Запускає тести, пише нові, виправляє failures | Anthropic | claude-sonnet-4 |
+| **planner** | Аналізує задачу, обирає profile та список агентів | Anthropic | claude-opus-4-6 |
+| **architect** | Створює OpenSpec proposal (specs, design, tasks) | Anthropic | claude-opus-4-6 |
+| **coder** | Пише код на основі specs | Anthropic | claude-sonnet-4-6 |
+| **auditor** | Quality gate — перевіряє якість agent-related змін | Anthropic | claude-opus-4-6 |
+| **validator** | Запускає PHPStan, CS-Fixer, виправляє помилки | MiniMax | MiniMax-M2.5-highspeed |
+| **tester** | Запускає тести, пише нові, виправляє failures | OpenCode Go | kimi-k2.5 |
 | **documenter** | Пише білінгвальну документацію (UA+EN) | OpenAI | gpt-5.4 |
 | **summarizer** | Створює фінальний звіт про виконану роботу | OpenAI | gpt-5.4 |
 

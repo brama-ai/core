@@ -1,47 +1,53 @@
 ---
 name: builder-agent
 description: >
-  Delegate a coding task to the autonomous builder agent pipeline. Creates a task
-  file in builder/tasks/todo/ — the pipeline monitor auto-starts workers to execute it.
-  Triggers on: "builder", "delegate", "делегувати", "білдер", "queue task",
-  "add to pipeline", "schedule task", "pipeline task",
-  "agent builder", "поставити задачу", "в чергу", "на білдера".
-  Do NOT execute the task yourself — only create the task file.
+  Delegate a coding task to the autonomous pipeline. Supports two workflows:
+  - **Builder** (Claude Code): Creates task file in builder/tasks/todo/ — pipeline monitor auto-starts workers.
+  - **Ultraworks** (OpenCode): Launches OpenCode in tmux with /auto command — Sisyphus orchestrates automatically.
+  Triggers on: "builder", "delegate", "делегувати", "білдер", "ultraworks", "ultrawork", "ulw",
+  "queue task", "add to pipeline", "schedule task", "pipeline task", "agent builder",
+  "поставити задачу", "в чергу", "на білдера", "auto", "/auto".
+  Do NOT execute the task yourself — only delegate to the appropriate pipeline.
 ---
 
-# Builder Agent — Task Queue
+# Pipeline Agent — Universal Skill
 
-Delegate a task to the autonomous multi-agent builder pipeline.
-**You do NOT implement the task yourself.** You create a `.md` file in `builder/tasks/todo/`
-and the pipeline monitor (`builder/monitor/pipeline-monitor.sh`) auto-starts workers to
-execute it.
+> **IMPORTANT — Sisyphus Orchestrator Exception:**
+> If you are the Sisyphus orchestrator (running via `/auto` or `ultrawork` command in OpenCode),
+> do NOT use this skill to delegate. You ARE the orchestrator.
+> Instead, use `delegate_task()` with `s-*` subagents (s-architect, s-coder, s-validator, s-tester, s-auditor, s-documenter, s-summarizer).
+> Read `.opencode/pipeline/handoff.md` for context. Follow the pipeline phases from your `prompt_append`.
+> This skill is only for external delegation FROM Claude Code or FROM a user prompt — not for self-delegation within a running pipeline.
 
-## When to Use
+This skill delegates tasks to the autonomous multi-agent pipeline. It detects which environment you're using
+and routes to the appropriate workflow.
 
-- User says "delegate to builder", "делегувати білдеру", "на білдера"
-- User asks to "queue", "schedule", or "add to pipeline"
-- User says "agent builder", "builder agent", "поставити задачу"
-- User wants work done asynchronously by the builder agents
-- User explicitly asks NOT to do the work now but to queue it
+## Quick Reference
 
-## When NOT to Use
+| Environment | Workflow | Delegate Command | Monitor Command |
+|-------------|----------|------------------|-----------------|
+| Claude Code | Builder | Creates `builder/tasks/todo/*.md` | `make monitor-builder` |
+| OpenCode | Ultraworks | Runs `/auto <task>` in tmux | `make monitor-ultraworks` |
 
-- User wants you (Claude) to do the work directly in this conversation
-- User is asking about pipeline status (just tell them to check the monitor)
-- Task is trivial (single file edit, quick fix) — do it directly instead
+---
 
-## Pipeline Overview
+## Workflow Detection
 
-The builder pipeline runs these agents in sequence:
-1. **Architect** — reads specs, plans implementation
-2. **Coder** — writes the code
-3. **Validator** — runs PHPStan, CS-Fixer, type checks
-4. **Tester** — runs Codeception tests
-5. **Summarizer** — writes final summary to `builder/tasks/summary/*.md`
+**Claude Code detected** → Use Builder workflow (task queue + monitor)
+**OpenCode detected** → Use Ultraworks workflow (Sisyphus orchestration)
 
-Each task runs in an isolated git worktree on its own branch (`pipeline/<slug>`).
+> Note: If you're in Claude Code but want to use Ultraworks, we can still launch OpenCode in tmux.
+> See "Ultraworks from Claude Code" section below.
 
-## Workflow
+---
+
+## Workflow 1: Builder (Claude Code)
+
+**How it works:**
+1. Create task file in `builder/tasks/todo/`
+2. Pipeline monitor auto-starts workers
+3. Workers run: Architect → Coder → Validator → Tester → Auditor → Summarizer
+4. Results appear in `builder/tasks/summary/`
 
 ### Step 1 — Gather Task Details
 
@@ -49,19 +55,18 @@ From the user's request, determine:
 
 1. **Title** — short imperative sentence (e.g., "Implement change: add-delivery-channels")
 2. **Description** — what needs to be done (1-3 sentences)
-3. **OpenSpec reference** — if this implements an OpenSpec change, link to proposal/builder/tasks/specs
+3. **OpenSpec reference** — if this implements an OpenSpec change, link to proposal
 4. **Context** — dependencies, patterns to follow, key decisions
 5. **Key files** — files to create or modify
 6. **Validation** — how to verify success
-7. **Priority** — default 1; higher = picked up first (ask user if multiple tasks)
+7. **Priority** — default 1; higher = picked up first
 
 ### Step 2 — Create the Task File
 
-First, ensure the directory exists: `mkdir -p builder/tasks/todo` (builder/tasks/ is gitignored).
-Then write the file to `builder/tasks/todo/`. Use the slug format: `implement-change-<id>.md` for
-OpenSpec changes, or `<descriptive-slug>.md` for ad-hoc tasks.
+First, ensure the directory exists: `mkdir -p builder/tasks/todo`
+Then write the file to `builder/tasks/todo/`.
 
-**File format** — see `references/example-task.md` for the full template.
+**File format:**
 
 ```markdown
 <!-- priority: 1 -->
@@ -90,227 +95,206 @@ Background, dependencies, patterns to follow.
 - Unit/functional tests pass
 ```
 
-### Step 3 — Start Monitor & Verify Worker
+### Step 3 — Verify Worker Starts
 
-After creating the task file, **automatically start the pipeline monitor** to verify the worker picks up the task:
+```bash
+# Check if monitor is running
+ps aux | grep pipeline-monitor | grep -v grep
 
-1. **Start monitor with timeout** to check initial status:
-   ```bash
-   timeout 10 ./builder/monitor/pipeline-monitor.sh 2>&1 | head -50
-   ```
+# If not running, start it:
+./builder/monitor/pipeline-monitor.sh
 
-2. **Check worker started**:
-   ```bash
-   ps aux | grep -E "pipeline-batch|pipeline-monitor" | grep -v grep
-   ```
+# Verify task moved to in-progress
+ls -la builder/tasks/in-progress/
+```
 
-3. **Verify task moved to in-progress** (may take a few seconds):
-   ```bash
-   ls -la builder/tasks/in-progress/
-   ```
+### Step 4 — User Report (Builder)
 
-4. **Report to user**:
-   - ✅ Worker started successfully → task is being executed
-   - ⚠️ Worker not started → troubleshoot (see below)
-   - Task file path, priority, expected results location
-
-### Step 4 — Confirm to User
-
-Tell the user:
-
-1. ✅ **Worker status**: Started successfully / Not started (with troubleshooting)
-2. **Task file**: `builder/tasks/todo/<slug>.md`
-3. **Priority**: N
-4. **How to monitor live**: `./builder/monitor/pipeline-monitor.sh`
-5. **Where results will appear**:
-   - **Branch**: `pipeline/<slug>` (with commits)
-   - **Summary**: `builder/tasks/summary/<timestamp>-<slug>.md`
-   - **Reports**: `.opencode/pipeline/reports/`
-   - **Logs**: `.opencode/pipeline/logs/`
-   - **Task moves**: `builder/tasks/todo/` → `builder/tasks/in-progress/` → `builder/tasks/done/` or `builder/tasks/failed/`
-
-## Troubleshooting Worker Start
-
-If worker didn't start after creating task:
-
-### Common Issues & Fixes
-
-1. **Monitor not running**:
-   ```bash
-   # Check if monitor is alive
-   ps aux | grep pipeline-monitor | grep -v grep
-
-   # If not running, start manually:
-   ./builder/monitor/pipeline-monitor.sh
-   ```
-
-2. **Task format error** (invalid markdown, missing priority):
-   ```bash
-   # Check task file syntax
-   cat builder/tasks/todo/<slug>.md
-
-   # Look for monitor logs
-   tail -50 .opencode/pipeline/logs/monitor_*.log
-   ```
-
-3. **Worker limit reached** (MONITOR_WORKERS=1 by default):
-   ```bash
-   # Check running workers
-   ps aux | grep pipeline-batch
-
-   # Check in-progress tasks
-   ls builder/tasks/in-progress/
-
-   # Solution: Wait for current task to finish, or increase MONITOR_WORKERS
-   export MONITOR_WORKERS=2
-   ./builder/monitor/pipeline-monitor.sh
-   ```
-
-4. **Permission issues**:
-   ```bash
-   # Ensure script is executable
-   chmod +x ./builder/monitor/pipeline-monitor.sh
-   chmod +x ./builder/pipeline-batch.sh
-   ```
-
-5. **OpenRouter API issues**:
-   ```bash
-   # Check API key is set
-   echo $OPENROUTER_API_KEY | head -c 20
-
-   # Check API quota/limits
-   cat .opencode/pipeline/reports/batch_*.md | grep -i "error\|limit\|quota"
-   ```
-
-### Verification Checklist
-
-When troubleshooting, check:
-- [ ] Task file created in `builder/tasks/todo/`
-- [ ] Task file has valid markdown format
-- [ ] Priority comment present: `<!-- priority: N -->`
-- [ ] Monitor script is executable
-- [ ] No other tasks blocking (check `in-progress/`)
-- [ ] OpenRouter API key configured
-- [ ] No syntax errors in monitor logs
-
-### User Response Template
-
-If worker didn't start, tell user:
+**Always include monitoring instructions:**
 
 ```
-⚠️ Worker не стартував автоматично.
+✅ **Builder Task Queued**
 
-**Можливі причини:**
-- [Причина на основі діагностики]
+- **Task file**: builder/tasks/todo/<slug>.md
+- **Priority**: N
+- **Workflow**: Builder (Claude Code pipeline)
 
-**Як виправити:**
-1. [Команда 1]
-2. [Команда 2]
+**To monitor progress:**
+  make monitor-builder
 
-**Або запустіть монітор вручну:**
+**Results location:**
+  - Branch: pipeline/<slug>
+  - Summary: builder/tasks/summary/<timestamp>-<slug>.md
+  - Reports: .opencode/pipeline/reports/
+  - Logs: .opencode/pipeline/logs/
+```
+
+---
+
+## Workflow 2: Ultraworks (OpenCode)
+
+**How it works:**
+1. Sisyphus receives task via `/auto` command
+2. Orchestrates s-* subagents in parallel
+3. Phases: spec → code → validate ∥ test → audit loop → docs ∥ summary
+4. Results in `.opencode/pipeline/handoff.md` and git commits
+
+### From OpenCode
+
+Simply run:
+```
+/auto <task description>
+```
+Or use shortcut: `ultrawork`
+
+### From Claude Code (launching Ultraworks)
+
+If you want to use Ultraworks from Claude Code:
+
+1. Create task file for reference:
+```bash
+mkdir -p .opencode/pipeline
+echo '{"profile":"standard","reasoning":"Task from Claude Code","agents":["coder","validator","tester","summarizer"]}' > .opencode/pipeline/plan.json
+```
+
+2. Launch OpenCode in tmux:
+```bash
+./builder/monitor/ultraworks-monitor.sh launch "<task description>"
+```
+
+3. Attach to monitor:
+```bash
+make monitor-ultraworks
+# or
+tmux attach -t ultraworks
+```
+
+### User Report (Ultraworks)
+
+**Always include monitoring instructions:**
+
+```
+✅ **Ultraworks Task Queued**
+
+- **Workflow**: Ultraworks (Sisyphus pipeline)
+- **Session**: tmux session 'ultraworks'
+
+**To monitor progress:**
+  make monitor-ultraworks
+
+**To attach to OpenCode:**
+  tmux attach -t ultraworks
+
+**Results location:**
+  - Handoff: .opencode/pipeline/handoff.md
+  - Reports: .opencode/pipeline/reports/
+  - Plan: .opencode/pipeline/plan.json
+```
+
+---
+
+## Monitoring Commands
+
+### Builder Monitor
+
+```bash
+make monitor-builder
+# or directly:
 ./builder/monitor/pipeline-monitor.sh
 ```
 
-## Priority & Task Ordering
+Features:
+- Real-time task progress
+- Worker status
+- Cost tracking
+- Keys: `[s]` start, `[k]` kill, `[f]` retry failed, `[+/-]` priority
 
-Priority controls the order tasks are picked up by workers.
+### Ultraworks Monitor
 
-### Priority Rules
-
-- `<!-- priority: N -->` — first line of the task file
-- **Higher number = picked up first** (priority 5 runs before priority 1)
-- Default priority = 1 (if omitted)
-- Monitor TUI keys: `[+]` raise priority, `[-]` lower priority
-
-### Managing Dependencies Between Tasks
-
-When tasks depend on each other (e.g., task B needs code from task A):
-
-**Sequential execution (MONITOR_WORKERS=1, default):**
-- Set higher priority on the dependency: task A = priority 3, task B = priority 1
-- Tasks execute one by one in priority order: A first, then B
-- B will run on top of A's branch since A's commits land on main first
-
-**Parallel execution (MONITOR_WORKERS=2+):**
-- Only queue independent tasks at the same time
-- For dependent tasks, queue the dependency first with higher priority
-- Queue the dependent task AFTER the dependency completes (or set priority so
-  it starts only when workers become free after the dependency finishes)
-
-### Priority Strategy Examples
-
-**3 independent tasks** — same priority, any order:
-```
-task-a.md: <!-- priority: 1 -->
-task-b.md: <!-- priority: 1 -->
-task-c.md: <!-- priority: 1 -->
+```bash
+make monitor-ultraworks
+# Shows:
+# - Current phase
+# - Handoff state
+# - Recent reports
+# - Interactive menu
 ```
 
-**Chain: A → B → C** (B depends on A, C depends on B):
-```
-task-a.md: <!-- priority: 3 -->  ← runs first
-task-b.md: <!-- priority: 2 -->  ← runs second
-task-c.md: <!-- priority: 1 -->  ← runs last
-```
-With MONITOR_WORKERS=1 this guarantees correct order.
+Actions available:
+1. Show current state
+2. Launch OpenCode (tmux)
+3. View latest report
+4. View handoff
+5. Tail logs
 
-**Mixed: A and B independent, C depends on both:**
-```
-task-a.md: <!-- priority: 2 -->  ← can run in parallel with B
-task-b.md: <!-- priority: 2 -->  ← can run in parallel with A
-task-c.md: <!-- priority: 1 -->  ← waits for A and B to finish
-```
-With MONITOR_WORKERS=2, A and B run in parallel, then C runs.
+---
 
-### When to Ask User About Priority
+## Choosing Between Workflows
 
-- Always ask when queuing 2+ tasks in the same conversation
-- Ask if the task might conflict with existing tasks in `builder/tasks/todo/`
-- Check `builder/tasks/todo/` and `builder/tasks/in-progress/` before assigning priority
-- Suggest priorities based on dependencies the user describes
+| Use Builder when... | Use Ultraworks when... |
+|---------------------|------------------------|
+| You're in Claude Code | You're in OpenCode |
+| You want task queue | You want automatic execution |
+| You want manual control | You want parallel phases |
+| You need to prioritize tasks | You want fastest execution |
 
-## Monitoring & Results
+---
 
-### Pipeline Monitor TUI
+## Priority & Task Ordering (Builder only)
+
+Priority controls pick-up order: `<!-- priority: N -->` in task file.
+- Higher number = picked up first
+- Default = 1
+
+**Dependencies:**
+- Higher priority for dependency task
+- For parallel work: `export MONITOR_WORKERS=2`
+
+---
+
+## Troubleshooting
+
+### Builder Issues
+
+**Monitor not running:**
 ```bash
 ./builder/monitor/pipeline-monitor.sh
 ```
-- Auto-starts workers when tasks appear (configurable: `MONITOR_WORKERS=N`)
-- Shows real-time progress, worker status, cost tracking
-- Keys: `[s]` manual start, `[k]` kill, `[f]` retry failed, `[+/-]` priority
 
-### Checking Results After Completion
+**Task not picked up:**
+```bash
+ls builder/tasks/todo/
+ls builder/tasks/in-progress/
+```
 
-1. **Task summary** (written by Summarizer agent):
-   ```
-   builder/tasks/summary/<timestamp>-<slug>.md
-   ```
+**Worker limit reached:**
+```bash
+export MONITOR_WORKERS=2
+./builder/monitor/pipeline-monitor.sh
+```
 
-2. **Pipeline handoff** (inter-agent context):
-   ```
-   .opencode/pipeline/handoff.md
-   ```
+### Ultraworks Issues
 
-3. **Git branch with commits**:
-   ```bash
-   git log pipeline/<slug>
-   git diff main...pipeline/<slug>
-   ```
+**Session not found:**
+```bash
+./builder/monitor/ultraworks-monitor.sh launch "<task>"
+```
 
-4. **Batch reports**:
-   ```
-   .opencode/pipeline/reports/batch_<timestamp>.md
-   ```
+**Pipeline stuck:**
+```bash
+cat .opencode/pipeline/handoff.md
+ls -lt .opencode/pipeline/reports/
+```
 
-5. **Task file with metadata** (in `builder/tasks/done/` or `builder/tasks/failed/`):
-   ```markdown
-   <!-- batch: 20260312_104327 | status: pass | duration: 420s | branch: pipeline/slug -->
-   ```
+**Resume from state:**
+- In OpenCode: `/finish`
+
+---
 
 ## Important Rules
 
-1. **NEVER execute the task yourself** — only create the task file
-2. **NEVER start pipeline-batch.sh manually** — the monitor handles auto-start
-3. Always include OpenSpec references when implementing a spec change
-4. Always include the `## Validation` section so the pipeline knows what to check
-5. Use Ukrainian in the description if the user writes in Ukrainian
+1. **NEVER execute the task yourself** — only delegate
+2. **Detect environment**: Claude Code → Builder, OpenCode → Ultraworks
+3. **Always include monitoring command** in user report
+4. For Builder: Include `## Validation` section in task file
+5. Use Ukrainian in descriptions if user writes in Ukrainian

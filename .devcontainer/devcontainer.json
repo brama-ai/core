@@ -1,7 +1,7 @@
 {
   "name": "AI Community Platform",
 
-  "dockerComposeFile": "docker-compose.yml",
+  "dockerComposeFile": ["../compose.yaml", "../compose.core.yaml", "docker-compose.yml"],
   "service": "devcontainer",
   "workspaceFolder": "/workspaces/ai-community-platform",
 
@@ -10,10 +10,7 @@
   "postCreateCommand": "bash .devcontainer/post-create.sh",
 
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {
-      "version": "latest",
-      "moby": true
-    }
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
   },
 
   "customizations": {

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\AgentRegistry\AgentRegistryInterface;
-use App\Security\AdminUser;
+use App\Security\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -19,7 +19,7 @@ final class AgentsController extends AbstractController
     }
 
     #[Route('/admin/agents', name: 'admin_agents')]
-    public function __invoke(#[CurrentUser] AdminUser $user): Response
+    public function __invoke(#[CurrentUser] User $user): Response
     {
         $agents = array_map([$this, 'normalizeAgentRow'], $this->registry->findAll());
 

@@ -10,6 +10,7 @@ use App\AgentInstaller\AgentMigrationTrigger;
 use App\AgentRegistry\AgentRegistryAuditLogger;
 use App\AgentRegistry\AgentRegistryRepository;
 use App\Scheduler\SchedulerService;
+use App\Tenant\TenantContext;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -27,6 +28,7 @@ final class AgentInstallController extends AbstractController
         private readonly AgentMigrationTrigger $migrationTrigger,
         private readonly SchedulerService $schedulerService,
         private readonly LoggerInterface $logger,
+        private readonly TenantContext $tenantContext,
     ) {
     }
 
@@ -44,6 +46,20 @@ final class AgentInstallController extends AbstractController
                 'name' => $name,
                 'provisioned' => [],
             ]);
+        }
+
+        // Enforce shared/dedicated agent constraint
+        $isShared = (bool) ($agent['shared'] ?? false);
+        if (!$isShared && $this->tenantContext->isSet()) {
+            $tenantId = $this->tenantContext->requireTenantId();
+            if ($this->registry->isAgentInstalledInOtherTenant($name, $tenantId)) {
+                return $this->json([
+                    'error' => sprintf(
+                        'Agent "%s" is already installed in another tenant and is not marked as shared. Create a new agent instance instead.',
+                        $name,
+                    ),
+                ], Response::HTTP_CONFLICT);
+            }
         }
 
         $manifest = $this->decodeManifest($agent);

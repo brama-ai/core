@@ -24,6 +24,7 @@ parameters:
     app.litellm_base_url: '%env(LITELLM_BASE_URL)%'
     app.litellm_api_key: '%env(LITELLM_API_KEY)%'
     app.llm_model: '%env(LLM_MODEL)%'
+    app.coder_max_workers: 2
 
 services:
     _defaults:
@@ -36,6 +37,8 @@ services:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Security/AdminUser.php'
+            - '../src/Security/User.php'
+            - '../src/Tenant/Tenant.php'
             - '../src/Kernel.php'
 
     App\AgentRegistry\AgentRegistryRepository:
@@ -147,9 +150,37 @@ services:
         arguments:
             $encryptionKey: '%env(TELEGRAM_ENCRYPTION_KEY)%'
 
+    App\Tenant\TenantRepositoryInterface:
+        alias: App\Tenant\TenantRepository
+
     App\AgentProject\AgentProjectRepositoryInterface:
         alias: App\AgentProject\AgentProjectRepository
         public: true
 
     App\AgentProject\CredentialResolverInterface:
         alias: App\AgentProject\EnvCredentialResolver
+
+    App\CoderAgent\CoderTaskRepositoryInterface:
+        alias: App\CoderAgent\CoderTaskRepository
+
+    App\CoderAgent\CoderTaskLogRepositoryInterface:
+        alias: App\CoderAgent\CoderTaskLogRepository
+
+    App\CoderAgent\CoderWorkerRepositoryInterface:
+        alias: App\CoderAgent\CoderWorkerRepository
+
+    App\CoderAgent\CoderCompatibilityBridgeInterface:
+        alias: App\CoderAgent\CoderCompatibilityBridge
+
+    App\CoderAgent\PipelineRunnerInterface:
+        alias: App\CoderAgent\BuilderPipelineRunner
+
+    App\CoderAgent\TaskTemplateCatalogInterface:
+        alias: App\CoderAgent\TaskTemplateCatalog
+
+    App\CoderAgent\TaskEventPublisherInterface:
+        alias: App\CoderAgent\NullTaskEventPublisher
+
+    App\Command\CoderWorkerStartCommand:
+        arguments:
+            $maxWorkers: '%app.coder_max_workers%'

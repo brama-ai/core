@@ -1,0 +1,17 @@
+apiVersion: v2
+name: ai-community-platform
+description: A Helm chart for AI Community Platform
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ai
+  - community
+  - platform
+  - agents
+home: https://github.com/your-org/ai-community-platform
+sources:
+  - https://github.com/your-org/ai-community-platform
+maintainers:
+  - name: AI Community Platform Team
+    email: team@example.com

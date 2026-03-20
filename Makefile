@@ -13,6 +13,13 @@ E2E_COMPOSE ?= docker compose $(COMPOSE_FILES) --profile e2e
 E2E_CORE_DB ?= ai_community_platform_test
 E2E_BASE_URL ?= http://localhost:18080
 
+# Devcontainer detection: run commands locally when inside a devcontainer
+IS_DEVCONTAINER := $(or $(REMOTE_CONTAINERS),$(CODESPACES))
+# run-in <service> <app-dir> <command...>  — run locally (cd apps/<dir>) or via docker compose exec
+define run-in
+$(if $(IS_DEVCONTAINER),cd apps/$(2) && $(3),$(COMPOSE) exec $(1) $(3))
+endef
+
 .PHONY: help bootstrap setup infra-setup core-setup knowledge-setup news-setup hello-setup dev-reporter-setup wiki-setup dev-agent-setup claw-setup \
 	openclaw-frontdesk-sync \
         up up-observability down ps logs logs-traefik logs-core logs-litellm logs-openclaw logs-langfuse \
@@ -27,7 +34,8 @@ E2E_BASE_URL ?= http://localhost:18080
         dev-agent-install dev-agent-migrate dev-agent-test dev-agent-analyse dev-agent-cs-check dev-agent-cs-fix \
         agent-discover conventions-test \
         external-agent-list external-agent-up external-agent-down external-agent-clone \
-        sync-skills pipeline pipeline-batch
+        sync-skills pipeline pipeline-batch monitor-builder monitor-ultraworks \
+        monitor-ultraworks-launch monitor-ultraworks-attach monitor-ultraworks-menu
 
 help:
 	@printf '%s\n' \
@@ -88,7 +96,12 @@ help:
 		'make external-agent-down name=X  Stop a named external agent (e.g. make external-agent-down name=my-agent)' \
 		'make external-agent-clone repo=URL name=X  Clone an agent repo into projects/<name> (e.g. make external-agent-clone repo=https://github.com/org/my-agent name=my-agent)' \
 		'make e2e                  Run Codecept.js + Playwright E2E tests (full isolated stack)' \
-		'make e2e-smoke            Run smoke-only E2E tests (API checks, no browser)'
+		'make e2e-smoke            Run smoke-only E2E tests (API checks, no browser)' \
+		'make monitor-builder      Monitor builder pipeline (Claude Code)' \
+		'make monitor-ultraworks   Monitor ultraworks pipeline (OpenCode/Sisyphus)' \
+		'make monitor-ultraworks-launch TASK="desc"  Launch OpenCode in tmux' \
+		'make monitor-ultraworks-attach  Attach to tmux session' \
+		'make monitor-ultraworks-menu    Interactive menu'
 
 bootstrap:
 	@./scripts/bootstrap.sh
@@ -100,77 +113,65 @@ setup: infra-setup core-setup knowledge-setup hello-setup news-setup dev-reporte
 	@echo "Local development dependencies are prepared."
 
 infra-setup:
-	$(COMPOSE) pull traefik postgres redis opensearch rabbitmq litellm
+	$(if $(IS_DEVCONTAINER),@echo "Devcontainer: PostgreSQL and Redis already running locally",$(COMPOSE) pull traefik postgres redis opensearch rabbitmq litellm)
 
 core-setup:
-	$(COMPOSE) build core
-	$(COMPOSE) run --rm core composer install
-	$(COMPOSE) run --rm core ./vendor/bin/codecept build
+	$(if $(IS_DEVCONTAINER),cd apps/core && composer install && ./vendor/bin/codecept build,$(COMPOSE) build core && $(COMPOSE) run --rm core composer install && $(COMPOSE) run --rm core ./vendor/bin/codecept build)
 
 knowledge-setup:
-	$(COMPOSE) build knowledge-agent
-	$(COMPOSE) run --rm knowledge-agent composer install
-	$(COMPOSE) run --rm knowledge-agent ./vendor/bin/codecept build
+	$(if $(IS_DEVCONTAINER),cd apps/knowledge-agent && composer install && ./vendor/bin/codecept build,$(COMPOSE) build knowledge-agent && $(COMPOSE) run --rm knowledge-agent composer install && $(COMPOSE) run --rm knowledge-agent ./vendor/bin/codecept build)
 
 hello-setup:
-	$(COMPOSE) build hello-agent
-	$(COMPOSE) run --rm hello-agent composer install
-	$(COMPOSE) run --rm hello-agent ./vendor/bin/codecept build
+	$(if $(IS_DEVCONTAINER),cd apps/hello-agent && composer install && ./vendor/bin/codecept build,$(COMPOSE) build hello-agent && $(COMPOSE) run --rm hello-agent composer install && $(COMPOSE) run --rm hello-agent ./vendor/bin/codecept build)
 
 dev-reporter-setup:
-	$(COMPOSE) build dev-reporter-agent
-	$(COMPOSE) run --rm dev-reporter-agent composer install
-	$(COMPOSE) run --rm dev-reporter-agent ./vendor/bin/codecept build
+	$(if $(IS_DEVCONTAINER),cd apps/dev-reporter-agent && composer install && ./vendor/bin/codecept build,$(COMPOSE) build dev-reporter-agent && $(COMPOSE) run --rm dev-reporter-agent composer install && $(COMPOSE) run --rm dev-reporter-agent ./vendor/bin/codecept build)
 
 dev-agent-setup:
-	$(COMPOSE) build dev-agent
-	$(COMPOSE) run --rm dev-agent composer install
-	$(COMPOSE) run --rm dev-agent ./vendor/bin/codecept build
+	$(if $(IS_DEVCONTAINER),cd apps/dev-agent && composer install && ./vendor/bin/codecept build,$(COMPOSE) build dev-agent && $(COMPOSE) run --rm dev-agent composer install && $(COMPOSE) run --rm dev-agent ./vendor/bin/codecept build)
 
 wiki-setup:
-	$(COMPOSE) build wiki-agent
-	$(COMPOSE) run --rm wiki-agent npm install
+	$(if $(IS_DEVCONTAINER),cd apps/wiki-agent && npm install,$(COMPOSE) build wiki-agent && $(COMPOSE) run --rm wiki-agent npm install)
 
 news-setup:
-	$(COMPOSE) build news-maker-agent
-	$(COMPOSE) run --rm news-maker-agent pip install -r requirements.txt
+	$(if $(IS_DEVCONTAINER),cd apps/news-maker-agent && pip install -r requirements.txt,$(COMPOSE) build news-maker-agent && $(COMPOSE) run --rm news-maker-agent pip install -r requirements.txt)
 
 claw-setup:
 	mkdir -p .local/openclaw/state .local/openclaw/e2e-state
-	$(COMPOSE) pull openclaw-gateway openclaw-cli
+	$(if $(IS_DEVCONTAINER),@echo "Devcontainer: skipping OpenClaw Docker pull",$(COMPOSE) pull openclaw-gateway openclaw-cli)
 
 slides-setup:
-	$(COMPOSE) build slides
+	$(if $(IS_DEVCONTAINER),@echo "Devcontainer: skipping slides Docker build",$(COMPOSE) build slides)
 
 install:
-	$(COMPOSE) run --rm core composer install
+	$(if $(IS_DEVCONTAINER),cd apps/core && composer install,$(COMPOSE) run --rm core composer install)
 
 knowledge-install:
-	$(COMPOSE) run --rm knowledge-agent composer install
+	$(if $(IS_DEVCONTAINER),cd apps/knowledge-agent && composer install,$(COMPOSE) run --rm knowledge-agent composer install)
 
 hello-install:
-	$(COMPOSE) run --rm hello-agent composer install
+	$(if $(IS_DEVCONTAINER),cd apps/hello-agent && composer install,$(COMPOSE) run --rm hello-agent composer install)
 
 dev-reporter-install:
-	$(COMPOSE) run --rm dev-reporter-agent composer install
+	$(if $(IS_DEVCONTAINER),cd apps/dev-reporter-agent && composer install,$(COMPOSE) run --rm dev-reporter-agent composer install)
 
 dev-agent-install:
-	$(COMPOSE) run --rm dev-agent composer install
+	$(if $(IS_DEVCONTAINER),cd apps/dev-agent && composer install,$(COMPOSE) run --rm dev-agent composer install)
 
 news-install:
-	$(COMPOSE) run --rm news-maker-agent pip install -r requirements.txt
+	$(if $(IS_DEVCONTAINER),cd apps/news-maker-agent && pip install -r requirements.txt,$(COMPOSE) run --rm news-maker-agent pip install -r requirements.txt)
 
 wiki-install:
-	$(COMPOSE) run --rm wiki-agent npm install
+	$(if $(IS_DEVCONTAINER),cd apps/wiki-agent && npm install,$(COMPOSE) run --rm wiki-agent npm install)
 
 up:
-	$(COMPOSE) up --build -d
+	$(if $(IS_DEVCONTAINER),@echo "Devcontainer: services (PostgreSQL, Redis) already running. Use 'php apps/core/bin/console server:start' to run Symfony.",$(COMPOSE) up --build -d)
 
 agent-up:
-	$(COMPOSE) up --build -d $(name)
+	$(if $(IS_DEVCONTAINER),@echo "Devcontainer: start agents directly — e.g. cd apps/$(name) && php bin/console server:start",$(COMPOSE) up --build -d $(name))
 
 agent-down:
-	$(COMPOSE) stop $(name)
+	$(if $(IS_DEVCONTAINER),@echo "Devcontainer: stop agents directly",$(COMPOSE) stop $(name))
 
 # ── External Agent Targets ───────────────────────────────────────────────────
 
@@ -274,106 +275,106 @@ e2e-cleanup:
 	$(E2E_COMPOSE) stop core-e2e knowledge-agent-e2e knowledge-worker-e2e news-maker-agent-e2e hello-agent-e2e dev-reporter-agent-e2e openclaw-gateway-e2e 2>/dev/null || true
 
 migrate:
-	$(COMPOSE) exec core php bin/console doctrine:migrations:migrate --no-interaction
+	$(call run-in,core,core,php bin/console doctrine:migrations:migrate --no-interaction)
 
 knowledge-migrate:
-	$(COMPOSE) exec knowledge-agent php bin/console doctrine:migrations:migrate --no-interaction
+	$(call run-in,knowledge-agent,knowledge-agent,php bin/console doctrine:migrations:migrate --no-interaction)
 
 dev-reporter-migrate:
-	$(COMPOSE) exec dev-reporter-agent php bin/console doctrine:migrations:migrate --no-interaction
+	$(call run-in,dev-reporter-agent,dev-reporter-agent,php bin/console doctrine:migrations:migrate --no-interaction)
 
 dev-agent-migrate:
-	$(COMPOSE) exec dev-agent php bin/console doctrine:migrations:migrate --no-interaction
+	$(call run-in,dev-agent,dev-agent,php bin/console doctrine:migrations:migrate --no-interaction)
 
 news-migrate:
-	$(COMPOSE) exec news-maker-agent alembic upgrade head
+	$(call run-in,news-maker-agent,news-maker-agent,alembic upgrade head)
 
 wiki-build:
-	$(COMPOSE) exec wiki-agent npm run build
+	$(call run-in,wiki-agent,wiki-agent,npm run build)
 
 wiki-test:
-	$(COMPOSE) exec wiki-agent npm run test
+	$(call run-in,wiki-agent,wiki-agent,npm run test)
 
 test:
-	$(COMPOSE) exec core ./vendor/bin/codecept run
+	$(call run-in,core,core,./vendor/bin/codecept run)
 
 knowledge-test:
-	$(COMPOSE) exec knowledge-agent ./vendor/bin/codecept run
+	$(call run-in,knowledge-agent,knowledge-agent,./vendor/bin/codecept run)
 
 hello-test:
-	$(COMPOSE) exec hello-agent ./vendor/bin/codecept run
+	$(call run-in,hello-agent,hello-agent,./vendor/bin/codecept run)
 
 dev-reporter-test:
-	$(COMPOSE) exec dev-reporter-agent ./vendor/bin/codecept run
+	$(call run-in,dev-reporter-agent,dev-reporter-agent,./vendor/bin/codecept run)
 
 dev-agent-test:
-	$(COMPOSE) exec dev-agent ./vendor/bin/codecept run
+	$(call run-in,dev-agent,dev-agent,./vendor/bin/codecept run)
 
 news-test:
-	$(COMPOSE) exec news-maker-agent python -m pytest tests/ -v
+	$(call run-in,news-maker-agent,news-maker-agent,python -m pytest tests/ -v)
 
 news-analyse:
-	$(COMPOSE) exec news-maker-agent ruff check app/ tests/
+	$(call run-in,news-maker-agent,news-maker-agent,ruff check app/ tests/)
 
 news-cs-check:
-	$(COMPOSE) exec news-maker-agent ruff format --check app/ tests/
+	$(call run-in,news-maker-agent,news-maker-agent,ruff format --check app/ tests/)
 
 news-cs-fix:
-	$(COMPOSE) exec news-maker-agent ruff format app/ tests/
+	$(call run-in,news-maker-agent,news-maker-agent,ruff format app/ tests/)
 
 analyse:
-	$(COMPOSE) exec core ./vendor/bin/phpstan analyse
+	$(call run-in,core,core,./vendor/bin/phpstan analyse)
 
 hello-analyse:
-	$(COMPOSE) exec hello-agent ./vendor/bin/phpstan analyse
+	$(call run-in,hello-agent,hello-agent,./vendor/bin/phpstan analyse)
 
 dev-reporter-analyse:
-	$(COMPOSE) exec dev-reporter-agent ./vendor/bin/phpstan analyse
+	$(call run-in,dev-reporter-agent,dev-reporter-agent,./vendor/bin/phpstan analyse)
 
 dev-agent-analyse:
-	$(COMPOSE) exec dev-agent ./vendor/bin/phpstan analyse
+	$(call run-in,dev-agent,dev-agent,./vendor/bin/phpstan analyse)
 
 knowledge-analyse:
-	$(COMPOSE) exec knowledge-agent ./vendor/bin/phpstan analyse
+	$(call run-in,knowledge-agent,knowledge-agent,./vendor/bin/phpstan analyse)
 
 cs-check:
-	$(COMPOSE) exec core ./vendor/bin/php-cs-fixer check --diff --allow-risky=yes
+	$(call run-in,core,core,./vendor/bin/php-cs-fixer check --diff --allow-risky=yes)
 
 hello-cs-check:
-	$(COMPOSE) exec hello-agent ./vendor/bin/php-cs-fixer check --diff --allow-risky=yes
+	$(call run-in,hello-agent,hello-agent,./vendor/bin/php-cs-fixer check --diff --allow-risky=yes)
 
 dev-reporter-cs-check:
-	$(COMPOSE) exec dev-reporter-agent ./vendor/bin/php-cs-fixer check --diff --allow-risky=yes
+	$(call run-in,dev-reporter-agent,dev-reporter-agent,./vendor/bin/php-cs-fixer check --diff --allow-risky=yes)
 
 dev-agent-cs-check:
-	$(COMPOSE) exec dev-agent ./vendor/bin/php-cs-fixer check --diff --allow-risky=yes
+	$(call run-in,dev-agent,dev-agent,./vendor/bin/php-cs-fixer check --diff --allow-risky=yes)
 
 knowledge-cs-check:
-	$(COMPOSE) exec knowledge-agent ./vendor/bin/php-cs-fixer check --diff --allow-risky=yes
+	$(call run-in,knowledge-agent,knowledge-agent,./vendor/bin/php-cs-fixer check --diff --allow-risky=yes)
 
 cs-fix:
-	$(COMPOSE) exec core ./vendor/bin/php-cs-fixer fix --allow-risky=yes
+	$(call run-in,core,core,./vendor/bin/php-cs-fixer fix --allow-risky=yes)
 
 hello-cs-fix:
-	$(COMPOSE) exec hello-agent ./vendor/bin/php-cs-fixer fix --allow-risky=yes
+	$(call run-in,hello-agent,hello-agent,./vendor/bin/php-cs-fixer fix --allow-risky=yes)
 
 dev-reporter-cs-fix:
-	$(COMPOSE) exec dev-reporter-agent ./vendor/bin/php-cs-fixer fix --allow-risky=yes
+	$(call run-in,dev-reporter-agent,dev-reporter-agent,./vendor/bin/php-cs-fixer fix --allow-risky=yes)
 
 dev-agent-cs-fix:
-	$(COMPOSE) exec dev-agent ./vendor/bin/php-cs-fixer fix --allow-risky=yes
+	$(call run-in,dev-agent,dev-agent,./vendor/bin/php-cs-fixer fix --allow-risky=yes)
 
 knowledge-cs-fix:
-	$(COMPOSE) exec knowledge-agent ./vendor/bin/php-cs-fixer fix --allow-risky=yes
+	$(call run-in,knowledge-agent,knowledge-agent,./vendor/bin/php-cs-fixer fix --allow-risky=yes)
 
 agent-discover:
-	$(COMPOSE) exec core php bin/console agent:discovery
+	$(call run-in,core,core,php bin/console agent:discovery)
 
 logs-setup:
-	$(COMPOSE) exec core php bin/console logs:index:setup
+	$(call run-in,core,core,php bin/console logs:index:setup)
 
 logs-cleanup:
-	$(COMPOSE) exec core php bin/console logs:cleanup
+	$(call run-in,core,core,php bin/console logs:cleanup)
 
 conventions-test:
 	cd tests/agent-conventions && npm install && AGENT_URL=$(AGENT_URL) npx codeceptjs run --steps
@@ -400,6 +401,29 @@ e2e-smoke: e2e-prepare
 
 sync-skills:
 	./scripts/sync-skills.sh
+
+# ── Monitoring Commands ─────────────────────────────────────
+monitor-builder:
+	@echo "=== Builder Pipeline Monitor (Claude Code) ==="
+	@echo "Keys: [s] start, [k] kill, [f] retry, [+/-] priority, [q] quit"
+	@./builder/monitor/pipeline-monitor.sh
+
+monitor-ultraworks:
+	@./builder/monitor/ultraworks-monitor.sh show
+	@echo ""
+	@echo "Commands:"
+	@echo "  make monitor-ultraworks-launch  - Start OpenCode in tmux"
+	@echo "  make monitor-ultraworks-attach  - Attach to running session"
+	@echo "  make monitor-ultraworks-menu    - Interactive menu"
+
+monitor-ultraworks-launch:
+	@./builder/monitor/ultraworks-monitor.sh launch "$(TASK)"
+
+monitor-ultraworks-attach:
+	@tmux attach -t ultraworks 2>/dev/null || echo "No ultraworks session. Run: make monitor-ultraworks-launch"
+
+monitor-ultraworks-menu:
+	@./builder/monitor/ultraworks-monitor.sh menu
 
 # ── Multi-Agent Builder Pipeline ─────────────────────────────────────
 pipeline:

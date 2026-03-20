@@ -12,15 +12,18 @@ services:
       - ai.platform.agent=true
     environment:
       MIGRATE_ON_START: "1"
-      DATABASE_URL: postgresql://news_maker_agent:news_maker_agent@postgres:5432/news_maker_agent
-      LITELLM_BASE_URL: http://litellm:4000
-      LITELLM_API_KEY: dev-key
+      DATABASE_URL: ${NEWS_MAKER_AGENT_DATABASE_URL:-postgresql://news_maker_agent:news_maker_agent@postgres:5432/news_maker_agent}
+      LITELLM_BASE_URL: ${LITELLM_BASE_URL:-http://litellm:4000}
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-dev-key}
       RANKER_MODEL: minimax/minimax-m2.5
       REWRITER_MODEL: minimax/minimax-m2.5
-      PLATFORM_CORE_URL: http://core
-      APP_INTERNAL_TOKEN: dev-internal-token
-      OPENSEARCH_URL: http://opensearch:9200
-      ADMIN_PUBLIC_URL: http://localhost:8084/admin/sources
+      PLATFORM_CORE_URL: ${CORE_PLATFORM_URL:-http://core}
+      APP_INTERNAL_TOKEN: ${APP_INTERNAL_TOKEN:-dev-internal-token}
+      OPENSEARCH_URL: ${OPENSEARCH_URL:-http://opensearch:9200}
+      ADMIN_PUBLIC_URL: http://${PUBLIC_DOMAIN:-localhost}:8084/admin/sources
+    env_file:
+      - path: ./.env.deployment
+        required: false
     volumes:
       - ./apps/news-maker-agent:/app
     depends_on:
@@ -28,7 +31,7 @@ services:
       - litellm
       - opensearch
     networks:
-      - dev-edge
+      - agents-internal
 
   news-maker-agent-e2e:
     profiles: [e2e]
@@ -37,16 +40,19 @@ services:
       dockerfile: docker/news-maker-agent/Dockerfile
     environment:
       MIGRATE_ON_START: "1"
-      DATABASE_URL: postgresql://news_maker_agent:news_maker_agent@postgres:5432/news_maker_agent_test
-      LITELLM_BASE_URL: http://litellm:4000
-      LITELLM_API_KEY: dev-key
+      DATABASE_URL: postgresql://${NEWS_MAKER_AGENT_DB_USER:-news_maker_agent}:${NEWS_MAKER_AGENT_DB_PASSWORD:-news_maker_agent}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/news_maker_agent_test
+      LITELLM_BASE_URL: ${LITELLM_BASE_URL:-http://litellm:4000}
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-dev-key}
       RANKER_MODEL: minimax/minimax-m2.5
       REWRITER_MODEL: minimax/minimax-m2.5
       PLATFORM_CORE_URL: http://core-e2e
-      APP_INTERNAL_TOKEN: dev-internal-token
-      OPENSEARCH_URL: http://opensearch:9200
+      APP_INTERNAL_TOKEN: ${APP_INTERNAL_TOKEN:-dev-internal-token}
+      OPENSEARCH_URL: ${OPENSEARCH_URL:-http://opensearch:9200}
       ADMIN_PUBLIC_URL: http://localhost:18084/admin/sources
       ENABLE_TEST_ENDPOINTS: "1"
+    env_file:
+      - path: ./.env.deployment
+        required: false
     ports:
       - "18084:8000"
     volumes:

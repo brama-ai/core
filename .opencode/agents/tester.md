@@ -1,7 +1,7 @@
 ---
 description: "Tester: runs tests, writes missing tests, fixes failures"
 mode: primary
-model: anthropic/claude-sonnet-4-6
+model: opencode-go/kimi-k2.5
 temperature: 0
 tools:
   edit: true

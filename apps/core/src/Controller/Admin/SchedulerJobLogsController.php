@@ -6,7 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Scheduler\ScheduledJobRepositoryInterface;
 use App\Scheduler\SchedulerJobLogRepositoryInterface;
-use App\Security\AdminUser;
+use App\Security\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,7 +23,7 @@ final class SchedulerJobLogsController extends AbstractController
     }
 
     #[Route('/admin/scheduler/{id}/logs', name: 'admin_scheduler_logs', requirements: ['id' => Requirement::UUID_V4])]
-    public function __invoke(string $id, Request $request, #[CurrentUser] AdminUser $user): Response
+    public function __invoke(string $id, Request $request, #[CurrentUser] User $user): Response
     {
         $job = $this->jobRepository->findById($id);
 

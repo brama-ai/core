@@ -6,7 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Logging\LogIndexManager;
 use App\Logging\TraceSequenceProjector;
-use App\Security\AdminUser;
+use App\Security\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -21,7 +21,7 @@ final class LogTraceController extends AbstractController
     }
 
     #[Route('/admin/logs/trace/{traceId}', name: 'admin_log_trace')]
-    public function __invoke(#[CurrentUser] AdminUser $user, string $traceId): Response
+    public function __invoke(#[CurrentUser] User $user, string $traceId): Response
     {
         $searchBody = [
             'query' => [

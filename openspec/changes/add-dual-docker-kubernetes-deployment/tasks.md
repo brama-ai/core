@@ -51,10 +51,10 @@
 
 ## 4. Service Hardening
 
-- [ ] 4.1 Ensure every HTTP service exposes production-ready health and readiness behavior
-- [ ] 4.2 Ensure long-running workers and schedulers have safe restart and shutdown behavior in both
+- [x] 4.1 Ensure every HTTP service exposes production-ready health and readiness behavior
+- [x] 4.2 Ensure long-running workers and schedulers have safe restart and shutdown behavior in both
   Docker and Kubernetes
-- [ ] 4.3 Remove hidden Compose-only assumptions from config and service wiring
+- [x] 4.3 Remove hidden Compose-only assumptions from config and service wiring
 
 ## 5. Documentation
 
@@ -70,6 +70,6 @@
 
 ## 6. Quality Checks
 
-- [ ] 6.1 Validate both deployment capabilities with OpenSpec strict validation
-- [ ] 6.2 Verify at least one end-to-end smoke path for Docker and one install validation path for
-  Kubernetes packaging (Docker path verified; Kubernetes packaging is pending)
+- [x] 6.1 Validate both deployment capabilities with OpenSpec strict validation
+- [x] 6.2 Verify at least one end-to-end smoke path for Docker and one install validation path for
+  Kubernetes packaging

@@ -1,0 +1,63 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Тенанти — Admin{% endblock %}
+{% block page_title %}Управління тенантами{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;">
+    <p style="color:var(--text-muted);font-size:.9rem;">Усього: {{ tenants|length }}</p>
+    <a href="{{ path('admin_tenant_create') }}" class="btn btn-primary" style="padding:.4rem 1rem;font-size:.85rem;border-radius:6px;background:var(--accent,#3b82f6);color:#fff;text-decoration:none;">
+        + Створити тенант
+    </a>
+</div>
+
+<div class="card">
+    <table style="width:100%;border-collapse:collapse;">
+        <thead>
+            <tr style="border-bottom:1px solid var(--border);text-align:left;">
+                <th style="padding:.6rem .75rem;font-size:.8rem;color:var(--text-muted);">Назва</th>
+                <th style="padding:.6rem .75rem;font-size:.8rem;color:var(--text-muted);">Slug</th>
+                <th style="padding:.6rem .75rem;font-size:.8rem;color:var(--text-muted);">Статус</th>
+                <th style="padding:.6rem .75rem;font-size:.8rem;color:var(--text-muted);">Учасники</th>
+                <th style="padding:.6rem .75rem;font-size:.8rem;color:var(--text-muted);">Створено</th>
+                <th style="padding:.6rem .75rem;font-size:.8rem;color:var(--text-muted);">Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tenant in tenants %}
+            <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:.6rem .75rem;font-size:.85rem;">{{ tenant.name }}</td>
+                <td style="padding:.6rem .75rem;font-size:.85rem;color:var(--text-muted);">{{ tenant.slug }}</td>
+                <td style="padding:.6rem .75rem;">
+                    {% if tenant.enabled %}
+                        <span style="color:#22c55e;font-size:.8rem;">Активний</span>
+                    {% else %}
+                        <span style="color:#ef4444;font-size:.8rem;">Вимкнено</span>
+                    {% endif %}
+                </td>
+                <td style="padding:.6rem .75rem;font-size:.85rem;">{{ memberCounts[tenant.id] ?? 0 }}</td>
+                <td style="padding:.6rem .75rem;font-size:.8rem;color:var(--text-muted);">{{ tenant.createdAt|date('Y-m-d H:i') }}</td>
+                <td style="padding:.6rem .75rem;">
+                    <a href="{{ path('admin_tenant_edit', {id: tenant.id}) }}" style="font-size:.8rem;margin-right:.5rem;">Редагувати</a>
+                    <form method="post" action="{{ path('admin_tenant_delete', {id: tenant.id}) }}" style="display:inline;" onsubmit="return confirm('Видалити тенант {{ tenant.name }}?');">
+                        <button type="submit" style="background:none;border:none;color:#ef4444;font-size:.8rem;cursor:pointer;">Видалити</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% for message in app.flashes('error') %}
+<div style="margin-top:1rem;padding:.75rem;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:6px;color:#ef4444;font-size:.85rem;">
+    {{ message }}
+</div>
+{% endfor %}
+
+{% for message in app.flashes('success') %}
+<div style="margin-top:1rem;padding:.75rem;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);border-radius:6px;color:#22c55e;font-size:.85rem;">
+    {{ message }}
+</div>
+{% endfor %}
+{% endblock %}

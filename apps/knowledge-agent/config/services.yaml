@@ -8,6 +8,13 @@ parameters:
     app.embedding_model: '%env(EMBEDDING_MODEL)%'
     app.internal_token: '%env(APP_INTERNAL_TOKEN)%'
     app.admin_public_url: '%env(ADMIN_PUBLIC_URL)%'
+    app.worker_concurrency: '%env(int:KNOWLEDGE_WORKER_CONCURRENCY)%'
+    app.rate_limit_max_tokens: '%env(int:KNOWLEDGE_RATE_LIMIT_MAX_TOKENS)%'
+    app.rate_limit_refill_rate: '%env(int:KNOWLEDGE_RATE_LIMIT_REFILL_RATE)%'
+    app.inspector_ingestion_key: '%env(INSPECTOR_INGESTION_KEY)%'
+    app.inspector_transport: '%env(INSPECTOR_TRANSPORT)%'
+    app.inspector_max_items: '%env(int:INSPECTOR_MAX_ITEMS)%'
+    app.neuron_autoflush: '%env(bool:NEURON_AUTOFLUSH)%'
 
 services:
     _defaults:
@@ -54,9 +61,17 @@ services:
             $litellmApiKey: '%app.litellm_api_key%'
             $embeddingModel: '%app.embedding_model%'
 
+    App\Service\TokenBucketRateLimiter:
+        arguments:
+            $maxTokens: '%app.rate_limit_max_tokens%'
+            $refillRate: '%app.rate_limit_refill_rate%'
+
     App\Command\KnowledgeWorkerCommand:
         arguments:
             $rabbitmqUrl: '%app.rabbitmq_url%'
+            $concurrency: '%app.worker_concurrency%'
+            $inspector: '@NeuronAI\Observability\InspectorObserver'
+            $monitoring: '@App\Service\WorkflowMonitoringService'
 
     App\Controller\Api\UploadController:
         arguments:
@@ -77,15 +92,24 @@ services:
     App\Controller\Admin\KnowledgeAdminController:
         arguments:
             $internalToken: '%app.internal_token%'
+            $rabbitmqUrl: '%app.rabbitmq_url%'
 
     App\Controller\Api\ManifestController:
         arguments:
             $adminPublicUrl: '%app.admin_public_url%'
 
+    App\Controller\Api\OpenApiController:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
     App\Controller\Api\Internal\MigrateController:
         arguments:
             $internalToken: '%app.internal_token%'
             $projectDir: '%kernel.project_dir%'
+
+    App\Controller\Api\HealthController:
+        arguments:
+            $rabbitmqUrl: '%app.rabbitmq_url%'
 
     App\Logging\OpenSearchHandler:
         arguments:
@@ -96,3 +120,15 @@ services:
             $appName: '%app.log_app_name%'
         tags:
             - { name: monolog.processor }
+
+    # Inspector APM Factory
+    App\Service\InspectorFactory:
+        arguments:
+            $inspectorKey: '%app.inspector_ingestion_key%'
+            $transport: '%app.inspector_transport%'
+            $maxItems: '%app.inspector_max_items%'
+            $autoFlush: '%app.neuron_autoflush%'
+
+    # Inspector APM Observer for workflow monitoring
+    NeuronAI\Observability\InspectorObserver:
+        factory: ['@App\Service\InspectorFactory', 'create']

@@ -1,7 +1,7 @@
 ---
 description: "Validator subagent: static analysis + CS fixes (runs parallel with tester)"
 mode: subagent
-model: openai/codex-mini-latest
+model: minimax/MiniMax-M2.5-highspeed
 temperature: 0
 steps: 30
 tools:

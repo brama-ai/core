@@ -620,6 +620,28 @@ a:hover { text-decoration: underline; }
 .dash-steps li a { color: var(--accent); }
 
 /* ==========================================================================
+   Platform Metrics
+   ========================================================================== */
+.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.metrics-stats { display: flex; flex-direction: column; gap: .4rem; }
+.metric-row { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.metric-label { font-size: .8rem; color: var(--text-secondary); }
+.metric-value { font-size: .9rem; font-weight: 600; color: var(--text-primary); }
+.metrics-subsection { margin-top: 1rem; padding-top: .75rem; border-top: 1px solid var(--bg-card-border); }
+.metrics-subsection-title { font-size: .75rem; font-weight: 600; color: var(--text-muted); margin-bottom: .5rem; text-transform: uppercase; letter-spacing: .04em; }
+.metrics-list { display: flex; flex-direction: column; gap: .35rem; }
+.metrics-list-scroll { max-height: 180px; overflow-y: auto; }
+.metrics-list-item { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: .35rem .5rem; background: var(--bg-input); border-radius: var(--radius-sm); }
+.metrics-list-name { font-size: .8rem; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.metrics-list-count { font-size: .75rem; color: var(--text-secondary); font-family: monospace; flex-shrink: 0; }
+.metrics-list-item-exec { flex-direction: column; align-items: flex-start; gap: .25rem; }
+.metrics-exec-info { display: flex; align-items: center; gap: .5rem; width: 100%; }
+.metrics-exec-name { font-size: .8rem; color: var(--text-primary); font-weight: 500; }
+.metrics-exec-agent { font-size: .7rem; color: var(--text-muted); }
+.metrics-exec-meta { display: flex; align-items: center; gap: .4rem; }
+.metrics-exec-meta .badge { font-size: .65rem; padding: .15rem .4rem; }
+
+/* ==========================================================================
    Responsive: sidebar collapse below 768px
    ========================================================================== */
 @media (max-width: 768px) {

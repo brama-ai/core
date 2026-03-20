@@ -6,8 +6,11 @@ namespace App\Command;
 
 use App\OpenSearch\KnowledgeRepository;
 use App\Service\EmbeddingService;
+use App\Service\TokenBucketRateLimiter;
+use App\Service\WorkflowMonitoringService;
 use App\Workflow\KnowledgeExtractionAgent;
 use App\Workflow\KnowledgeExtractionWorkflow;
+use NeuronAI\Observability\InspectorObserver;
 use Doctrine\DBAL\Connection;
 use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
@@ -39,6 +42,10 @@ final class KnowledgeWorkerCommand extends Command
         private readonly KnowledgeRepository $knowledgeRepository,
         private readonly EmbeddingService $embeddingService,
         private readonly Connection $dbal,
+        private readonly TokenBucketRateLimiter $rateLimiter,
+        private readonly int $concurrency = 1,
+        private readonly ?InspectorObserver $inspector = null,
+        private readonly ?WorkflowMonitoringService $monitoring = null,
     ) {
         parent::__construct();
     }
@@ -55,7 +62,11 @@ final class KnowledgeWorkerCommand extends Command
 
         $this->declareTopology($channel);
 
-        $channel->basic_qos(0, 1, false);
+        // Set prefetch count to concurrency level for better distribution
+        $channel->basic_qos(0, $this->concurrency, false);
+        
+        $io->info("Starting {$this->concurrency} concurrent consumers...");
+        
         $channel->basic_consume(
             self::QUEUE,
             '',
@@ -108,7 +119,21 @@ final class KnowledgeWorkerCommand extends Command
 
             $io->text("Processing chunk {$chunkHash} ({$attemptCount} attempts)...");
 
-            $workflow = new KnowledgeExtractionWorkflow($this->agent, $messages, $chunkMeta);
+            // Check rate limit before processing (2 tokens: 1 for analysis, 1 for extraction)
+            if (!$this->rateLimiter->consume('llm_calls', 2)) {
+                $waitTime = $this->rateLimiter->getTimeUntilNextToken('llm_calls');
+                $io->warning("Rate limit exceeded. Waiting {$waitTime} seconds before retrying...");
+                sleep($waitTime);
+                
+                // Try again after waiting
+                if (!$this->rateLimiter->consume('llm_calls', 2)) {
+                    $io->warning("Still rate limited after waiting. Requeuing message.");
+                    $msg->nack(false, true); // requeue
+                    return;
+                }
+            }
+
+            $workflow = new KnowledgeExtractionWorkflow($this->agent, $messages, $chunkMeta, $this->inspector, $this->monitoring);
             iterator_to_array($workflow->run());
 
             $knowledge = $workflow->getKnowledge();

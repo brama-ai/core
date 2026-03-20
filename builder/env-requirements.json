@@ -1,0 +1,41 @@
+{
+  "global": {
+    "tools": ["git", "jq"],
+    "services": ["postgresql", "redis"]
+  },
+  "apps": {
+    "core": {
+      "runtime": "php",
+      "min_version": "8.5",
+      "tools": ["composer"],
+      "extensions": ["json", "mbstring", "xml", "pdo_pgsql", "intl", "curl"],
+      "deps_check": "composer check-platform-reqs"
+    },
+    "knowledge-agent": {
+      "runtime": "php",
+      "min_version": "8.5",
+      "tools": ["composer"],
+      "extensions": ["json", "mbstring", "xml", "pdo_pgsql"],
+      "deps_check": "composer check-platform-reqs"
+    },
+    "dev-reporter-agent": {
+      "runtime": "php",
+      "min_version": "8.5",
+      "tools": ["composer"],
+      "extensions": ["json", "mbstring", "xml", "pdo_pgsql"],
+      "deps_check": "composer check-platform-reqs"
+    },
+    "news-maker-agent": {
+      "runtime": "python",
+      "min_version": "3.12",
+      "tools": ["pip"],
+      "deps_check": "pip check"
+    },
+    "wiki-agent": {
+      "runtime": "node",
+      "min_version": "20",
+      "tools": ["npm"],
+      "deps_check": "npm ls --all"
+    }
+  }
+}

@@ -21,6 +21,125 @@ The pipeline SHALL include a `builder/cost-tracker.sh` module that calculates ap
 
 ---
 
+### Requirement: Per-Agent Telemetry Capture
+The pipeline SHALL persist structured per-agent telemetry that records the actual model used, token counts, duration, invoked tools, and files read during the step.
+
+#### Scenario: Persist telemetry for a completed agent step
+- **GIVEN** an agent step completes and its `.meta.json` exists
+- **WHEN** the pipeline finalizes that step
+- **THEN** it writes a telemetry record for the same step containing `agent`, `model`, `tokens`, `duration_ms`, `tools`, and `files_read`
+
+#### Scenario: Use actual fallback model in telemetry
+- **GIVEN** an agent falls back from its configured primary to another model
+- **WHEN** telemetry is recorded
+- **THEN** the `model` field reflects the actual model that completed the step
+- **AND** summary aggregation uses that actual model
+
+#### Scenario: Deduplicate repeated file reads within a step
+- **GIVEN** an agent reads the same file multiple times in one step
+- **WHEN** the telemetry record is normalized
+- **THEN** the file appears once in `files_read`
+- **AND** tool counts still preserve repeated tool usage
+
+#### Scenario: Record workflow identity with telemetry
+- **GIVEN** a task runs through either the `Builder` or `Ultraworks` workflow
+- **WHEN** telemetry is persisted for any agent step
+- **THEN** the record includes the originating workflow identifier
+
+---
+
+### Requirement: Workflow-Agnostic Reporting
+The pipeline reporting contract SHALL support both `Builder` and `Ultraworks` using the same telemetry schema and summary structure.
+
+#### Scenario: Builder task renders report
+- **GIVEN** a task executed through the `Builder` workflow
+- **WHEN** the summary is generated
+- **THEN** it uses the shared telemetry schema and shared summary sections
+
+#### Scenario: Ultraworks task renders report
+- **GIVEN** a task executed through the `Ultraworks` workflow
+- **WHEN** the summary is generated
+- **THEN** it uses the same telemetry schema and the same summary sections as `Builder`
+
+---
+
+### Requirement: Summary Agent Cost Table
+The pipeline summary SHALL include a structured per-agent execution table with the columns `Agent`, `Model`, `Input`, `Output`, `Price`, and `Time`.
+
+#### Scenario: Render agent execution row
+- **GIVEN** a completed agent telemetry record with token and duration data
+- **WHEN** the summary is generated
+- **THEN** the summary table includes one row for that agent step
+- **AND** `Input` and `Output` are sourced from the actual token counts
+- **AND** `Price` is the estimated USD cost for that step
+
+#### Scenario: Render failed agent row
+- **GIVEN** an agent step failed after producing telemetry
+- **WHEN** the summary is generated
+- **THEN** the step still appears in the table with its available token, price, and time data
+
+---
+
+### Requirement: Summary Workflow Header
+The pipeline summary SHALL identify which workflow produced the report.
+
+#### Scenario: Render builder workflow header
+- **GIVEN** telemetry metadata declares the workflow as `builder`
+- **WHEN** the summary is generated
+- **THEN** the summary header includes `Workflow: Builder`
+
+#### Scenario: Render ultraworks workflow header
+- **GIVEN** telemetry metadata declares the workflow as `ultraworks`
+- **WHEN** the summary is generated
+- **THEN** the summary header includes `Workflow: Ultraworks`
+
+---
+
+### Requirement: Summary Model Aggregation
+The pipeline summary SHALL include aggregated token and cost totals grouped by actual model.
+
+#### Scenario: Aggregate usage across agents sharing a model
+- **GIVEN** multiple agent steps completed with the same actual model
+- **WHEN** the summary is generated
+- **THEN** the model totals table sums their input tokens, output tokens, and price into one row for that model
+
+#### Scenario: Separate fallback model totals
+- **GIVEN** one agent ran on its fallback model while another used the configured primary
+- **WHEN** the summary is generated
+- **THEN** each actual model appears in its own aggregation row
+
+---
+
+### Requirement: Summary Tool Breakdown
+The pipeline summary SHALL list the tools invoked by each agent below the execution tables.
+
+#### Scenario: Render per-agent tool list
+- **GIVEN** a telemetry record contains tool usage counts
+- **WHEN** the summary is generated
+- **THEN** the summary includes a section for that agent listing each tool and its count
+
+#### Scenario: No tools recorded
+- **GIVEN** a telemetry record contains no tool usage
+- **WHEN** the summary is generated
+- **THEN** the agent's tools section includes an explicit placeholder indicating that no tools were recorded
+
+---
+
+### Requirement: Summary Files-Read Breakdown
+The pipeline summary SHALL list the files read by each agent below the tool breakdown.
+
+#### Scenario: Render files read per agent
+- **GIVEN** a telemetry record contains a `files_read` list
+- **WHEN** the summary is generated
+- **THEN** the summary includes a section for that agent listing those files
+
+#### Scenario: No files recorded
+- **GIVEN** a telemetry record contains no readable file list
+- **WHEN** the summary is generated
+- **THEN** the agent's files section includes an explicit placeholder indicating that no files were recorded
+
+---
+
 ### Requirement: Subscription Plan Configuration
 The pipeline SHALL read subscription plan type from ENV variables and calculate daily budget accordingly.
 

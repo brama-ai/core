@@ -1,0 +1,96 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ task.title }}{% endblock %}
+{% block page_title %}{{ task.title }}{% endblock %}
+
+{% block content %}
+    <div class="card" style="margin-bottom:1rem;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+            <div>
+                <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+                    <span class="badge {{ task.status in ['failed','cancelled'] ? 'badge-danger' : (task.status == 'done' ? 'badge-success' : 'badge-info') }}">{{ task.status }}</span>
+                    <span class="badge badge-info">{{ task.current_stage ?: 'no-stage' }}</span>
+                    <span style="color:var(--text-muted);">Priority {{ task.priority }}</span>
+                </div>
+                <div style="margin-top:.75rem;color:var(--text-muted);font-size:.92rem;">
+                    Worker: {{ task.worker_id ?: '—' }} | Branch: {{ task.branch_name ?: '—' }} | Worktree: {{ task.worktree_path ?: '—' }}
+                </div>
+            </div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+                {% if task.status in ['draft'] %}
+                    <button class="btn btn-primary" onclick="coderAction('queue')">{{ 'coder.action.queue'|trans }}</button>
+                {% elseif task.status in ['queued','in_progress'] %}
+                    <button class="btn btn-settings" onclick="coderAction('cancel')">{{ 'coder.action.cancel'|trans }}</button>
+                {% elseif task.status in ['failed','cancelled'] %}
+                    <button class="btn btn-primary" onclick="coderAction('retry')">{{ 'coder.action.retry'|trans }}</button>
+                {% endif %}
+                <a href="{{ path('admin_coder') }}" class="btn btn-settings">{{ 'coder.back'|trans }}</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;">
+        <h3 style="margin-top:0;">{{ 'coder.stage_timeline'|trans }}</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;">
+            {% for stage in ['planner','architect','coder','auditor','validator','tester','documenter','summarizer'] %}
+                {% set item = stage_progress[stage] ?? null %}
+                <div style="border:1px solid var(--border);border-radius:12px;padding:.75rem;background:{{ task.current_stage == stage ? 'rgba(38,132,255,.08)' : 'transparent' }};">
+                    <div style="font-weight:700;">{{ stage }}</div>
+                    <div style="color:var(--text-muted);font-size:.9rem;">{{ item.status ?? 'pending' }}</div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;">
+        <h3 style="margin-top:0;">{{ 'coder.description'|trans }}</h3>
+        <pre style="white-space:pre-wrap;background:#f7f7f9;border-radius:12px;padding:1rem;">{{ task.description }}</pre>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;">
+        <h3 style="margin-top:0;">{{ 'coder.artifacts'|trans }}</h3>
+        <div style="display:grid;gap:.4rem;">
+            <div>Summary: <code>{{ task.summary_path ?: '—' }}</code></div>
+            <div>Artifacts: <code>{{ task.artifacts_path ?: '—' }}</code></div>
+            <div>Builder file: <code>{{ task.builder_task_path ?: '—' }}</code></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top:0;">{{ 'coder.logs'|trans }}</h3>
+        <div id="log-panel" style="max-height:480px;overflow:auto;background:#10151c;color:#d9e2ef;border-radius:12px;padding:1rem;font-family:ui-monospace,monospace;font-size:.9rem;">
+            {% for log in logs %}
+                <div data-log-id="{{ log.id }}">[{{ log.created_at }}] {{ log.level|upper }} {% if log.stage %}[{{ log.stage }}]{% endif %} {{ log.message }}</div>
+            {% else %}
+                <div style="color:#8aa0bb;">{{ 'coder.no_logs'|trans }}</div>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+    function coderAction(action) {
+        fetch('/api/v1/internal/coder/{{ task.id }}/' + action, {method: 'POST'}).then(() => window.location.reload());
+    }
+
+    const logPanel = document.getElementById('log-panel');
+    let lastId = logPanel.querySelector('[data-log-id]:last-child')?.dataset.logId || '';
+    const stream = new EventSource('/admin/coder/events?cursor=' + encodeURIComponent(new Date(Date.now() - 10000).toISOString()));
+    stream.addEventListener('task.log', function (event) {
+        const payload = JSON.parse(event.data);
+        if (payload.task_id !== '{{ task.id }}') return;
+        if (lastId && payload.id <= lastId) return;
+        const line = document.createElement('div');
+        line.dataset.logId = payload.id;
+        line.textContent = '[' + payload.created_at + '] ' + payload.level.toUpperCase() + (payload.stage ? ' [' + payload.stage + ']' : '') + ' ' + payload.message;
+        logPanel.appendChild(line);
+        logPanel.scrollTop = logPanel.scrollHeight;
+        lastId = payload.id;
+    });
+    stream.addEventListener('task.status_changed', function (event) {
+        const payload = JSON.parse(event.data);
+        if (payload.task_id === '{{ task.id }}') window.location.reload();
+    });
+    </script>
+{% endblock %}

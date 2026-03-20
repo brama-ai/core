@@ -1,29 +1,29 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="{{ app.request.locale ?? 'uk' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Вхід — Admin</title>
+    <title>{{ 'login.title'|trans }}</title>
     <link rel="stylesheet" href="/css/admin.css">
 </head>
 <body class="login-page">
     <div class="login-box">
-        <h1>Вхід в адмінку</h1>
+        <h1>{{ 'login.heading'|trans }}</h1>
 
         {% if error %}
             <div class="login-error">{{ error.messageKey | trans(error.messageData, 'security') }}</div>
         {% endif %}
 
         <form method="post" action="{{ path('admin_login') }}">
-            <label for="username">Логін</label>
+            <label for="username">{{ 'login.username'|trans }}</label>
             <input type="text" id="username" name="_username" value="{{ last_username }}" autocomplete="username" autofocus>
 
-            <label for="password">Пароль</label>
+            <label for="password">{{ 'login.password'|trans }}</label>
             <input type="password" id="password" name="_password" autocomplete="current-password">
 
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
-            <button type="submit">Увійти</button>
+            <button type="submit">{{ 'login.submit'|trans }}</button>
         </form>
     </div>
 </body>

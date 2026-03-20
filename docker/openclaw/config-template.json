@@ -1,0 +1,53 @@
+{
+  "_comment": "Example OpenClaw configuration for AI Community Platform integration",
+  "_note": "This is a template - actual config is stored in .local/openclaw/state/openclaw.json",
+  
+  "discovery": {
+    "enabled": true,
+    "endpoint": "http://core:8080/api/v1/a2a/discovery",
+    "token": "your-gateway-token-here",
+    "poll_interval": 30,
+    "_description": "Discovery settings for automatic tool catalog updates"
+  },
+  
+  "a2a": {
+    "bridge_endpoint": "http://core:8080/api/v1/a2a/send-message",
+    "token": "your-gateway-token-here",
+    "timeout": 30,
+    "_description": "A2A bridge settings for invoking platform agents"
+  },
+  
+  "tools": {
+    "_comment": "Tools are automatically populated from discovery endpoint",
+    "_example_tool": {
+      "name": "knowledge.search",
+      "agent": "knowledge-agent",
+      "description": "Search the community knowledge base",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["hybrid", "keyword", "vector"],
+            "default": "hybrid"
+          }
+        },
+        "required": ["query"]
+      }
+    }
+  },
+  
+  "gateway": {
+    "token": "your-gateway-token-here",
+    "_description": "Must match OPENCLAW_GATEWAY_TOKEN in platform environment"
+  },
+  
+  "telegram": {
+    "bot_token": "your-telegram-bot-token",
+    "_description": "Optional: for Telegram integration"
+  }
+}

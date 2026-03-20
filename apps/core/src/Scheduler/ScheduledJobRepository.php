@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Scheduler;
 
+use App\Tenant\TenantContext;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
 
@@ -11,10 +12,13 @@ final class ScheduledJobRepository implements ScheduledJobRepositoryInterface
 {
     public function __construct(
         private readonly Connection $connection,
+        private readonly TenantContext $tenantContext,
     ) {
     }
 
     /**
+     * Due jobs are fetched globally — the scheduler process handles all tenants.
+     *
      * @return list<array<string, mixed>>
      */
     public function findDueJobs(): array
@@ -45,13 +49,15 @@ final class ScheduledJobRepository implements ScheduledJobRepositoryInterface
         string $nextRunAt,
         string $source = 'manifest',
     ): void {
+        $tenantId = $this->tenantContext->requireTenantId();
+
         $this->connection->executeStatement(
             <<<'SQL'
             INSERT INTO scheduled_jobs
-                (agent_name, job_name, skill_id, payload, cron_expression, next_run_at, max_retries, retry_delay_seconds, timezone, source)
+                (agent_name, job_name, skill_id, payload, cron_expression, next_run_at, max_retries, retry_delay_seconds, timezone, source, tenant_id)
             VALUES
-                (:agentName, :jobName, :skillId, :payload, :cronExpression, :nextRunAt, :maxRetries, :retryDelaySeconds, :timezone, :source)
-            ON CONFLICT (agent_name, job_name) DO UPDATE SET
+                (:agentName, :jobName, :skillId, :payload, :cronExpression, :nextRunAt, :maxRetries, :retryDelaySeconds, :timezone, :source, :tenantId)
+            ON CONFLICT (agent_name, job_name, tenant_id) DO UPDATE SET
                 skill_id             = EXCLUDED.skill_id,
                 payload              = EXCLUDED.payload,
                 cron_expression      = EXCLUDED.cron_expression,
@@ -73,12 +79,20 @@ final class ScheduledJobRepository implements ScheduledJobRepositoryInterface
                 'retryDelaySeconds' => $retryDelaySeconds,
                 'timezone' => $timezone,
                 'source' => $source,
+                'tenantId' => $tenantId,
             ],
         );
     }
 
     public function deleteByAgent(string $agentName): int
     {
+        if ($this->tenantContext->isSet()) {
+            return (int) $this->connection->executeStatement(
+                'DELETE FROM scheduled_jobs WHERE agent_name = :agentName AND tenant_id = :tenantId',
+                ['agentName' => $agentName, 'tenantId' => $this->tenantContext->requireTenantId()],
+            );
+        }
+
         return (int) $this->connection->executeStatement(
             'DELETE FROM scheduled_jobs WHERE agent_name = :agentName',
             ['agentName' => $agentName],
@@ -87,6 +101,13 @@ final class ScheduledJobRepository implements ScheduledJobRepositoryInterface
 
     public function enableByAgent(string $agentName): int
     {
+        if ($this->tenantContext->isSet()) {
+            return (int) $this->connection->executeStatement(
+                'UPDATE scheduled_jobs SET enabled = TRUE, updated_at = now() WHERE agent_name = :agentName AND tenant_id = :tenantId',
+                ['agentName' => $agentName, 'tenantId' => $this->tenantContext->requireTenantId()],
+            );
+        }
+
         return (int) $this->connection->executeStatement(
             'UPDATE scheduled_jobs SET enabled = TRUE, updated_at = now() WHERE agent_name = :agentName',
             ['agentName' => $agentName],
@@ -95,6 +116,13 @@ final class ScheduledJobRepository implements ScheduledJobRepositoryInterface
 
     public function disableByAgent(string $agentName): int
     {
+        if ($this->tenantContext->isSet()) {
+            return (int) $this->connection->executeStatement(
+                'UPDATE scheduled_jobs SET enabled = FALSE, updated_at = now() WHERE agent_name = :agentName AND tenant_id = :tenantId',
+                ['agentName' => $agentName, 'tenantId' => $this->tenantContext->requireTenantId()],
+            );
+        }
+
         return (int) $this->connection->executeStatement(
             'UPDATE scheduled_jobs SET enabled = FALSE, updated_at = now() WHERE agent_name = :agentName',
             ['agentName' => $agentName],
@@ -106,7 +134,13 @@ final class ScheduledJobRepository implements ScheduledJobRepositoryInterface
      */
     public function findAll(): array
     {
-        /* @var list<array<string, mixed>> */
+        if ($this->tenantContext->isSet()) {
+            return $this->connection->fetchAllAssociative(
+                'SELECT * FROM scheduled_jobs WHERE tenant_id = :tenantId ORDER BY agent_name, job_name',
+                ['tenantId' => $this->tenantContext->requireTenantId()],
+            );
+        }
+
         return $this->connection->fetchAllAssociative(
             'SELECT * FROM scheduled_jobs ORDER BY agent_name, job_name',
         );

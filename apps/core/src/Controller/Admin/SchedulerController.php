@@ -6,7 +6,7 @@ namespace App\Controller\Admin;
 
 use App\AgentRegistry\AgentRegistryInterface;
 use App\Scheduler\ScheduledJobRepositoryInterface;
-use App\Security\AdminUser;
+use App\Security\User;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,7 +23,7 @@ final class SchedulerController extends AbstractController
     }
 
     #[Route('/admin/scheduler', name: 'admin_scheduler')]
-    public function __invoke(#[CurrentUser] AdminUser $user): Response
+    public function __invoke(#[CurrentUser] User $user): Response
     {
         $jobs = $this->repository->findAll();
         $allAgents = $this->agentRegistry->findAll();

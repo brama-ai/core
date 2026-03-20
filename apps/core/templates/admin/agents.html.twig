@@ -1,50 +1,50 @@
 {% extends 'admin/layout.html.twig' %}
 
-{% block title %}Управління агентами — Admin{% endblock %}
-{% block page_title %}Управління агентами{% endblock %}
+{% block title %}{{ 'agents.title'|trans }} — Admin{% endblock %}
+{% block page_title %}{{ 'agents.title'|trans }}{% endblock %}
 
 {% block content %}
     <div class="glass-card state-legend">
-        <h2>Пояснення стейтів</h2>
+        <h2>{{ 'agents.state_legend'|trans }}</h2>
         <div class="state-legend-grid">
             <div class="state-legend-item">
-                <span class="badge badge-enabled">Увімкнено</span>
-                <span class="state-hint">Агент активний: події та команди маршрутизуються.</span>
+                <span class="badge badge-enabled">{{ 'agents.state.enabled'|trans }}</span>
+                <span class="state-hint">{{ 'agents.state.enabled_hint'|trans }}</span>
             </div>
             <div class="state-legend-item">
-                <span class="badge badge-disabled">Вимкнено</span>
-                <span class="state-hint">Агент вимкнений: події та команди не надсилаються.</span>
+                <span class="badge badge-disabled">{{ 'agents.state.disabled'|trans }}</span>
+                <span class="state-hint">{{ 'agents.state.disabled_hint'|trans }}</span>
             </div>
             <div class="state-legend-item">
-                <span class="badge badge-unknown">Не встановлено</span>
-                <span class="state-hint">Агент у мережі Docker, але ще не провіжинений у платформі.</span>
+                <span class="badge badge-unknown">{{ 'agents.state.not_installed'|trans }}</span>
+                <span class="state-hint">{{ 'agents.state.not_installed_hint'|trans }}</span>
             </div>
             <div class="state-legend-item">
-                <span class="badge badge-healthy">Healthy</span>
-                <span class="state-hint">Агент доступний та відповідає за конвенціями.</span>
+                <span class="badge badge-healthy">{{ 'agents.state.healthy'|trans }}</span>
+                <span class="state-hint">{{ 'agents.state.healthy_hint'|trans }}</span>
             </div>
             <div class="state-legend-item">
-                <span class="badge badge-degraded">Degraded</span>
-                <span class="state-hint">Є порушення конвенцій, але агент частково працює.</span>
+                <span class="badge badge-degraded">{{ 'agents.state.degraded'|trans }}</span>
+                <span class="state-hint">{{ 'agents.state.degraded_hint'|trans }}</span>
             </div>
             <div class="state-legend-item">
-                <span class="badge badge-unavailable">Unavailable</span>
-                <span class="state-hint">Агент тимчасово недоступний по мережі або health-check.</span>
+                <span class="badge badge-unavailable">{{ 'agents.state.unavailable'|trans }}</span>
+                <span class="state-hint">{{ 'agents.state.unavailable_hint'|trans }}</span>
             </div>
         </div>
     </div>
 
     <div class="action-bar">
         <span id="discoverResult" class="action-result" style="display:none"></span>
-        <button class="btn btn-discover" id="discoverBtn" onclick="runDiscovery()">Виявити агентів</button>
+        <button class="btn btn-discover" id="discoverBtn" onclick="runDiscovery()">{{ 'agents.discover'|trans }}</button>
     </div>
 
     <div class="agent-tabs" role="tablist" aria-label="Agent sections">
         <button class="btn btn-tab active" id="tab-installed-btn" type="button" onclick="switchTab('installed')">
-            Встановлені ({{ installed_agents|length }})
+            {{ 'agents.tab.installed'|trans }} ({{ installed_agents|length }})
         </button>
         <button class="btn btn-tab" id="tab-marketplace-btn" type="button" onclick="switchTab('marketplace')">
-            Маркетплейс ({{ marketplace_agents|length }})
+            {{ 'agents.tab.marketplace'|trans }} ({{ marketplace_agents|length }})
         </button>
     </div>
 
@@ -52,7 +52,7 @@
         {% include 'admin/_agents_table.html.twig' with {
             agents: installed_agents,
             mode: 'installed',
-            empty_message: 'Немає встановлених агентів. Перейдіть у вкладку «Маркетплейс» та натисніть «Встановити».'
+            empty_message: 'agents.empty_installed'|trans
         } only %}
     </div>
 
@@ -60,26 +60,29 @@
         {% include 'admin/_agents_table.html.twig' with {
             agents: marketplace_agents,
             mode: 'marketplace',
-            empty_message: 'Маркетплейс порожній. Натисніть «Виявити агентів», щоб знайти сервіси в Docker.'
+            empty_message: 'agents.empty_marketplace'|trans
         } only %}
     </div>
 
     <div class="modal-overlay" id="violationsModal" onclick="closeModal(event)">
         <div class="modal">
-            <h3 id="modalTitle">Порушення конвенцій</h3>
+            <h3 id="modalTitle">{{ 'agents.violations'|trans }}</h3>
             <ul id="modalList"></ul>
-            <button class="btn btn-disable modal-close" onclick="document.getElementById('violationsModal').classList.remove('active')">Закрити</button>
+            <button class="btn btn-disable modal-close" onclick="document.getElementById('violationsModal').classList.remove('active')">{{ 'agents.close'|trans }}</button>
         </div>
     </div>
 {% endblock %}
 
 {% block javascripts %}
 <script>
+var discoveringText = '{{ 'agents.discovering'|trans|e('js') }}';
+var discoverBtnText = '{{ 'agents.discover'|trans|e('js') }}';
+
 function runDiscovery() {
     var btn = document.getElementById('discoverBtn');
     var result = document.getElementById('discoverResult');
     btn.disabled = true;
-    btn.textContent = 'Виявлення...';
+    btn.textContent = discoveringText;
     result.style.display = 'none';
 
     fetch('{{ path('admin_agents_discover') }}', {
@@ -88,19 +91,19 @@ function runDiscovery() {
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
-        result.textContent = 'Виявлено: ' + data.discovered + ' агент(ів)';
+        result.textContent = '{{ 'agents.discovered'|trans|e('js') }}'.replace('%count%', data.discovered);
         result.style.color = 'var(--success)';
         result.style.display = 'inline';
         btn.disabled = false;
-        btn.textContent = 'Виявити агентів';
+        btn.textContent = discoverBtnText;
         setTimeout(function() { location.reload(); }, 1000);
     })
     .catch(function() {
-        result.textContent = 'Помилка запиту';
+        result.textContent = '{{ 'agents.error.request'|trans|e('js') }}';
         result.style.color = 'var(--danger)';
         result.style.display = 'inline';
         btn.disabled = false;
-        btn.textContent = 'Виявити агентів';
+        btn.textContent = discoverBtnText;
     });
 }
 
@@ -126,12 +129,12 @@ function switchTab(tab) {
 
 function extractError(response) {
     return response.clone().json()
-        .then(function(body) { return body.error || ('Помилка: ' + response.status); })
-        .catch(function() { return 'Помилка: ' + response.status; });
+        .then(function(body) { return body.error || ('{{ 'agents.error.status'|trans|e('js') }}'.replace('%status%', response.status)); })
+        .catch(function() { return '{{ 'agents.error.status'|trans|e('js') }}'.replace('%status%', response.status); });
 }
 
 function installAgent(name) {
-    if (!confirm('Встановити агент ' + name + '?\n\nБуде виконано провіжинінг сховищ (БД/Redis/OpenSearch) та міграції.')) return;
+    if (!confirm('{{ 'agents.confirm.install'|trans|e('js') }}'.replace('%name%', name))) return;
 
     fetch('/api/v1/internal/agents/' + encodeURIComponent(name) + '/install', {
         method: 'POST',
@@ -147,12 +150,12 @@ function installAgent(name) {
             alert(message);
         });
     })
-    .catch(function() { alert('Помилка мережі'); });
+    .catch(function() { alert('{{ 'agents.error.network'|trans|e('js') }}'); });
 }
 
 function toggleAgent(name, action) {
-    var label = action === 'enable' ? 'Увімкнути' : 'Вимкнути';
-    if (!confirm(label + ' агент ' + name + '?')) return;
+    var label = action === 'enable' ? '{{ 'agents.action.enable'|trans|e('js') }}' : '{{ 'agents.action.disable'|trans|e('js') }}';
+    if (!confirm('{{ 'agents.confirm.toggle'|trans|e('js') }}'.replace('%action%', label).replace('%name%', name))) return;
 
     fetch('/api/v1/internal/agents/' + encodeURIComponent(name) + '/' + action, {
         method: 'POST',
@@ -168,11 +171,11 @@ function toggleAgent(name, action) {
             alert(message);
         });
     })
-    .catch(function() { alert('Помилка мережі'); });
+    .catch(function() { alert('{{ 'agents.error.network'|trans|e('js') }}'); });
 }
 
 function deleteAgent(name) {
-    if (!confirm('Видалити агент ' + name + '?\n\nЦе повністю видалить провіжинінг (БД, Redis, OpenSearch) і поверне агент у вкладку «Маркетплейс».')) return;
+    if (!confirm('{{ 'agents.confirm.delete'|trans|e('js') }}'.replace('%name%', name))) return;
 
     fetch('/api/v1/internal/agents/' + encodeURIComponent(name), {
         method: 'DELETE',
@@ -188,12 +191,12 @@ function deleteAgent(name) {
             alert(message);
         });
     })
-    .catch(function() { alert('Помилка мережі'); });
+    .catch(function() { alert('{{ 'agents.error.network'|trans|e('js') }}'); });
 }
 
 function showViolations(name, violations) {
     var list = document.getElementById('modalList');
-    document.getElementById('modalTitle').textContent = 'Порушення: ' + name;
+    document.getElementById('modalTitle').textContent = '{{ 'agents.violations_for'|trans|e('js') }}'.replace('%name%', name);
     list.innerHTML = '';
 
     var items = violations;

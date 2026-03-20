@@ -1,7 +1,7 @@
 {% extends 'admin/layout.html.twig' %}
 
-{% block title %}Планувальник — Admin{% endblock %}
-{% block page_title %}Планувальник завдань{% endblock %}
+{% block title %}{{ 'scheduler.title'|trans }} — Admin{% endblock %}
+{% block page_title %}{{ 'scheduler.title'|trans }}{% endblock %}
 
 {% block stylesheets %}
     <link rel="stylesheet" href="https://esm.sh/@vue-js-cron/light@5.1.1/dist/light.css">
@@ -27,28 +27,28 @@
 {% block content %}
     <div class="stats-grid" style="margin-bottom:1rem;">
         <div class="stat-card">
-            <div class="stat-label">Завдань</div>
+            <div class="stat-label">{{ 'scheduler.stat.jobs'|trans }}</div>
             <div class="stat-value">{{ stats.total_jobs }}</div>
             <div style="font-size:.7rem;color:var(--text-muted);margin-top:.2rem;">
-                {{ stats.enabled_jobs }} активних / {{ stats.disabled_jobs }} вимкн.
+                {{ 'scheduler.stat.enabled'|trans({'%enabled%': stats.enabled_jobs, '%disabled%': stats.disabled_jobs}) }}
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Виконань (24г)</div>
+            <div class="stat-label">{{ 'scheduler.stat.runs_24h'|trans }}</div>
             <div class="stat-value text-success">{{ stats.runs_24h }}</div>
             <div style="font-size:.7rem;color:var(--text-muted);margin-top:.2rem;">
-                {{ stats.completed_24h }} ок / {{ stats.failed_24h }} помилок
+                {{ 'scheduler.stat.runs_detail'|trans({'%completed%': stats.completed_24h, '%failed%': stats.failed_24h}) }}
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Проблемних</div>
+            <div class="stat-label">{{ 'scheduler.stat.problems'|trans }}</div>
             <div class="stat-value{% if stats.failed_jobs > 0 or stats.stale_jobs > 0 %} text-danger{% endif %}">{{ stats.failed_jobs + stats.stale_jobs }}</div>
             <div style="font-size:.7rem;color:var(--text-muted);margin-top:.2rem;">
-                {{ stats.failed_jobs }} failed / {{ stats.stale_jobs }} stale
+                {{ 'scheduler.stat.problem_detail'|trans({'%failed%': stats.failed_jobs, '%stale%': stats.stale_jobs}) }}
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Останній запуск</div>
+            <div class="stat-label">{{ 'scheduler.stat.last_run'|trans }}</div>
             <div class="stat-value" style="font-size:1rem;">
                 {% if stats.last_run %}
                     {{ stats.last_run|date('H:i:s') }}
@@ -57,15 +57,15 @@
                 {% endif %}
             </div>
             <div style="font-size:.7rem;color:var(--text-muted);margin-top:.2rem;">
-                {% if stats.last_run %}{{ stats.last_run|date('d.m.Y') }}{% else %}немає даних{% endif %}
+                {% if stats.last_run %}{{ stats.last_run|date('d.m.Y') }}{% else %}{{ 'scheduler.stat.no_data'|trans }}{% endif %}
             </div>
         </div>
     </div>
 
     <div class="glass-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
-            <span style="font-size:.85rem;color:var(--text-secondary);">Всього завдань: {{ jobs|length }}</span>
-            <button class="btn btn-primary" style="font-size:.8rem;padding:.4rem .8rem;" onclick="document.getElementById('createJobModal').classList.add('active')">+ Створити завдання</button>
+            <span style="font-size:.85rem;color:var(--text-secondary);">{{ 'scheduler.total'|trans({'%count%': jobs|length}) }}</span>
+            <button class="btn btn-primary" style="font-size:.8rem;padding:.4rem .8rem;" onclick="document.getElementById('createJobModal').classList.add('active')">{{ 'scheduler.create'|trans }}</button>
         </div>
 
         <div style="overflow-x:auto;">
@@ -73,15 +73,15 @@
                 <thead>
                     <tr>
                         <th></th>
-                        <th>Агент</th>
-                        <th>Завдання</th>
-                        <th>Скіл</th>
-                        <th>Cron</th>
-                        <th>Наступний запуск</th>
-                        <th>Останній запуск</th>
-                        <th>Статус</th>
-                        <th>Увімкнено</th>
-                        <th>Дії</th>
+                        <th>{{ 'scheduler.table.agent'|trans }}</th>
+                        <th>{{ 'scheduler.table.job'|trans }}</th>
+                        <th>{{ 'scheduler.table.skill'|trans }}</th>
+                        <th>{{ 'scheduler.table.cron'|trans }}</th>
+                        <th>{{ 'scheduler.table.next_run'|trans }}</th>
+                        <th>{{ 'scheduler.table.last_run'|trans }}</th>
+                        <th>{{ 'scheduler.table.status'|trans }}</th>
+                        <th>{{ 'scheduler.table.enabled'|trans }}</th>
+                        <th>{{ 'scheduler.table.actions'|trans }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -91,7 +91,7 @@
                                 {% if job._stale %}
                                     <span title="{{ job._stale_reason }}" style="cursor:help;color:#ef4444;font-size:1.1rem;">&#9888;</span>
                                 {% elseif (job.source ?? 'manifest') == 'admin' %}
-                                    <span title="Створено в адмінці" style="cursor:help;color:var(--text-muted);font-size:.85rem;">&#9998;</span>
+                                    <span title="{{ 'scheduler.created_in_admin'|trans }}" style="cursor:help;color:var(--text-muted);font-size:.85rem;">&#9998;</span>
                                 {% endif %}
                             </td>
                             <td>{{ job.agent_name }}</td>
@@ -115,9 +115,9 @@
                             </td>
                             <td>
                                 {% if job.enabled %}
-                                    <span class="badge badge-log-info">так</span>
+                                    <span class="badge badge-log-info">{{ 'scheduler.enabled_yes'|trans }}</span>
                                 {% else %}
-                                    <span class="badge badge-log-error">ні</span>
+                                    <span class="badge badge-log-error">{{ 'scheduler.enabled_no'|trans }}</span>
                                 {% endif %}
                             </td>
                             <td style="white-space:nowrap;">
@@ -125,29 +125,29 @@
                                     class="btn btn-settings"
                                     style="font-size:.75rem;padding:.25rem .6rem;text-decoration:none;"
                                     href="{{ path('admin_scheduler_logs', {id: job.id}) }}"
-                                >Логи</a>
+                                >{{ 'scheduler.action.logs'|trans }}</a>
                                 <button
                                     class="btn btn-settings"
                                     style="font-size:.75rem;padding:.25rem .6rem;margin-left:.25rem;"
                                     onclick="runNow('{{ job.id|e('js') }}')"
-                                >Запустити</button>
+                                >{{ 'scheduler.action.run'|trans }}</button>
                                 <button
                                     class="btn btn-settings"
                                     style="font-size:.75rem;padding:.25rem .6rem;margin-left:.25rem;"
                                     onclick="toggleJob('{{ job.id|e('js') }}', {{ job.enabled ? 'false' : 'true' }})"
-                                >{{ job.enabled ? 'Вимкнути' : 'Увімкнути' }}</button>
+                                >{{ job.enabled ? 'scheduler.action.disable'|trans : 'scheduler.action.enable'|trans }}</button>
                                 {% if (job.source ?? 'manifest') == 'admin' %}
                                     <button
                                         class="btn btn-settings"
                                         style="font-size:.75rem;padding:.25rem .6rem;margin-left:.25rem;color:#ef4444;"
                                         onclick="deleteJob('{{ job.id|e('js') }}', '{{ job.job_name|e('js') }}')"
-                                    >Видалити</button>
+                                    >{{ 'scheduler.action.delete'|trans }}</button>
                                 {% endif %}
                             </td>
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="10" class="empty-row">Завдань не знайдено</td>
+                            <td colspan="10" class="empty-row">{{ 'scheduler.empty'|trans }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -156,34 +156,34 @@
     </div>
     <div id="createJobModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('active')">
         <div class="modal" style="max-width:90%;width:720px;">
-            <h3>Створити завдання</h3>
+            <h3>{{ 'scheduler.modal.title'|trans }}</h3>
             <form id="createJobForm" onsubmit="createJob(event)">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem;">
                     <div>
-                        <label class="form-label" for="cj_agent">Агент</label>
+                        <label class="form-label" for="cj_agent">{{ 'scheduler.modal.agent'|trans }}</label>
                         <select id="cj_agent" class="form-input" required onchange="onAgentChange()">
-                            <option value="">— Оберіть —</option>
+                            <option value="">{{ 'scheduler.modal.agent_placeholder'|trans }}</option>
                             {% for agent in agents %}
                                 <option value="{{ agent }}">{{ agent }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div>
-                        <label class="form-label" for="cj_skill">Скіл</label>
+                        <label class="form-label" for="cj_skill">{{ 'scheduler.modal.skill'|trans }}</label>
                         <select id="cj_skill" class="form-input" required disabled>
-                            <option value="">— Спочатку оберіть агента —</option>
+                            <option value="">{{ 'scheduler.modal.skill_placeholder'|trans }}</option>
                         </select>
                     </div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem;">
                     <div>
-                        <label class="form-label" for="cj_job_name">Назва завдання</label>
+                        <label class="form-label" for="cj_job_name">{{ 'scheduler.modal.job_name'|trans }}</label>
                         <input type="text" id="cj_job_name" class="form-input" required placeholder="daily-greeting">
                     </div>
                     <div>
                         <label class="form-label">
-                            Cron (порожнє = одноразовий)
-                            <button type="button" id="cronModeToggle" class="btn btn-settings" style="font-size:.65rem;padding:.15rem .4rem;margin-left:.4rem;vertical-align:middle;" onclick="toggleCronMode()">Візуальний</button>
+                            {{ 'scheduler.modal.cron'|trans }}
+                            <button type="button" id="cronModeToggle" class="btn btn-settings" style="font-size:.65rem;padding:.15rem .4rem;margin-left:.4rem;vertical-align:middle;" onclick="toggleCronMode()">{{ 'scheduler.modal.cron_visual'|trans }}</button>
                         </label>
                         <input type="text" id="cj_cron" class="form-input" placeholder="0 9 * * *">
                         <div id="cron-builder-wrap" style="display:none;margin-top:.35rem;">
@@ -192,27 +192,27 @@
                     </div>
                 </div>
                 <div style="margin-bottom:.75rem;">
-                    <label class="form-label" for="cj_payload">Payload (JSON)</label>
+                    <label class="form-label" for="cj_payload">{{ 'scheduler.modal.payload'|trans }}</label>
                     <input type="text" id="cj_payload" class="form-input" placeholder='{"name": "Дмитро"}'>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:1rem;">
                     <div>
-                        <label class="form-label" for="cj_timezone">Timezone</label>
+                        <label class="form-label" for="cj_timezone">{{ 'scheduler.modal.timezone'|trans }}</label>
                         <input type="text" id="cj_timezone" class="form-input" value="UTC" placeholder="Europe/Kyiv">
                     </div>
                     <div>
-                        <label class="form-label" for="cj_retries">Макс. спроб</label>
+                        <label class="form-label" for="cj_retries">{{ 'scheduler.modal.retries'|trans }}</label>
                         <input type="number" id="cj_retries" class="form-input" value="3" min="0" max="10">
                     </div>
                     <div>
-                        <label class="form-label" for="cj_delay">Затримка (сек)</label>
+                        <label class="form-label" for="cj_delay">{{ 'scheduler.modal.delay'|trans }}</label>
                         <input type="number" id="cj_delay" class="form-input" value="60" min="1">
                     </div>
                 </div>
                 <div style="display:flex;gap:.5rem;align-items:center;justify-content:flex-end;">
                     <span id="createJobResult" style="font-size:.85rem;display:none;"></span>
-                    <button type="button" class="btn btn-settings" onclick="document.getElementById('createJobModal').classList.remove('active')">Скасувати</button>
-                    <button type="submit" class="btn btn-primary" id="createJobBtn">Створити</button>
+                    <button type="button" class="btn btn-settings" onclick="document.getElementById('createJobModal').classList.remove('active')">{{ 'scheduler.modal.cancel'|trans }}</button>
+                    <button type="submit" class="btn btn-primary" id="createJobBtn">{{ 'scheduler.modal.submit'|trans }}</button>
                 </div>
             </form>
         </div>
@@ -229,7 +229,7 @@ function onAgentChange() {
     skillSelect.innerHTML = '';
 
     if (!agentName || !agentSkillMap[agentName] || agentSkillMap[agentName].length === 0) {
-        skillSelect.innerHTML = '<option value="">— Немає скілів —</option>';
+        skillSelect.innerHTML = '<option value="">{{ 'scheduler.modal.no_skills'|trans|e('js') }}</option>';
         skillSelect.disabled = true;
         return;
     }
@@ -263,7 +263,7 @@ function toggleJob(id, enable) {
 }
 
 function deleteJob(id, name) {
-    if (!confirm('Видалити завдання "' + name + '"?')) return;
+    if (!confirm('{{ 'scheduler.confirm.delete'|trans({'%name%': ''})|e('js') }}'.replace('%name%', name))) return;
     fetch('/api/v1/internal/scheduler/' + id, {method: 'DELETE'})
         .then(function(r) { return r.json().then(function(b) { return {ok: r.ok, body: b}; }); })
         .then(function(res) {
@@ -281,7 +281,7 @@ function createJob(e) {
     var btn = document.getElementById('createJobBtn');
     var result = document.getElementById('createJobResult');
     btn.disabled = true;
-    btn.textContent = 'Створення...';
+    btn.textContent = '{{ 'scheduler.modal.creating'|trans|e('js') }}';
     result.style.display = 'none';
 
     var data = {
@@ -305,19 +305,19 @@ function createJob(e) {
         if (res.ok) {
             location.reload();
         } else {
-            result.textContent = res.body.error || 'Помилка';
+            result.textContent = res.body.error || '{{ 'scheduler.modal.error'|trans|e('js') }}';
             result.style.color = 'var(--danger)';
             result.style.display = 'inline';
         }
     })
     .catch(function() {
-        result.textContent = 'Помилка мережі';
+        result.textContent = '{{ 'scheduler.modal.network_error'|trans|e('js') }}';
         result.style.color = 'var(--danger)';
         result.style.display = 'inline';
     })
     .finally(function() {
         btn.disabled = false;
-        btn.textContent = 'Створити';
+        btn.textContent = '{{ 'scheduler.modal.submit'|trans|e('js') }}';
     });
 }
 
@@ -331,12 +331,12 @@ function toggleCronMode() {
     if (cronBuilderVisible) {
         wrap.style.display = 'block';
         input.style.display = 'none';
-        btn.textContent = 'Текстовий';
+        btn.textContent = '{{ 'scheduler.modal.cron_text'|trans|e('js') }}';
         initCronBuilder();
     } else {
         wrap.style.display = 'none';
         input.style.display = '';
-        btn.textContent = 'Візуальний';
+        btn.textContent = '{{ 'scheduler.modal.cron_visual'|trans|e('js') }}';
     }
 }
 

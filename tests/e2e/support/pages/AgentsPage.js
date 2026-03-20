@@ -4,6 +4,7 @@ module.exports = {
     url: '/admin/agents',
 
     discoverButton: '#discoverBtn',
+    syncButton: 'button:contains("Синхронізувати"), button[data-action="sync"], #syncBtn, .btn-sync',
     installedTabButton: '#tab-installed-btn',
     marketplaceTabButton: '#tab-marketplace-btn',
     agentsTable: 'table tbody',
@@ -139,5 +140,40 @@ module.exports = {
     async deleteAgent(agentName) {
         const row = this.activePaneRow(agentName);
         I.click(`${row}//button[contains(@class,"btn-delete")]`);
+    },
+
+    /**
+     * Check if OpenClaw sync button is visible.
+     */
+    seeOpenClawSyncButton() {
+        I.seeElement(this.syncButton);
+    },
+
+    /**
+     * Click the OpenClaw sync button and wait for response.
+     */
+    async triggerOpenClawSync() {
+        I.click(this.syncButton);
+        await I.wait(2); // Wait for sync to complete
+    },
+
+    /**
+     * Assert that an agent has an OpenClaw sync badge.
+     */
+    seeOpenClawBadge(agentName) {
+        const row = this.activePaneRow(agentName);
+        I.seeElement(`${row}//span[contains(@class,"badge-openclaw") or contains(@class,"openclaw-badge") or contains(@class,"badge") and contains(text(),"OpenClaw")]`);
+    },
+
+    /**
+     * Get the OpenClaw sync status for a given agent.
+     */
+    async getOpenClawStatus(agentName) {
+        const row = this.activePaneRow(agentName);
+        try {
+            return await I.grabTextFrom(`${row}//span[contains(@class,"badge-openclaw") or contains(@class,"openclaw-badge")]`);
+        } catch (e) {
+            return null; // No OpenClaw badge found
+        }
     },
 };

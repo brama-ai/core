@@ -13,6 +13,13 @@
     "timeout_overrides": {},
     "description": "Normal features, moderate changes within one app"
   },
+  "standard+e2e": {
+    "agents": ["architect", "coder", "validator", "tester", "e2e", "summarizer"],
+    "timeout_overrides": {
+      "e2e": 600
+    },
+    "description": "Standard + E2E tests for UI-touching changes"
+  },
   "complex": {
     "agents": ["architect", "coder", "auditor", "validator", "tester", "summarizer"],
     "timeout_overrides": {
@@ -21,5 +28,15 @@
       "summarizer": 900
     },
     "description": "Multi-service changes, DB migrations, API changes, new agents"
+  },
+  "complex+e2e": {
+    "agents": ["architect", "coder", "auditor", "validator", "tester", "e2e", "summarizer"],
+    "timeout_overrides": {
+      "architect": 3600,
+      "coder": 5400,
+      "e2e": 900,
+      "summarizer": 900
+    },
+    "description": "Complex + E2E tests for UI-heavy features"
   }
 }

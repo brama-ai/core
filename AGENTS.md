@@ -85,7 +85,7 @@ Rules:
 - Jobs are registered automatically on agent install and removed on uninstall
 - Admin can also create jobs manually via the scheduler UI at `/admin/scheduler`
 - If an agent updates and removes a skill that a job references, the job is flagged as **stale** in the admin UI
-- See `docs/scheduler.md` for full documentation and `apps/core/config/agent-card.schema.json` for the schema
+- See `docs/features/scheduler/en/scheduler.md` for full documentation and `apps/core/config/agent-card.schema.json` for the schema
 
 ## Working Expectation
 

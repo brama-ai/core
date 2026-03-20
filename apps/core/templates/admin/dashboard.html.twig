@@ -1,55 +1,156 @@
 {% extends 'admin/layout.html.twig' %}
 
-{% block title %}Панель керування — Admin{% endblock %}
-{% block page_title %}Панель керування{% endblock %}
+{% block title %}{{ 'dashboard.title'|trans }} — Admin{% endblock %}
+{% block page_title %}{{ 'dashboard.title'|trans }}{% endblock %}
 
 {% block content %}
     <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-label">Всього агентів</div>
+            <div class="stat-label">{{ 'dashboard.agents_total'|trans }}</div>
             <div class="stat-value">{{ agents_total ?? '—' }}</div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Активних</div>
+            <div class="stat-label">{{ 'dashboard.agents_enabled'|trans }}</div>
             <div class="stat-value text-success">{{ agents_enabled ?? '—' }}</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Вимкнених</div>
+<div class="stat-card">
+            <div class="stat-label">{{ 'dashboard.agents_disabled'|trans }}</div>
             <div class="stat-value text-danger">{{ agents_disabled ?? '—' }}</div>
+        </div>
+    </div>
+
+    {# ---- Platform Metrics ---- #}
+    <div class="dash-section-title">{{ 'dashboard.platform_metrics'|trans }}</div>
+    <div class="metrics-grid">
+        {# A2A Message Stats #}
+        <div class="glass-card">
+            <h2>A2A Messages</h2>
+            <div class="metrics-stats">
+                <div class="metric-row">
+                    <span class="metric-label">{{ 'dashboard.a2a_calls_24h'|trans }}:</span>
+                    <span class="metric-value">{{ metrics.a2a.calls_24h|number_format }}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">{{ 'dashboard.a2a_calls_7d'|trans }}:</span>
+                    <span class="metric-value">{{ metrics.a2a.calls_7d|number_format }}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">{{ 'dashboard.a2a_avg_response'|trans }}:</span>
+                    <span class="metric-value">{{ metrics.a2a.avg_response_time_ms ? metrics.a2a.avg_response_time_ms ~ ' ms' : '—' }}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">{{ 'dashboard.a2a_success_rate'|trans }}:</span>
+                    <span class="metric-value {{ metrics.a2a.success_rate is not null ? (metrics.a2a.success_rate >= 90 ? 'text-success' : (metrics.a2a.success_rate >= 70 ? 'text-warning' : 'text-danger')) : '' }}">
+                        {{ metrics.a2a.success_rate is not null ? metrics.a2a.success_rate ~ '%' : '—' }}
+                    </span>
+                </div>
+            </div>
+            {% if metrics.a2a.top_skills|length > 0 %}
+                <div class="metrics-subsection">
+                    <div class="metrics-subsection-title">{{ 'dashboard.top_skills_24h'|trans }}</div>
+                    <div class="metrics-list">
+                        {% for skill in metrics.a2a.top_skills %}
+                            <div class="metrics-list-item">
+                                <span class="metrics-list-name">{{ skill.skill }}</span>
+                                <span class="metrics-list-count">{{ skill.count|number_format }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        {# Agent Activity #}
+        <div class="glass-card">
+            <h2>{{ 'dashboard.agent_activity'|trans }}</h2>
+            <div class="metrics-stats">
+                <div class="metric-row">
+                    <span class="metric-label">{{ 'dashboard.active_agents_24h'|trans }}:</span>
+                    <span class="metric-value text-success">{{ metrics.agents.active_agents_24h }}</span>
+                </div>
+            </div>
+            {% if metrics.agents.agents|length > 0 %}
+                <div class="metrics-subsection">
+                    <div class="metrics-subsection-title">{{ 'dashboard.by_call_count'|trans }}</div>
+                    <div class="metrics-list metrics-list-scroll">
+                        {% for agent in metrics.agents.agents %}
+                            <div class="metrics-list-item">
+                                <span class="metrics-list-name">{{ agent.agent }}</span>
+                                <span class="metrics-list-count">{{ agent.call_count|number_format }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        {# Scheduler Stats #}
+        <div class="glass-card">
+            <h2>{{ 'dashboard.scheduler'|trans }}</h2>
+            <div class="metrics-stats">
+                <div class="metric-row">
+                    <span class="metric-label">{{ 'dashboard.active_jobs'|trans }}:</span>
+                    <span class="metric-value text-success">{{ metrics.scheduler.active_jobs }}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">{{ 'dashboard.paused_jobs'|trans }}:</span>
+                    <span class="metric-value text-warning">{{ metrics.scheduler.paused_jobs }}</span>
+                </div>
+            </div>
+            {% if metrics.scheduler.recent_executions|length > 0 %}
+                <div class="metrics-subsection">
+                    <div class="metrics-subsection-title">{{ 'dashboard.recent_executions'|trans }}</div>
+                    <div class="metrics-list metrics-list-scroll">
+                        {% for exec in metrics.scheduler.recent_executions %}
+                            <div class="metrics-list-item metrics-list-item-exec">
+                                <div class="metrics-exec-info">
+                                    <span class="metrics-exec-name">{{ exec.job_name|default(exec.skill_id) }}</span>
+                                    <span class="metrics-exec-agent">{{ exec.agent_name }}</span>
+                                </div>
+                                <div class="metrics-exec-meta">
+                                    <span class="badge {{ exec.status == 'completed' ? 'badge-enabled' : (exec.status == 'failed' ? 'badge-disabled' : 'badge-unknown') }}">
+                                        {{ exec.status }}
+                                    </span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
         </div>
     </div>
 
     {% set is_local_host = app.request.host in ['localhost', '127.0.0.1'] or '.localhost' in app.request.host %}
 
     {# ---- Quick nav ---- #}
-    <div class="dash-section-title">Навігація</div>
+    <div class="dash-section-title">{{ 'dashboard.navigation'|trans }}</div>
     <div class="dash-nav-grid">
         <a href="{{ path('admin_agents') }}" class="dash-nav-card">
             <span class="dash-nav-icon dash-nav-icon--agents"></span>
             <div class="dash-nav-body">
-                <strong>Агенти</strong>
-                <span>Discovery, встановлення, увімкнення/вимкнення агентів платформи.</span>
+                <strong>{{ 'dashboard.agents_nav_title'|trans }}</strong>
+                <span>{{ 'dashboard.agents_nav_desc'|trans }}</span>
             </div>
         </a>
         <a href="{{ path('admin_chats') }}" class="dash-nav-card">
             <span class="dash-nav-icon dash-nav-icon--chats"></span>
             <div class="dash-nav-body">
-                <strong>Чати</strong>
-                <span>Сесії користувачів, статуси, тривалість, трейси запитів.</span>
+                <strong>{{ 'dashboard.chats_nav_title'|trans }}</strong>
+                <span>{{ 'dashboard.chats_nav_desc'|trans }}</span>
             </div>
         </a>
         <a href="{{ path('admin_logs') }}" class="dash-nav-card">
             <span class="dash-nav-icon dash-nav-icon--logs"></span>
             <div class="dash-nav-body">
-                <strong>Логи</strong>
-                <span>Пошук по OpenSearch, фільтри за рівнем, агентом, категорією.</span>
+                <strong>{{ 'dashboard.logs_nav_title'|trans }}</strong>
+                <span>{{ 'dashboard.logs_nav_desc'|trans }}</span>
             </div>
         </a>
         <a href="{{ path('admin_settings') }}" class="dash-nav-card">
             <span class="dash-nav-icon dash-nav-icon--settings"></span>
             <div class="dash-nav-body">
-                <strong>Налаштування</strong>
-                <span>Рівень логування, ретенція даних, розмір сховища.</span>
+                <strong>{{ 'dashboard.settings_nav_title'|trans }}</strong>
+                <span>{{ 'dashboard.settings_nav_desc'|trans }}</span>
             </div>
         </a>
     </div>
@@ -61,14 +162,14 @@
     {% set show_traefik = is_local_host or ('localhost' not in admin_traefik_url and '127.0.0.1' not in admin_traefik_url) %}
 
     {% if show_openclaw or show_langfuse or show_litellm or show_traefik %}
-        <div class="dash-section-title">Інструменти платформи</div>
+        <div class="dash-section-title">{{ 'dashboard.platform_tools'|trans }}</div>
         <div class="dash-tools-grid">
             {% if show_openclaw %}
                 <a href="{{ admin_openclaw_url }}?token={{ openclaw_gateway_token }}" target="_blank" class="dash-tool">
                     <span class="dash-tool-dot" style="background:#60a5fa;"></span>
                     <div>
                         <strong>OpenClaw UI</strong>
-                        <span>Оркестрація агентів, тестування скілів, A2A-комунікація, налаштування gateway.</span>
+                        <span>{{ 'dashboard.openclaw_desc'|trans }}</span>
                     </div>
                 </a>
             {% endif %}
@@ -77,7 +178,7 @@
                     <span class="dash-tool-dot" style="background:#f97316;"></span>
                     <div>
                         <strong>Langfuse</strong>
-                        <span>LLM observability — трейси, вартість, латенсі, аналіз промптів.</span>
+                        <span>{{ 'dashboard.langfuse_desc'|trans }}</span>
                     </div>
                 </a>
             {% endif %}
@@ -86,7 +187,7 @@
                     <span class="dash-tool-dot" style="background:#a78bfa;"></span>
                     <div>
                         <strong>LiteLLM</strong>
-                        <span>Unified LLM proxy — маршрутизація моделей, бюджети, rate limits.</span>
+                        <span>{{ 'dashboard.litellm_desc'|trans }}</span>
                     </div>
                 </a>
             {% endif %}
@@ -95,7 +196,7 @@
                     <span class="dash-tool-dot" style="background:#22d3ee;"></span>
                     <div>
                         <strong>Traefik</strong>
-                        <span>Edge router — маршрутизація сервісів, middlewares, health checks.</span>
+                        <span>{{ 'dashboard.traefik_desc'|trans }}</span>
                     </div>
                 </a>
             {% endif %}
@@ -103,12 +204,12 @@
     {% endif %}
 
     {# ---- Getting started ---- #}
-    <div class="dash-section-title">Швидкий старт</div>
+    <div class="dash-section-title">{{ 'dashboard.quick_start'|trans }}</div>
     <div class="glass-card">
         <ol class="dash-steps">
-            <li>Відкрийте <a href="{{ path('admin_agents') }}">Агенти</a> → натисніть <strong>Discover</strong> щоб знайти доступних агентів</li>
-            <li>Встановіть та увімкніть потрібних агентів — їхні скіли з'являться в OpenClaw</li>
-            <li>Тестуйте через <a href="{{ admin_openclaw_url }}?token={{ openclaw_gateway_token }}" target="_blank">OpenClaw UI</a>, слідкуйте за результатами в <a href="{{ path('admin_chats') }}">Чатах</a> та <a href="{{ path('admin_logs') }}">Логах</a></li>
+            <li>{{ 'dashboard.step1'|trans|raw }}</li>
+            <li>{{ 'dashboard.step2'|trans }}</li>
+            <li>{{ 'dashboard.step3'|trans|raw }}</li>
         </ol>
     </div>
 {% endblock %}

@@ -1,11 +1,15 @@
 security:
     password_hashers:
-        App\Security\AdminUser:
+        App\Security\User:
             algorithm: bcrypt
 
+    role_hierarchy:
+        ROLE_ADMIN: ROLE_USER
+        ROLE_SUPER_ADMIN: ROLE_ADMIN
+
     providers:
-        admin_users:
-            id: App\Security\AdminUserProvider
+        app_users:
+            id: App\Security\UserProvider
 
     firewalls:
         dev:
@@ -14,7 +18,7 @@ security:
 
         admin:
             pattern: ^/(admin|api/v1/internal|edge/auth)
-            provider: admin_users
+            provider: app_users
             form_login:
                 login_path: admin_login
                 check_path: admin_login
@@ -36,7 +40,7 @@ security:
 when@test:
     security:
         password_hashers:
-            App\Security\AdminUser:
+            App\Security\User:
                 algorithm: auto
                 cost: 4
         firewalls:

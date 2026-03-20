@@ -1,13 +1,13 @@
 {% extends 'admin/layout.html.twig' %}
 
-{% block title %}Логи — {{ job.job_name }} — Admin{% endblock %}
-{% block page_title %}Логи: {{ job.agent_name }} / {{ job.job_name }}{% endblock %}
+{% block title %}{{ 'logs.title'|trans }} — {{ job.job_name }} — Admin{% endblock %}
+{% block page_title %}{{ 'logs.title'|trans }}: {{ job.agent_name }} / {{ job.job_name }}{% endblock %}
 
 {% block content %}
     <div style="margin-bottom:.75rem;">
-        <a href="{{ path('admin_scheduler') }}" class="btn btn-settings" style="font-size:.8rem;padding:.35rem .7rem;">← Планувальник</a>
+        <a href="{{ path('admin_scheduler') }}" class="btn btn-settings" style="font-size:.8rem;padding:.35rem .7rem;">{{ 'scheduler_logs.back'|trans }}</a>
         <span style="margin-left:.75rem;font-size:.85rem;color:var(--text-secondary);">
-            Скіл: <code style="font-size:.8rem;">{{ job.skill_id }}</code> &middot; Cron: <code style="font-size:.8rem;">{{ job.cron_expression ?? 'одноразовий' }}</code> &middot; Всього записів: {{ total }}
+            {{ 'scheduler_logs.skill'|trans }}: <code style="font-size:.8rem;">{{ job.skill_id }}</code> &middot; {{ 'scheduler_logs.cron'|trans }}: <code style="font-size:.8rem;">{{ job.cron_expression ?? 'scheduler_logs.one_time'|trans }}</code> &middot; {{ 'scheduler_logs.total'|trans({'%count%': total}) }}
         </span>
     </div>
 
@@ -16,12 +16,12 @@
             <table class="admin-table">
                 <thead>
                     <tr>
-                        <th>Початок</th>
-                        <th>Завершення</th>
-                        <th>Тривалість</th>
-                        <th>Статус</th>
-                        <th>Помилка</th>
-                        <th>Payload</th>
+                        <th>{{ 'scheduler_logs.table.start'|trans }}</th>
+                        <th>{{ 'scheduler_logs.table.end'|trans }}</th>
+                        <th>{{ 'scheduler_logs.table.duration'|trans }}</th>
+                        <th>{{ 'scheduler_logs.table.status'|trans }}</th>
+                        <th>{{ 'scheduler_logs.table.error'|trans }}</th>
+                        <th>{{ 'scheduler_logs.table.payload'|trans }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -57,7 +57,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="6" class="empty-row">Логів ще немає</td>
+                            <td colspan="6" class="empty-row">{{ 'scheduler_logs.empty'|trans }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -67,11 +67,11 @@
         {% if total_pages > 1 %}
             <div style="display:flex;justify-content:center;gap:.5rem;margin-top:1rem;">
                 {% if page > 1 %}
-                    <a href="{{ path('admin_scheduler_logs', {id: job.id, page: page - 1}) }}" class="btn btn-settings" style="font-size:.8rem;padding:.3rem .6rem;">← Попередня</a>
+                    <a href="{{ path('admin_scheduler_logs', {id: job.id, page: page - 1}) }}" class="btn btn-settings" style="font-size:.8rem;padding:.3rem .6rem;">{{ 'scheduler_logs.prev'|trans }}</a>
                 {% endif %}
                 <span style="font-size:.85rem;color:var(--text-secondary);padding:.3rem .5rem;">{{ page }} / {{ total_pages }}</span>
                 {% if page < total_pages %}
-                    <a href="{{ path('admin_scheduler_logs', {id: job.id, page: page + 1}) }}" class="btn btn-settings" style="font-size:.8rem;padding:.3rem .6rem;">Наступна →</a>
+                    <a href="{{ path('admin_scheduler_logs', {id: job.id, page: page + 1}) }}" class="btn btn-settings" style="font-size:.8rem;padding:.3rem .6rem;">{{ 'scheduler_logs.next'|trans }}</a>
                 {% endif %}
             </div>
         {% endif %}

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="{{ app.request.locale }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -19,29 +19,39 @@
                 {% set current_route = app.request.attributes.get('_route') %}
                 <a href="{{ path('admin_dashboard') }}" class="{{ current_route == 'admin_dashboard' ? 'active' : '' }}">
                     <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
-                    Статистика
+                    {{ 'nav.dashboard'|trans }}
                 </a>
                 <a href="{{ path('admin_chats') }}" class="{{ current_route == 'admin_chats' ? 'active' : '' }}">
                     <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
-                    Управління чатами
+                    {{ 'nav.chats'|trans }}
                 </a>
                 <a href="{{ path('admin_agents') }}" class="{{ current_route starts with 'admin_agent' ? 'active' : '' }}">
                     <svg viewBox="0 0 24 24"><path d="M20 9V7c0-1.1-.9-2-2-2h-3c0-1.66-1.34-3-3-3S9 3.34 9 5H6c-1.1 0-2 .9-2 2v2c-1.66 0-3 1.34-3 3s1.34 3 3 3v4c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4c1.66 0 3-1.34 3-3s-1.34-3-3-3zM7.5 11.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S9.83 13 9 13s-1.5-.67-1.5-1.5zM16 17H8v-2h8v2zm-1-4c-.83 0-1.5-.67-1.5-1.5S14.17 10 15 10s1.5.67 1.5 1.5S15.83 13 15 13z"/></svg>
-                    Управління агентами
+                    {{ 'nav.agents'|trans }}
                 </a>
                 <a href="{{ path('admin_logs') }}" class="{{ current_route starts with 'admin_log' ? 'active' : '' }}">
                     <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm2-6h8v2H8v-2zm0-3h8v2H8v-2zm0 6h5v2H8v-2z"/></svg>
-                    Логи
+                    {{ 'nav.logs'|trans }}
                 </a>
                 <a href="{{ path('admin_scheduler') }}" class="{{ current_route == 'admin_scheduler' ? 'active' : '' }}">
                     <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
-                    Планувальник
+                    {{ 'nav.scheduler'|trans }}
                 </a>
+                <a href="{{ path('admin_coder') }}" class="{{ current_route starts with 'admin_coder' ? 'active' : '' }}">
+                    <svg viewBox="0 0 24 24"><path d="M8 3h8l4 4v14H4V3h4zm1 2v2h6V5H9zm1 6h4v2h-4v-2zm-2 4h8v2H8v-2z"/></svg>
+                    {{ 'nav.coder'|trans }}
+                </a>
+                {% if is_granted('ROLE_SUPER_ADMIN') %}
+                <a href="{{ path('admin_tenants') }}" class="{{ current_route starts with 'admin_tenant' ? 'active' : '' }}">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
+                    {{ 'nav.tenants'|trans }}
+                </a>
+                {% endif %}
                 <a href="{{ path('admin_settings') }}" class="{{ current_route == 'admin_settings' ? 'active' : '' }}">
                     <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4 2.81a.49.49 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41L9.25 5.35c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 00-.59.22L2.73 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1112 8.4a3.6 3.6 0 010 7.2z"/></svg>
-                    Налаштування
+                    {{ 'nav.settings'|trans }}
                 </a>
-                <div class="sidebar-section-title">Інструменти</div>
+                <div class="sidebar-section-title">{{ 'nav.tools'|trans }}</div>
                 <a href="{{ admin_openclaw_url }}?token={{ openclaw_gateway_token }}" target="_blank">
                     <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 002 2h7v-2H5V5h14v14h-7v2h7a2 2 0 002-2V5c0-1.1-.9-2-2-2zM11 15l-1.41-1.41L13.17 10H7V8h6.17L9.59 4.41 11 3l6 6-6 6z"/></svg>
                     OpenClaw UI
@@ -60,7 +70,7 @@
                 </a>
             </nav>
             <div class="sidebar-footer">
-                AI Community Platform v0.1
+                {{ 'footer.version'|trans }}
             </div>
         </aside>
 
@@ -71,14 +81,56 @@
         <div class="main-area">
             <header class="top-header">
                 <div style="display:flex;align-items:center;gap:.75rem;">
-                    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Меню">
+                    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="{{ 'header.menu'|trans }}">
                         <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
                     </button>
                     <h1>{% block page_title %}Admin{% endblock %}</h1>
                 </div>
-                <div class="header-right">
-                    <span style="color:var(--text-muted);font-size:.85rem;">{{ username }}</span>
-                    <a href="{{ path('admin_logout') }}">Вийти</a>
+                <div class="header-right" style="display:flex;align-items:center;gap:1rem;">
+                    {# Language switcher #}
+                    <div style="position:relative;" id="localeSwitcher">
+                        <button onclick="document.getElementById('localeDropdown').classList.toggle('show')"
+                                style="background:var(--card-bg);border:1px solid var(--border);border-radius:6px;padding:.35rem .75rem;color:var(--text);font-size:.8rem;cursor:pointer;display:flex;align-items:center;gap:.4rem;">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0014.07 6H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
+                            {{ app.request.locale == 'uk' ? 'UA' : 'EN' }}
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                        </button>
+                        <div id="localeDropdown" class="tenant-dropdown">
+                            <form method="post" action="{{ path('admin_locale_switch') }}" style="margin:0;">
+                                <button type="submit" name="locale" value="uk" class="tenant-option {{ app.request.locale == 'uk' ? 'active' : '' }}">
+                                    {{ 'locale.uk'|trans }} (Українська)
+                                </button>
+                            </form>
+                            <form method="post" action="{{ path('admin_locale_switch') }}" style="margin:0;">
+                                <button type="submit" name="locale" value="en" class="tenant-option {{ app.request.locale == 'en' ? 'active' : '' }}">
+                                    {{ 'locale.en'|trans }} (English)
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% if userTenants|length > 1 %}
+                    <div style="position:relative;" id="tenantSwitcher">
+                        <button onclick="document.getElementById('tenantDropdown').classList.toggle('show')"
+                                style="background:var(--card-bg);border:1px solid var(--border);border-radius:6px;padding:.35rem .75rem;color:var(--text);font-size:.8rem;cursor:pointer;display:flex;align-items:center;gap:.4rem;">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
+                            {{ currentTenant ? currentTenant.name : 'header.select_tenant'|trans }}
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                        </button>
+                        <div id="tenantDropdown" class="tenant-dropdown">
+                            {% for tenant in userTenants %}
+                            <form method="post" action="{{ path('admin_tenant_switch', {tenantId: tenant.id}) }}" style="margin:0;">
+                                <button type="submit" class="tenant-option {{ currentTenant and currentTenant.id == tenant.id ? 'active' : '' }}">
+                                    {{ tenant.name }}
+                                </button>
+                            </form>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% elseif currentTenant %}
+                    <span style="color:var(--text-muted);font-size:.8rem;">{{ currentTenant.name }}</span>
+                    {% endif %}
+                    <span style="color:var(--text-muted);font-size:.85rem;">{{ app.user ? app.user.userIdentifier : '' }}</span>
+                    <a href="{{ path('admin_logout') }}">{{ 'header.logout'|trans }}</a>
                 </div>
             </header>
             <main class="content-area">
@@ -87,11 +139,27 @@
         </div>
     </div>
 
+    <style>
+    .tenant-dropdown{display:none;position:absolute;right:0;top:100%;margin-top:.3rem;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:100;}
+    .tenant-dropdown.show{display:block;}
+    .tenant-option{display:block;width:100%;text-align:left;padding:.5rem .75rem;background:none;border:none;color:var(--text);font-size:.8rem;cursor:pointer;}
+    .tenant-option:hover{background:var(--hover-bg,rgba(255,255,255,.05));}
+    .tenant-option.active{font-weight:600;color:var(--accent,#60a5fa);}
+    </style>
+
     <script>
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('open');
         document.getElementById('sidebarOverlay').classList.toggle('active');
     }
+    document.addEventListener('click', function(e) {
+        var s = document.getElementById('tenantSwitcher');
+        var d = document.getElementById('tenantDropdown');
+        if (s && d && !s.contains(e.target)) d.classList.remove('show');
+        var ls = document.getElementById('localeSwitcher');
+        var ld = document.getElementById('localeDropdown');
+        if (ls && ld && !ls.contains(e.target)) ld.classList.remove('show');
+    });
     </script>
     {% block javascripts %}{% endblock %}
 </body>

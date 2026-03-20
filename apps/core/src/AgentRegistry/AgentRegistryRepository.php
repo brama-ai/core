@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\AgentRegistry;
 
+use App\Tenant\TenantContext;
 use Doctrine\DBAL\Connection;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
@@ -17,6 +18,7 @@ final class AgentRegistryRepository implements AgentRegistryInterface
         private readonly Connection $connection,
         private readonly CacheItemPoolInterface $cache,
         private readonly LoggerInterface $logger,
+        private readonly TenantContext $tenantContext,
     ) {
     }
 
@@ -28,31 +30,32 @@ final class AgentRegistryRepository implements AgentRegistryInterface
         $name = (string) $manifest['name'];
         $version = (string) $manifest['version'];
         $manifestJson = json_encode($manifest, JSON_THROW_ON_ERROR);
+        $tenantId = $this->tenantContext->requireTenantId();
 
         $existing = $this->connection->fetchOne(
-            'SELECT id FROM agent_registry WHERE name = :name',
-            ['name' => $name],
+            'SELECT id FROM agent_registry WHERE name = :name AND tenant_id = :tenantId',
+            ['name' => $name, 'tenantId' => $tenantId],
         );
 
         if (false === $existing) {
             $this->connection->executeStatement(
                 <<<'SQL'
-                INSERT INTO agent_registry (name, version, manifest, config, enabled, registered_at, updated_at)
-                VALUES (:name, :version, :manifest, '{}', FALSE, now(), now())
+                INSERT INTO agent_registry (name, version, manifest, config, enabled, tenant_id, registered_at, updated_at)
+                VALUES (:name, :version, :manifest, '{}', FALSE, :tenantId, now(), now())
                 SQL,
-                ['name' => $name, 'version' => $version, 'manifest' => $manifestJson],
+                ['name' => $name, 'version' => $version, 'manifest' => $manifestJson, 'tenantId' => $tenantId],
             );
-            $this->logger->info('Agent registered', ['agent' => $name, 'version' => $version]);
+            $this->logger->info('Agent registered', ['agent' => $name, 'version' => $version, 'tenant_id' => $tenantId]);
         } else {
             $this->connection->executeStatement(
                 <<<'SQL'
                 UPDATE agent_registry
                 SET version = :version, manifest = :manifest, updated_at = now()
-                WHERE name = :name
+                WHERE name = :name AND tenant_id = :tenantId
                 SQL,
-                ['name' => $name, 'version' => $version, 'manifest' => $manifestJson],
+                ['name' => $name, 'version' => $version, 'manifest' => $manifestJson, 'tenantId' => $tenantId],
             );
-            $this->logger->info('Agent updated', ['agent' => $name, 'version' => $version]);
+            $this->logger->info('Agent updated', ['agent' => $name, 'version' => $version, 'tenant_id' => $tenantId]);
         }
 
         $this->invalidateCache();
@@ -60,17 +63,19 @@ final class AgentRegistryRepository implements AgentRegistryInterface
 
     public function enable(string $name, string $enabledBy): bool
     {
+        $tenantId = $this->tenantContext->requireTenantId();
+
         $rows = $this->connection->executeStatement(
             <<<'SQL'
             UPDATE agent_registry
             SET enabled = TRUE, enabled_at = now(), disabled_at = NULL, enabled_by = :enabledBy, updated_at = now()
-            WHERE name = :name
+            WHERE name = :name AND tenant_id = :tenantId
             SQL,
-            ['name' => $name, 'enabledBy' => $enabledBy],
+            ['name' => $name, 'enabledBy' => $enabledBy, 'tenantId' => $tenantId],
         );
 
         if ($rows > 0) {
-            $this->logger->info('Agent enabled', ['agent' => $name, 'enabled_by' => $enabledBy]);
+            $this->logger->info('Agent enabled', ['agent' => $name, 'enabled_by' => $enabledBy, 'tenant_id' => $tenantId]);
             $this->invalidateCache();
         }
 
@@ -79,17 +84,19 @@ final class AgentRegistryRepository implements AgentRegistryInterface
 
     public function disable(string $name): bool
     {
+        $tenantId = $this->tenantContext->requireTenantId();
+
         $rows = $this->connection->executeStatement(
             <<<'SQL'
             UPDATE agent_registry
             SET enabled = FALSE, disabled_at = now(), updated_at = now()
-            WHERE name = :name
+            WHERE name = :name AND tenant_id = :tenantId
             SQL,
-            ['name' => $name],
+            ['name' => $name, 'tenantId' => $tenantId],
         );
 
         if ($rows > 0) {
-            $this->logger->info('Agent disabled', ['agent' => $name]);
+            $this->logger->info('Agent disabled', ['agent' => $name, 'tenant_id' => $tenantId]);
             $this->invalidateCache();
         }
 
@@ -101,11 +108,13 @@ final class AgentRegistryRepository implements AgentRegistryInterface
      */
     public function updateConfig(string $name, array $config): bool
     {
+        $tenantId = $this->tenantContext->requireTenantId();
+
         $rows = $this->connection->executeStatement(
             <<<'SQL'
-            UPDATE agent_registry SET config = :config, updated_at = now() WHERE name = :name
+            UPDATE agent_registry SET config = :config, updated_at = now() WHERE name = :name AND tenant_id = :tenantId
             SQL,
-            ['name' => $name, 'config' => json_encode($config, JSON_THROW_ON_ERROR)],
+            ['name' => $name, 'config' => json_encode($config, JSON_THROW_ON_ERROR), 'tenantId' => $tenantId],
         );
 
         if ($rows > 0) {
@@ -117,6 +126,7 @@ final class AgentRegistryRepository implements AgentRegistryInterface
 
     public function updateHealthStatus(string $name, string $status): void
     {
+        // Health status updates run globally (from health poller), no tenant scoping needed
         $this->connection->executeStatement(
             'UPDATE agent_registry SET health_status = :status WHERE name = :name',
             ['name' => $name, 'status' => $status],
@@ -124,6 +134,9 @@ final class AgentRegistryRepository implements AgentRegistryInterface
     }
 
     /**
+     * Upsert from discovery runs globally — agents self-register without tenant context.
+     * They get assigned to the default tenant until explicitly claimed.
+     *
      * @param array<string, mixed>|null $manifest
      * @param list<string>              $violations
      */
@@ -132,12 +145,13 @@ final class AgentRegistryRepository implements AgentRegistryInterface
         $version = is_string($manifest['version'] ?? null) ? (string) $manifest['version'] : '0.0.0';
         $manifestJson = null !== $manifest ? json_encode($manifest, JSON_THROW_ON_ERROR) : '{}';
         $violationsJson = json_encode($violations, JSON_THROW_ON_ERROR);
+        $tenantId = $this->tenantContext->isSet() ? $this->tenantContext->requireTenantId() : $this->getDefaultTenantId();
 
         $this->connection->executeStatement(
             <<<'SQL'
-            INSERT INTO agent_registry (name, version, manifest, config, enabled, health_status, violations, registered_at, updated_at)
-            VALUES (:name, :version, :manifest, '{}', FALSE, :status, :violations, now(), now())
-            ON CONFLICT (name) DO UPDATE SET
+            INSERT INTO agent_registry (name, version, manifest, config, enabled, health_status, violations, tenant_id, registered_at, updated_at)
+            VALUES (:name, :version, :manifest, '{}', FALSE, :status, :violations, :tenantId, now(), now())
+            ON CONFLICT (name, tenant_id) DO UPDATE SET
                 version       = EXCLUDED.version,
                 manifest      = EXCLUDED.manifest,
                 health_status = EXCLUDED.health_status,
@@ -150,6 +164,7 @@ final class AgentRegistryRepository implements AgentRegistryInterface
                 'manifest' => $manifestJson,
                 'status' => $status,
                 'violations' => $violationsJson,
+                'tenantId' => $tenantId,
             ],
         );
 
@@ -158,6 +173,7 @@ final class AgentRegistryRepository implements AgentRegistryInterface
 
     public function recordHealthCheckFailure(string $name): int
     {
+        // Health checks run globally
         $this->connection->executeStatement(
             'UPDATE agent_registry SET health_check_failures = health_check_failures + 1 WHERE name = :name',
             ['name' => $name],
@@ -184,7 +200,13 @@ final class AgentRegistryRepository implements AgentRegistryInterface
      */
     public function findAll(): array
     {
-        /* @var list<array<string, mixed>> */
+        if ($this->tenantContext->isSet()) {
+            return $this->connection->fetchAllAssociative(
+                'SELECT * FROM agent_registry WHERE tenant_id = :tenantId ORDER BY name',
+                ['tenantId' => $this->tenantContext->requireTenantId()],
+            );
+        }
+
         return $this->connection->fetchAllAssociative(
             'SELECT * FROM agent_registry ORDER BY name',
         );
@@ -204,6 +226,7 @@ final class AgentRegistryRepository implements AgentRegistryInterface
             return $cached;
         }
 
+        // Enabled agents are loaded globally for the scheduler and A2A gateway
         /** @var list<array<string, mixed>> $rows */
         $rows = $this->connection->fetchAllAssociative(
             'SELECT * FROM agent_registry WHERE enabled = TRUE ORDER BY name',
@@ -221,19 +244,28 @@ final class AgentRegistryRepository implements AgentRegistryInterface
      */
     public function findByName(string $name): ?array
     {
-        $row = $this->connection->fetchAssociative(
-            'SELECT * FROM agent_registry WHERE name = :name',
-            ['name' => $name],
-        );
+        if ($this->tenantContext->isSet()) {
+            $row = $this->connection->fetchAssociative(
+                'SELECT * FROM agent_registry WHERE name = :name AND tenant_id = :tenantId',
+                ['name' => $name, 'tenantId' => $this->tenantContext->requireTenantId()],
+            );
+        } else {
+            $row = $this->connection->fetchAssociative(
+                'SELECT * FROM agent_registry WHERE name = :name',
+                ['name' => $name],
+            );
+        }
 
         return false === $row ? null : $row;
     }
 
     public function markInstalled(string $name): bool
     {
+        $tenantId = $this->tenantContext->requireTenantId();
+
         $rows = $this->connection->executeStatement(
-            'UPDATE agent_registry SET installed_at = now(), updated_at = now() WHERE name = :name',
-            ['name' => $name],
+            'UPDATE agent_registry SET installed_at = now(), updated_at = now() WHERE name = :name AND tenant_id = :tenantId',
+            ['name' => $name, 'tenantId' => $tenantId],
         );
 
         if ($rows > 0) {
@@ -245,6 +277,8 @@ final class AgentRegistryRepository implements AgentRegistryInterface
 
     public function markUninstalled(string $name): bool
     {
+        $tenantId = $this->tenantContext->requireTenantId();
+
         $rows = $this->connection->executeStatement(
             <<<'SQL'
             UPDATE agent_registry
@@ -254,13 +288,13 @@ final class AgentRegistryRepository implements AgentRegistryInterface
                 enabled_by = NULL,
                 config = '{}',
                 updated_at = now()
-            WHERE name = :name
+            WHERE name = :name AND tenant_id = :tenantId
             SQL,
-            ['name' => $name],
+            ['name' => $name, 'tenantId' => $tenantId],
         );
 
         if ($rows > 0) {
-            $this->logger->info('Agent marked uninstalled', ['agent' => $name]);
+            $this->logger->info('Agent marked uninstalled', ['agent' => $name, 'tenant_id' => $tenantId]);
             $this->invalidateCache();
         }
 
@@ -269,13 +303,15 @@ final class AgentRegistryRepository implements AgentRegistryInterface
 
     public function delete(string $name): bool
     {
+        $tenantId = $this->tenantContext->requireTenantId();
+
         $rows = $this->connection->executeStatement(
-            'DELETE FROM agent_registry WHERE name = :name',
-            ['name' => $name],
+            'DELETE FROM agent_registry WHERE name = :name AND tenant_id = :tenantId',
+            ['name' => $name, 'tenantId' => $tenantId],
         );
 
         if ($rows > 0) {
-            $this->logger->info('Agent deleted', ['agent' => $name]);
+            $this->logger->info('Agent deleted', ['agent' => $name, 'tenant_id' => $tenantId]);
             $this->invalidateCache();
         }
 
@@ -284,9 +320,10 @@ final class AgentRegistryRepository implements AgentRegistryInterface
 
     public function deleteStaleMarketplaceAgents(int $failureThreshold): int
     {
+        // Stale cleanup runs globally across all tenants
         /** @var list<array<string, mixed>> $stale */
         $stale = $this->connection->fetchAllAssociative(
-            'SELECT name FROM agent_registry WHERE installed_at IS NULL AND health_check_failures >= :threshold',
+            'SELECT name, tenant_id FROM agent_registry WHERE installed_at IS NULL AND health_check_failures >= :threshold',
             ['threshold' => $failureThreshold],
         );
 
@@ -298,22 +335,23 @@ final class AgentRegistryRepository implements AgentRegistryInterface
 
         foreach ($stale as $agent) {
             $name = (string) $agent['name'];
+            $agentTenantId = (string) $agent['tenant_id'];
 
             $rows = $this->connection->executeStatement(
-                'DELETE FROM agent_registry WHERE name = :name AND installed_at IS NULL AND health_check_failures >= :threshold',
-                ['name' => $name, 'threshold' => $failureThreshold],
+                'DELETE FROM agent_registry WHERE name = :name AND tenant_id = :tenantId AND installed_at IS NULL AND health_check_failures >= :threshold',
+                ['name' => $name, 'tenantId' => $agentTenantId, 'threshold' => $failureThreshold],
             );
 
             if ($rows > 0) {
                 $this->connection->executeStatement(
                     <<<'SQL'
-                    INSERT INTO agent_registry_audit (agent_name, action, actor, payload, created_at)
-                    VALUES (:agentName, 'stale_deleted', NULL, '{}', now())
+                    INSERT INTO agent_registry_audit (agent_name, action, actor, payload, tenant_id, created_at)
+                    VALUES (:agentName, 'stale_deleted', NULL, '{}', :tenantId, now())
                     SQL,
-                    ['agentName' => $name],
+                    ['agentName' => $name, 'tenantId' => $agentTenantId],
                 );
 
-                $this->logger->info('Stale marketplace agent auto-deleted', ['agent' => $name, 'failure_threshold' => $failureThreshold]);
+                $this->logger->info('Stale marketplace agent auto-deleted', ['agent' => $name, 'failure_threshold' => $failureThreshold, 'tenant_id' => $agentTenantId]);
                 ++$deleted;
             }
         }
@@ -325,8 +363,29 @@ final class AgentRegistryRepository implements AgentRegistryInterface
         return $deleted;
     }
 
+    /**
+     * Check if a non-shared agent is already installed in another tenant.
+     */
+    public function isAgentInstalledInOtherTenant(string $name, string $currentTenantId): bool
+    {
+        $count = $this->connection->fetchOne(
+            <<<'SQL'
+            SELECT COUNT(*) FROM agent_registry
+            WHERE name = :name AND tenant_id != :tenantId AND installed_at IS NOT NULL AND shared = FALSE
+            SQL,
+            ['name' => $name, 'tenantId' => $currentTenantId],
+        );
+
+        return (int) $count > 0;
+    }
+
     private function invalidateCache(): void
     {
         $this->cache->deleteItem(self::CACHE_KEY);
+    }
+
+    private function getDefaultTenantId(): string
+    {
+        return '00000000-0000-4000-a000-000000000001';
     }
 }

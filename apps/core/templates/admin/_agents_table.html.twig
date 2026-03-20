@@ -2,13 +2,13 @@
     <table class="admin-table">
         <thead>
             <tr>
-                <th>Назва</th>
-                <th>Версія</th>
-                <th>Опис</th>
-                <th>Статус</th>
-                <th>Здоров'я</th>
-                <th>Оновлено</th>
-                <th>Дії</th>
+                <th>{{ 'agents.table.name'|trans }}</th>
+                <th>{{ 'agents.table.version'|trans }}</th>
+                <th>{{ 'agents.table.description'|trans }}</th>
+                <th>{{ 'agents.table.status'|trans }}</th>
+                <th>{{ 'agents.table.health'|trans }}</th>
+                <th>{{ 'agents.table.updated'|trans }}</th>
+                <th>{{ 'agents.table.actions'|trans }}</th>
             </tr>
         </thead>
         <tbody>
@@ -21,65 +21,65 @@
                     {% set manifest = agent.manifest %}
                     {% if mode == 'installed' %}
                         {% set enabledHint = agent.enabled
-                            ? 'Агент увімкнений: події та команди будуть оброблятися.'
-                            : 'Агент встановлено, але вимкнено: натисніть «Увімкнути».'
+                            ? 'agents.card.enabled_hint'|trans
+                            : 'agents.card.disabled_hint'|trans
                         %}
                     {% else %}
-                        {% set enabledHint = 'Агент доступний у Docker, але ще не встановлений у платформі.' %}
+                        {% set enabledHint = 'agents.card.marketplace_hint'|trans %}
                     {% endif %}
-                    {% set healthHint = 'Стан ще не визначений. Запустіть discovery або зачекайте health-check.' %}
+                    {% set healthHint = 'agents.card.health_unknown'|trans %}
                     {% if agent.health_status == 'healthy' %}
-                        {% set healthHint = 'Агент доступний, конвенції пройдено, помилок не виявлено.' %}
+                        {% set healthHint = 'agents.card.health_healthy'|trans %}
                     {% elseif agent.health_status == 'degraded' %}
-                        {% set healthHint = 'Виявлено порушення конвенцій. Натисніть badge для деталей.' %}
+                        {% set healthHint = 'agents.card.health_degraded'|trans %}
                     {% elseif agent.health_status == 'unavailable' %}
-                        {% set healthHint = 'Агент тимчасово недоступний по мережі або не відповідає на health-check.' %}
+                        {% set healthHint = 'agents.card.health_unavailable'|trans %}
                     {% elseif agent.health_status == 'error' %}
-                        {% set healthHint = 'Критична помилка в маніфесті або discovery. Перевірте деталі.' %}
+                        {% set healthHint = 'agents.card.health_error'|trans %}
                     {% endif %}
                     <tr data-agent-name="{{ agent.name }}" data-agent-mode="{{ mode }}">
                         <td>
                             <strong>{{ agent.name }}</strong>
                             <details>
-                                <summary>Agent Card</summary>
+                                <summary>{{ 'agent_settings.agent_card'|trans }}</summary>
                                 <div>
                                     {% if manifest.provider is defined and manifest.provider.organization is defined %}
-                                        <p><strong>Provider:</strong> {{ manifest.provider.organization }}</p>
+                                        <p><strong>{{ 'agents.card.provider'|trans }}:</strong> {{ manifest.provider.organization }}</p>
                                     {% endif %}
                                     {% if manifest.capabilities is defined %}
-                                        <p><strong>Capabilities:</strong>
+                                        <p><strong>{{ 'agents.card.capabilities'|trans }}:</strong>
                                             streaming={{ manifest.capabilities.streaming|default(false) ? 'yes' : 'no' }},
                                             push={{ manifest.capabilities.pushNotifications|default(false) ? 'yes' : 'no' }}
                                         </p>
                                     {% endif %}
                                     {% if manifest.commands is defined and manifest.commands|length > 0 %}
-                                        <p><strong>Команди:</strong> {{ manifest.commands|join(', ') }}</p>
+                                        <p><strong>{{ 'agents.card.commands'|trans }}:</strong> {{ manifest.commands|join(', ') }}</p>
                                     {% endif %}
                                     {% if manifest.events is defined and manifest.events|length > 0 %}
-                                        <p><strong>Події:</strong> {{ manifest.events|join(', ') }}</p>
+                                        <p><strong>{{ 'agents.card.events'|trans }}:</strong> {{ manifest.events|join(', ') }}</p>
                                     {% endif %}
                                     {% if manifest.skills is defined and manifest.skills|length > 0 %}
-                                        <p><strong>Skills:</strong>
+                                        <p><strong>{{ 'agents.card.skills'|trans }}:</strong>
                                         {% for skill in manifest.skills %}
                                             {% if skill is iterable and skill.id is defined %}{{ skill.id }}{% else %}{{ skill }}{% endif %}{% if not loop.last %}, {% endif %}
                                         {% endfor %}
                                         </p>
                                     {% endif %}
                                     {% if manifest.permissions is defined %}
-                                        <p><strong>Дозволи:</strong> {{ manifest.permissions|join(', ') }}</p>
+                                        <p><strong>{{ 'agents.card.permissions'|trans }}:</strong> {{ manifest.permissions|join(', ') }}</p>
                                     {% endif %}
                                     {% set a2aUrl = manifest.url|default(manifest.a2a_endpoint|default('')) %}
                                     {% if a2aUrl %}
-                                        <p><strong>A2A Endpoint:</strong> {{ a2aUrl }}</p>
+                                        <p><strong>{{ 'agents.card.a2a_endpoint'|trans }}:</strong> {{ a2aUrl }}</p>
                                     {% endif %}
                                     {% if agent.config != '{}' %}
-                                        <p><strong>Конфіг:</strong></p>
+                                        <p><strong>{{ 'agents.card.config'|trans }}:</strong></p>
                                         <pre>{{ agent.config }}</pre>
                                     {% endif %}
                                 </div>
                             </details>
                             <details>
-                                <summary>Raw JSON</summary>
+                                <summary>{{ 'agents.card.raw_json'|trans }}</summary>
                                 <pre>{{ manifest|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_UNICODE') b-or constant('JSON_UNESCAPED_SLASHES')) }}</pre>
                             </details>
                         </td>
@@ -89,12 +89,12 @@
                             <div class="state-cell">
                                 {% if mode == 'installed' %}
                                     {% if agent.enabled %}
-                                        <span class="badge badge-enabled" title="{{ enabledHint }}">Увімкнено</span>
+                                        <span class="badge badge-enabled" title="{{ enabledHint }}">{{ 'agents.state.enabled'|trans }}</span>
                                     {% else %}
-                                        <span class="badge badge-disabled" title="{{ enabledHint }}">Вимкнено</span>
+                                        <span class="badge badge-disabled" title="{{ enabledHint }}">{{ 'agents.state.disabled'|trans }}</span>
                                     {% endif %}
                                 {% else %}
-                                    <span class="badge badge-unknown" title="{{ enabledHint }}">Не встановлено</span>
+                                    <span class="badge badge-unknown" title="{{ enabledHint }}">{{ 'agents.state.not_installed'|trans }}</span>
                                 {% endif %}
                                 <span class="state-hint">{{ enabledHint }}</span>
                             </div>
@@ -102,19 +102,19 @@
                         <td>
                             <div class="state-cell">
                                 {% if agent.health_status == 'healthy' %}
-                                    <span class="badge badge-healthy" title="{{ healthHint }}">Healthy</span>
+                                    <span class="badge badge-healthy" title="{{ healthHint }}">{{ 'agents.state.healthy'|trans }}</span>
                                 {% elseif agent.health_status == 'degraded' %}
                                     {% if agent.violations|length > 0 %}
                                         <span class="badge badge-degraded"
                                               onclick="showViolations('{{ agent.name|e('js') }}', {{ agent.violations|json_encode|e('html_attr') }})"
-                                              title="{{ healthHint }}">Degraded ({{ agent.violations|length }})</span>
+                                              title="{{ healthHint }}">{{ 'agents.state.degraded'|trans }} ({{ agent.violations|length }})</span>
                                     {% else %}
-                                        <span class="badge badge-degraded" title="{{ healthHint }}">Degraded</span>
+                                        <span class="badge badge-degraded" title="{{ healthHint }}">{{ 'agents.state.degraded'|trans }}</span>
                                     {% endif %}
                                 {% elseif agent.health_status == 'unavailable' %}
                                     <span class="badge badge-unavailable"
                                           {% if agent.violations|length > 0 %}onclick="showViolations('{{ agent.name|e('js') }}', {{ agent.violations|json_encode|e('html_attr') }})"{% endif %}
-                                          title="{{ healthHint }}">Unavailable</span>
+                                          title="{{ healthHint }}">{{ 'agents.state.unavailable'|trans }}</span>
                                 {% elseif agent.health_status == 'error' %}
                                     <span class="badge badge-error"
                                           {% if agent.violations|length > 0 %}onclick="showViolations('{{ agent.name|e('js') }}', {{ agent.violations|json_encode|e('html_attr') }})"{% endif %}
@@ -130,17 +130,17 @@
                             {% if mode == 'installed' %}
                                 {% if agent.enabled %}
                                     <button type="button" class="btn btn-disable"
-                                            onclick="toggleAgent('{{ agent.name|e('js') }}', 'disable')">Вимкнути</button>
-                                    <a href="{{ path('admin_agent_settings', {name: agent.name}) }}" class="btn btn-settings">Налаштування</a>
+                                            onclick="toggleAgent('{{ agent.name|e('js') }}', 'disable')">{{ 'agents.action.disable'|trans }}</button>
+                                    <a href="{{ path('admin_agent_settings', {name: agent.name}) }}" class="btn btn-settings">{{ 'agents.action.settings'|trans }}</a>
                                 {% else %}
                                     <button type="button" class="btn btn-enable"
-                                            onclick="toggleAgent('{{ agent.name|e('js') }}', 'enable')">Увімкнути</button>
+                                            onclick="toggleAgent('{{ agent.name|e('js') }}', 'enable')">{{ 'agents.action.enable'|trans }}</button>
                                     <button type="button" class="btn btn-delete"
-                                            onclick="deleteAgent('{{ agent.name|e('js') }}')">Видалити</button>
+                                            onclick="deleteAgent('{{ agent.name|e('js') }}')">{{ 'agents.action.delete'|trans }}</button>
                                 {% endif %}
                             {% else %}
                                 <button type="button" class="btn btn-install"
-                                        onclick="installAgent('{{ agent.name|e('js') }}')">Встановити</button>
+                                        onclick="installAgent('{{ agent.name|e('js') }}')">{{ 'agents.action.install'|trans }}</button>
                             {% endif %}
                         </td>
                     </tr>

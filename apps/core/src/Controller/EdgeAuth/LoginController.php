@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Controller\EdgeAuth;
 
 use App\EdgeAuth\EdgeJwtService;
-use App\Security\AdminUser;
-use App\Security\AdminUserProvider;
+use App\Security\User;
+use App\Security\UserProvider;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -22,7 +22,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 final class LoginController extends AbstractController
 {
     public function __construct(
-        private readonly AdminUserProvider $userProvider,
+        private readonly UserProvider $userProvider,
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly EdgeJwtService $jwtService,
         private readonly string $cookieName,
@@ -31,14 +31,14 @@ final class LoginController extends AbstractController
     }
 
     #[Route('/edge/auth/login', name: 'edge_auth_login', methods: ['GET', 'POST'])]
-    public function __invoke(Request $request, #[CurrentUser] ?AdminUser $currentUser): Response
+    public function __invoke(Request $request, #[CurrentUser] ?User $currentUser): Response
     {
         $requestedRedirect = $request->isMethod('POST')
             ? (string) $request->request->get('rd', '')
             : (string) $request->query->get('rd', '');
         $redirectTarget = $this->normalizeRedirectTarget($requestedRedirect);
 
-        if (!$request->isMethod('POST') && $currentUser instanceof AdminUser) {
+        if (!$request->isMethod('POST') && $currentUser instanceof User) {
             return $this->redirectWithToken($currentUser->getUserIdentifier(), $redirectTarget);
         }
 
@@ -61,7 +61,7 @@ final class LoginController extends AbstractController
             ], new Response('', Response::HTTP_UNAUTHORIZED));
         }
 
-        $user = $this->loadAdminUser($username);
+        $user = $this->loadUser($username);
 
         if (null === $user || !$this->isPasswordValid($user, $password)) {
             return $this->render('edge_auth/login.html.twig', [
@@ -132,7 +132,7 @@ final class LoginController extends AbstractController
         return $target;
     }
 
-    private function loadAdminUser(string $username): ?AdminUser
+    private function loadUser(string $username): ?User
     {
         try {
             $user = $this->userProvider->loadUserByIdentifier($username);

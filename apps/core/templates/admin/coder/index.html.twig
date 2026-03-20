@@ -1,0 +1,126 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'coder.title'|trans }}{% endblock %}
+{% block page_title %}{{ 'coder.title'|trans }}{% endblock %}
+
+{% block content %}
+    <div class="stats-grid" style="margin-bottom:1rem;">
+        <div class="stat-card"><div class="stat-label">{{ 'coder.stat.total'|trans }}</div><div class="stat-value">{{ stats.total }}</div></div>
+        <div class="stat-card"><div class="stat-label">{{ 'coder.stat.queued'|trans }}</div><div class="stat-value">{{ stats.queued }}</div></div>
+        <div class="stat-card"><div class="stat-label">{{ 'coder.stat.in_progress'|trans }}</div><div class="stat-value">{{ stats.in_progress }}</div></div>
+        <div class="stat-card"><div class="stat-label">{{ 'coder.stat.done'|trans }}</div><div class="stat-value">{{ stats.done }}</div></div>
+        <div class="stat-card"><div class="stat-label">{{ 'coder.stat.failed'|trans }}</div><div class="stat-value">{{ stats.failed }}</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+            <div>
+                <h2 style="margin:0 0 .25rem 0;">{{ 'coder.tasks'|trans }}</h2>
+                <div style="color:var(--text-muted);font-size:.9rem;">{{ 'coder.tasks_desc'|trans }}</div>
+            </div>
+            <div style="display:flex;gap:.5rem;align-items:center;">
+                <form method="get">
+                    <select name="status" onchange="this.form.submit()">
+                        <option value="">{{ 'coder.all_statuses'|trans }}</option>
+                        {% for key in ['draft','queued','in_progress','done','failed','cancelled'] %}
+                            <option value="{{ key }}" {{ status_filter == key ? 'selected' : '' }}>{{ key }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                <a href="{{ path('admin_coder_create') }}" class="btn btn-primary">{{ 'coder.create_task'|trans }}</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;">
+        <h3 style="margin-top:0;">{{ 'coder.workers'|trans }}</h3>
+        {% if workers is empty %}
+            <div style="color:var(--text-muted);">{{ 'coder.no_workers'|trans }}</div>
+        {% else %}
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;">
+                {% for worker in workers %}
+                    <div style="border:1px solid var(--border);border-radius:12px;padding:.9rem;">
+                        <div style="font-weight:700;">{{ worker.id }}</div>
+                        <div style="margin:.35rem 0;"><span class="badge {{ worker.status == 'busy' ? 'badge-warning' : 'badge-info' }}">{{ worker.status }}</span></div>
+                        <div style="font-size:.9rem;color:var(--text-muted);">Task: {{ worker.current_task_id ?: '—' }}</div>
+                        <div style="font-size:.9rem;color:var(--text-muted);">Heartbeat: {{ worker.last_heartbeat_at ?: '—' }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;">
+        <table>
+            <thead>
+            <tr>
+                <th>{{ 'coder.table.name'|trans }}</th>
+                <th>{{ 'coder.table.status'|trans }}</th>
+                <th>{{ 'coder.table.priority'|trans }}</th>
+                <th>{{ 'coder.table.stage'|trans }}</th>
+                <th>{{ 'coder.table.worker'|trans }}</th>
+                <th>{{ 'coder.table.updated'|trans }}</th>
+                <th>{{ 'coder.table.actions'|trans }}</th>
+            </tr>
+            </thead>
+            <tbody id="coder-task-table">
+            {% for task in tasks %}
+                <tr data-task-id="{{ task.id }}">
+                    <td><a href="{{ path('admin_coder_detail', {id: task.id}) }}">{{ task.title }}</a></td>
+                    <td><span class="badge {{ task.status in ['failed','cancelled'] ? 'badge-danger' : (task.status == 'done' ? 'badge-success' : 'badge-info') }}">{{ task.status }}</span></td>
+                    <td>{{ task.priority }}</td>
+                    <td>{{ task.current_stage ?: '—' }}</td>
+                    <td>{{ task.worker_id ?: '—' }}</td>
+                    <td>{{ task.updated_at }}</td>
+                    <td>
+                        <div style="display:flex;gap:.35rem;flex-wrap:wrap;">
+                            {% if task.status in ['draft','failed','cancelled'] %}
+                                <button class="btn btn-settings" onclick="coderAction('{{ task.id }}','{{ task.status == 'draft' ? 'queue' : 'retry' }}')">{{ task.status == 'draft' ? 'Queue' : 'Retry' }}</button>
+                            {% endif %}
+                            {% if task.status in ['queued','in_progress'] %}
+                                <button class="btn btn-settings" onclick="coderAction('{{ task.id }}','cancel')">Cancel</button>
+                            {% endif %}
+                            <button class="btn btn-settings" onclick="changePriority('{{ task.id }}', {{ task.priority + 1 }})">+1</button>
+                        </div>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="7" style="color:var(--text-muted);">{{ 'coder.no_tasks'|trans }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top:0;">{{ 'coder.recent_activity'|trans }}</h3>
+        <div id="activity-feed" style="display:grid;gap:.5rem;">
+            {% for entry in recent_activity %}
+                <div style="border-left:3px solid var(--border);padding-left:.75rem;">
+                    <div style="font-size:.85rem;color:var(--text-muted);">{{ entry.created_at }}</div>
+                    <div><strong>{{ entry.stage ?: entry.source }}</strong> {{ entry.message }}</div>
+                </div>
+            {% else %}
+                <div style="color:var(--text-muted);">{{ 'coder.no_events'|trans }}</div>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+    function coderAction(id, action) {
+        fetch('/api/v1/internal/coder/' + id + '/' + action, {method: 'POST'})
+            .then(() => window.location.reload());
+    }
+    function changePriority(id, priority) {
+        fetch('/api/v1/internal/coder/' + id + '/priority', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({priority})
+        }).then(() => window.location.reload());
+    }
+    const stream = new EventSource('/admin/coder/events?cursor=' + encodeURIComponent(new Date(Date.now() - 10000).toISOString()));
+    stream.addEventListener('task.status_changed', function () { window.location.reload(); });
+    stream.addEventListener('worker.heartbeat', function () {});
+    </script>
+{% endblock %}

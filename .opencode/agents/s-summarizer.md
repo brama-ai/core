@@ -1,5 +1,5 @@
 ---
-description: "Summarizer subagent: final pipeline summary (runs parallel with documenter)"
+description: "Summarizer subagent: final pipeline summary and summary artifact (runs parallel with documenter)"
 mode: subagent
 model: openai/gpt-5.4
 temperature: 0.1
@@ -24,4 +24,7 @@ Load the `summarizer` skill.
 ## Subagent Rules
 
 - EXCEPTION: You DO read `.opencode/pipeline/handoff.md` — it's your primary data source
+- You MUST write `builder/tasks/summary/<timestamp>-<slug>.md`
+- You MUST write the summary file on both successful and failed / incomplete pipelines
+- Record the written summary path in `.opencode/pipeline/handoff.md`
 - Append status to `.opencode/pipeline/handoff.md` (Summarizer section only)

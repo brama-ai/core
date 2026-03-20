@@ -32,7 +32,9 @@ MONITOR_VERSION="0.16.0"
 #   +           Raise priority of selected waiting task
 #   -           Lower priority of selected waiting task
 #   l           View logs for selected failed/in-progress task
-#   d           Delete selected waiting/failed task (with files)
+#   u           Resume selected suspended task (move suspended→todo)
+#   U           Resume ALL suspended tasks
+#   d           Delete selected waiting/failed/suspended task (with files)
 #   a           Archive all completed tasks
 #   r           Refresh
 #   q/Ctrl-C    Quit (or back from log/detail view)
@@ -50,7 +52,7 @@ shopt -s extglob
 REPO_ROOT="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")")/../.." && pwd)"
 TASK_SOURCE="${1:-$REPO_ROOT/builder/tasks}"
 # Ensure all lifecycle folders exist (builder/tasks/ is gitignored)
-mkdir -p "$TASK_SOURCE/todo" "$TASK_SOURCE/in-progress" "$TASK_SOURCE/done" "$TASK_SOURCE/failed" "$TASK_SOURCE/summary" "$TASK_SOURCE/artifacts" "$TASK_SOURCE/archive"
+mkdir -p "$TASK_SOURCE/todo" "$TASK_SOURCE/in-progress" "$TASK_SOURCE/done" "$TASK_SOURCE/failed" "$TASK_SOURCE/suspended" "$TASK_SOURCE/summary" "$TASK_SOURCE/artifacts" "$TASK_SOURCE/archive"
 if [[ -d "$REPO_ROOT/.pipeline-worktrees" ]]; then
   WORKTREE_BASE="$REPO_ROOT/.pipeline-worktrees"
 else
@@ -103,6 +105,7 @@ CACHED_TODO_COUNT=0
 CACHED_INPROG_COUNT=0
 CACHED_DONE_COUNT=0
 CACHED_FAILED_COUNT=0
+CACHED_SUSPENDED_COUNT=0
 
 cache_expired() { [[ "$FORCE_REBUILD" == true ]] || (( RENDER_CYCLE % CACHE_TTL == 0 )); }
 invalidate_cache() { FORCE_REBUILD=true; }
@@ -154,7 +157,7 @@ count_files() {
 count_all_task_dirs() {
   cache_expired || return 0
   local d f
-  for d in todo in-progress done failed; do
+  for d in todo in-progress done failed suspended; do
     local count=0
     if [[ -d "$TASK_SOURCE/$d" ]]; then
       for f in "$TASK_SOURCE/$d"/*.md; do
@@ -166,6 +169,7 @@ count_all_task_dirs() {
       in-progress) CACHED_INPROG_COUNT=$count ;;
       done)        CACHED_DONE_COUNT=$count ;;
       failed)      CACHED_FAILED_COUNT=$count ;;
+      suspended)   CACHED_SUSPENDED_COUNT=$count ;;
     esac
   done
 }
@@ -202,6 +206,42 @@ query_openrouter_balance() { :; }
 aggregate_batch_tokens() { :; }
 build_provider_line() { :; }
 render_cost_bar() { :; }
+
+# ── Environment report reader ─────────────────────────────────────────
+# Reads .opencode/pipeline/env-report.json and returns a compact status line.
+# Display-only — never runs env-check.sh itself.
+get_env_status_line() {
+  local report_file="$REPO_ROOT/.opencode/pipeline/env-report.json"
+  [[ -f "$report_file" ]] || return 0
+
+  if ! command -v jq &>/dev/null; then
+    printf '%s' "${DIM}Env: report available (jq required to display)${RESET}"
+    return 0
+  fi
+
+  local exit_code summary
+  exit_code=$(jq -r '.exit_code // -1' "$report_file" 2>/dev/null)
+  summary=$(jq -r '.summary // ""' "$report_file" 2>/dev/null)
+
+  if [[ "$exit_code" == "2" ]]; then
+    # Fatal failures
+    local fatal_names
+    fatal_names=$(jq -r '[.checks[] | select(.status == "fail") | .name] | join(", ")' "$report_file" 2>/dev/null)
+    printf '%s' "${RED}Env: FAILED — ${fatal_names}${RESET}"
+  elif [[ "$exit_code" == "1" ]]; then
+    # Warnings
+    local versions
+    versions=$(jq -r '.environment | to_entries | map(select(.value != "")) | map("\(.key) \(.value)") | join(" | ")' "$report_file" 2>/dev/null)
+    printf '%s' "${YELLOW}Env: WARN — ${versions}${RESET}"
+  elif [[ "$exit_code" == "0" ]]; then
+    # All pass — show compact version line
+    local versions
+    versions=$(jq -r '.environment | to_entries | map(select(.value != "")) | map("\(.key) \(.value)") | join(" | ")' "$report_file" 2>/dev/null)
+    local check_count
+    check_count=$(jq -r '.checks | length' "$report_file" 2>/dev/null)
+    printf '%s' "${GREEN}Env: ${versions} | ${check_count} checks ✓${RESET}"
+  fi
+}
 
 get_terminal_size() {
   TERM_ROWS=$(tput lines 2>/dev/null || echo 24)
@@ -348,7 +388,7 @@ _extract_title() {
 build_task_list() {
   if ! cache_expired; then return; fi
   ALL_TASKS_FILES=(); ALL_TASKS_TITLES=(); ALL_TASKS_STATES=()
-  local dirs=("in-progress" "done" "failed") d f title
+  local dirs=("in-progress" "done" "failed" "suspended") d f title
   for d in "${dirs[@]}"; do
     [[ -d "$TASK_SOURCE/$d" ]] || continue
     for f in "$TASK_SOURCE/$d"/*.md; do
@@ -479,7 +519,8 @@ render_overview() {
   local in_progress_count=$CACHED_INPROG_COUNT
   local done_count=$CACHED_DONE_COUNT
   local failed_count=$CACHED_FAILED_COUNT
-  local total=$((todo_count + in_progress_count + done_count + failed_count))
+  local suspended_count=$CACHED_SUSPENDED_COUNT
+  local total=$((todo_count + in_progress_count + done_count + failed_count + suspended_count))
   local completed=$((done_count + failed_count))
 
   buf_line "${CYAN}${BOLD}  Pipeline Monitor${RESET} ${DIM}v${MONITOR_VERSION}${RESET}  $(date '+%H:%M:%S')"
@@ -501,7 +542,10 @@ render_overview() {
 
   buf_line "  $(progress_bar_str "$completed" "$total")"
   buf_line ""
-  buf_line "$(printf "  ${BLUE}${BOLD}⏳ Todo:${RESET}        %-4d  ${YELLOW}${BOLD}🔄 In Progress:${RESET} %-4d  ${GREEN}${BOLD}✓ Done:${RESET}        %-4d  ${RED}${BOLD}✗ Failed:${RESET}      %-4d" "$todo_count" "$in_progress_count" "$done_count" "$failed_count")"
+  local counter_line
+  counter_line=$(printf "  ${BLUE}${BOLD}⏳ Todo:${RESET}        %-4d  ${YELLOW}${BOLD}🔄 In Progress:${RESET} %-4d  ${GREEN}${BOLD}✓ Done:${RESET}        %-4d  ${RED}${BOLD}✗ Failed:${RESET}      %-4d" "$todo_count" "$in_progress_count" "$done_count" "$failed_count")
+  [[ $suspended_count -gt 0 ]] && counter_line+=$(printf "  ${MAGENTA}${BOLD}⏸ Suspended:${RESET}   %-4d" "$suspended_count")
+  buf_line "$counter_line"
   buf_line ""
 
   # Status line with worker count
@@ -532,6 +576,10 @@ render_overview() {
       buf_line "  ${BOLD}Status:${RESET} ${DIM}Not running${RESET}"
     fi
   fi
+  # Environment status line (from env-check.sh report)
+  local env_line
+  env_line=$(get_env_status_line)
+  [[ -n "$env_line" ]] && buf_line "  ${env_line}"
   buf_line ""
   buf_line "${DIM}$(hline)${RESET}"
 
@@ -555,6 +603,7 @@ render_overview() {
         in-progress) buf_line "  ${YELLOW}${BOLD}In Progress:${RESET}" ;;
         done)        buf_line "  ${GREEN}${BOLD}Completed:${RESET}" ;;
         failed)      buf_line "  ${RED}${BOLD}Failed:${RESET}" ;;
+        suspended)   buf_line "  ${MAGENTA}${BOLD}Suspended:${RESET} ${DIM}(safeguard)${RESET}" ;;
         todo)        buf_line "  ${BLUE}${BOLD}Waiting:${RESET} ${DIM}(priority order)${RESET}" ;;
       esac
       prev_state="$state_base"
@@ -599,6 +648,15 @@ render_overview() {
         else
           buf_line "  ${cursor}  ${RED}✗${RESET} $title"
         fi ;;
+      suspended)
+        local reason_label=""
+        local batch_line=""
+        IFS= read -r batch_line < "$file" 2>/dev/null || true
+        if [[ "$batch_line" =~ reason:\ ([^\ ]+) ]]; then
+          reason_label=" ${DIM}(${BASH_REMATCH[1]})${RESET}"
+        fi
+        buf_line "  ${cursor}  ${MAGENTA}⏸${RESET} ${DIM}${title}${RESET}${reason_label}"
+        ;;
       todo)
         local prio="${state#todo:}" prio_label=""
         [[ "$prio" -gt 1 ]] && prio_label=" ${MAGENTA}#${prio}${RESET}"
@@ -624,6 +682,7 @@ render_bottom_menu_buf() {
   case "$state" in
     in-progress) keys="$keys  ${WHITE}[x]${DIM} stop  ${WHITE}[l]${DIM} logs" ;;
     failed) keys="$keys  ${WHITE}[f]${DIM} retry  ${WHITE}[d]${DIM} delete  ${WHITE}[l]${DIM} logs" ;;
+    suspended) keys="$keys  ${WHITE}[u]${DIM} resume  ${WHITE}[U]${DIM} resume all  ${WHITE}[d]${DIM} delete" ;;
     todo)
       keys="$keys  ${WHITE}[+]${DIM} prio+  ${WHITE}[-]${DIM} prio-  ${WHITE}[d]${DIM} delete"
       $batch_running && keys="$keys  ${WHITE}[s]${DIM} start extra"
@@ -1120,7 +1179,7 @@ action_demote() {
 action_delete() {
   [[ $ALL_TASKS_COUNT -eq 0 || $SELECTED_IDX -ge $ALL_TASKS_COUNT ]] && return
   local state="${ALL_TASKS_STATES[$SELECTED_IDX]%%:*}"
-  [[ "$state" != "todo" && "$state" != "failed" ]] && { ACTION_MSG="${YELLOW}Can only delete waiting or failed tasks${RESET}"; return; }
+  [[ "$state" != "todo" && "$state" != "failed" && "$state" != "suspended" ]] && { ACTION_MSG="${YELLOW}Can only delete waiting, failed, or suspended tasks${RESET}"; return; }
   local file="${ALL_TASKS_FILES[$SELECTED_IDX]}" title="${ALL_TASKS_TITLES[$SELECTED_IDX]}"
   local fname; fname=$(basename "$file" .md)
   local branch_name; branch_name=$(grep -m1 '<!-- batch:' "$file" 2>/dev/null | sed 's/.*branch: \([^ ]*\) -->.*/\1/' || true)
@@ -1133,6 +1192,31 @@ action_delete() {
   rm -f "$LOG_DIR"/*"${fname}"* 2>/dev/null || true
   rm -rf "$REPO_ROOT/builder/tasks/artifacts/${fname}" 2>/dev/null || true
   ACTION_MSG="${RED}Deleted: ${title}${RESET}"
+}
+
+action_resume_task() {
+  [[ $ALL_TASKS_COUNT -eq 0 || $SELECTED_IDX -ge $ALL_TASKS_COUNT ]] && return
+  local state="${ALL_TASKS_STATES[$SELECTED_IDX]%%:*}"
+  [[ "$state" != "suspended" ]] && { ACTION_MSG="${YELLOW}Can only resume suspended tasks${RESET}"; return; }
+  local file="${ALL_TASKS_FILES[$SELECTED_IDX]}" title="${ALL_TASKS_TITLES[$SELECTED_IDX]}"
+  mkdir -p "$TASK_SOURCE/todo"
+  # Strip suspended metadata line
+  sed '/^<!-- suspended:.*-->$/d' "$file" > "$TASK_SOURCE/todo/$(basename "$file")"
+  rm -f "$file"
+  ACTION_MSG="${GREEN}Resumed: ${title} → todo${RESET}"
+}
+
+action_resume_all_suspended() {
+  local susp_dir="$TASK_SOURCE/suspended" todo_dir="$TASK_SOURCE/todo" count=0
+  [[ -d "$susp_dir" ]] || { ACTION_MSG="${YELLOW}No suspended/ directory${RESET}"; return; }
+  mkdir -p "$todo_dir"
+  for f in "$susp_dir"/*.md; do
+    [[ -f "$f" ]] || continue
+    sed '/^<!-- suspended:.*-->$/d' "$f" > "$todo_dir/$(basename "$f")"
+    rm -f "$f"; count=$((count + 1))
+  done
+  [[ $count -eq 0 ]] && { ACTION_MSG="${YELLOW}No suspended tasks to resume${RESET}"; return; }
+  ACTION_MSG="${GREEN}Resumed $count suspended → todo${RESET}"
 }
 
 action_archive() {
@@ -1365,6 +1449,8 @@ main() {
       +)          action_promote; invalidate_cache ;;
       -)          action_demote; invalidate_cache ;;
       d|D)        action_delete; invalidate_cache ;;
+      u)          action_resume_task; invalidate_cache ;;
+      U)          action_resume_all_suspended; invalidate_cache ;;
       a|A)        action_archive; invalidate_cache ;;
       l|L)
         if [[ $CURRENT_TAB -eq 1 && $ALL_TASKS_COUNT -gt 0 && $SELECTED_IDX -lt $ALL_TASKS_COUNT ]]; then

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Logging\LogIndexManager;
-use App\Security\AdminUser;
+use App\Security\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -35,7 +35,7 @@ final class LogsController extends AbstractController
     }
 
     #[Route('/admin/logs', name: 'admin_logs')]
-    public function __invoke(#[CurrentUser] AdminUser $user, Request $request): Response
+    public function __invoke(#[CurrentUser] User $user, Request $request): Response
     {
         $query = trim((string) $request->query->get('q', ''));
         $level = $request->query->get('level', '');

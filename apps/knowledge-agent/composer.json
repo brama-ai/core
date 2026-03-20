@@ -37,6 +37,16 @@
         "phpstan/phpstan": "^2.0",
         "phpstan/phpstan-symfony": "^2.0"
     },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/neuron-core/deep-research-agent"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/neuron-core/travel-planner-agent"
+        }
+    ],
     "config": {
         "allow-plugins": {
             "php-http/discovery": true,

@@ -21,19 +21,35 @@
 - [ ] 3.2 After each agent completes (in `run_agent`), call `calculate_step_cost` and emit `COST` event to `events.log`
 - [ ] 3.3 At pipeline end, call `aggregate_daily_usage` and emit summary `COST_SUMMARY` event
 - [ ] 3.4 Include step cost in `_build_task_meta()` output (pipeline-batch.sh task footer)
+- [ ] 3.5 Persist per-agent telemetry sidecars with actual model, tokens, duration, tools, and files-read
+- [ ] 3.6 Normalize runtime/tool logs into a stable telemetry schema consumable by the summarizer
+- [ ] 3.7 Apply the same telemetry schema and summary inputs to the `Ultraworks` flow
+- [ ] 3.8 Persist workflow identity (`builder` / `ultraworks`) in task telemetry metadata
 
 ## 4. Monitor Integration
 - [ ] 4.1 In `render_logs_tab()`, add footer section that reads `COST` and `COST_SUMMARY` events from `events.log`
 - [ ] 4.2 Render per-provider usage line with color coding (green <70%, yellow 70-90%, red >90%)
 - [ ] 4.3 Show cost per agent step in event lines (append `$0.42` after token info)
 
-## 5. Quality
-- [ ] 5.1 `bash -n builder/cost-tracker.sh` passes (valid syntax)
-- [ ] 5.2 `bash -n builder/pipeline.sh` passes
-- [ ] 5.3 `bash -n builder/monitor/pipeline-monitor.sh` passes
-- [ ] 5.4 Manual test: run one pipeline task, verify cost events appear in events.log
-- [ ] 5.5 Manual test: verify monitor Activity tab shows cost footer
+## 5. Summary Integration
+- [ ] 5.1 Update `.opencode/skills/summarizer/SKILL.md` to require telemetry tables and per-agent tool/files sections
+- [ ] 5.2 Render summary header with workflow label
+- [ ] 5.3 Render summary agent table with columns: `Agent`, `Model`, `Input`, `Output`, `Price`, `Time`
+- [ ] 5.4 Render summary model totals table with grouped input/output/price by actual model
+- [ ] 5.5 Render "Tools by agent" section from telemetry sidecars
+- [ ] 5.6 Render "Files read by agent" section from telemetry sidecars
+- [ ] 5.7 Ensure one summary renderer works for both `Builder` and `Ultraworks` tasks
 
-## 6. Documentation
-- [ ] 6.1 Add cost tracking section to `builder/AGENTS.md` — how to configure plans, read cost output
-- [ ] 6.2 Add inline comments in `cost-tracker.sh` explaining pricing sources and update procedure
+## 6. Quality
+- [ ] 6.1 `bash -n builder/cost-tracker.sh` passes (valid syntax)
+- [ ] 6.2 `bash -n builder/pipeline.sh` passes
+- [ ] 6.3 `bash -n builder/monitor/pipeline-monitor.sh` passes
+- [ ] 6.4 Manual test: run one pipeline task, verify cost events appear in events.log
+- [ ] 6.5 Manual test: verify summary includes workflow label, telemetry tables, tools, and files-read sections
+- [ ] 6.6 Manual test: verify `Builder` and `Ultraworks` both produce the same summary structure
+- [ ] 6.7 Manual test: verify monitor Activity tab shows cost footer
+
+## 7. Documentation
+- [ ] 7.1 Add cost tracking and summary telemetry section to `builder/AGENTS.md`
+- [ ] 7.2 Add inline comments in `cost-tracker.sh` explaining pricing sources and update procedure
+- [ ] 7.3 Update pipeline/summary docs under `docs/` to describe the new summary tables and telemetry provenance

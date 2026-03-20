@@ -12,17 +12,20 @@ services:
       - traefik.http.services.hello-agent.loadbalancer.server.port=80
       - ai.platform.agent=true
     environment:
-      LANGFUSE_ENABLED: "true"
-      LANGFUSE_BASE_URL: http://langfuse-web:3000
-      LANGFUSE_PUBLIC_KEY: lf_pk_local_dev
-      LANGFUSE_SECRET_KEY: lf_sk_local_dev
-      LANGFUSE_ENV: local
-      LITELLM_BASE_URL: http://litellm:4000
-      LITELLM_API_KEY: dev-key
+      LANGFUSE_ENABLED: ${LANGFUSE_ENABLED:-true}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-http://langfuse-web:3000}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-lf_pk_local_dev}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-lf_sk_local_dev}
+      LANGFUSE_ENV: ${LANGFUSE_ENV:-local}
+      LITELLM_BASE_URL: ${LITELLM_BASE_URL:-http://litellm:4000}
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-dev-key}
       LLM_MODEL: minimax/minimax-m2.5
-      OPENSEARCH_URL: http://opensearch:9200
+      OPENSEARCH_URL: ${OPENSEARCH_URL:-http://opensearch:9200}
+      CORE_PLATFORM_URL: ${CORE_PLATFORM_URL:-http://core}
     env_file:
       - path: ./docker/openclaw/.env
+        required: false
+      - path: ./.env.deployment
         required: false
     volumes:
       - ./apps/hello-agent:/var/www/html
@@ -30,7 +33,7 @@ services:
       - opensearch
       - litellm
     networks:
-      - dev-edge
+      - agents-internal
 
   hello-agent-e2e:
     profiles: [e2e]
@@ -40,10 +43,14 @@ services:
       dockerfile: Dockerfile
     environment:
       LANGFUSE_ENABLED: "false"
-      LITELLM_BASE_URL: http://litellm:4000
-      LITELLM_API_KEY: dev-key
+      LITELLM_BASE_URL: ${LITELLM_BASE_URL:-http://litellm:4000}
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-dev-key}
       LLM_MODEL: minimax/minimax-m2.5
-      OPENSEARCH_URL: http://opensearch:9200
+      OPENSEARCH_URL: ${OPENSEARCH_URL:-http://opensearch:9200}
+      CORE_PLATFORM_URL: http://core-e2e
+    env_file:
+      - path: ./.env.deployment
+        required: false
     ports:
       - "18085:80"
     volumes:

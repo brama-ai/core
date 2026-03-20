@@ -1,0 +1,22 @@
+services:
+  wiki-agent:
+    # Use pre-built GHCR image by default
+    image: ghcr.io/nmdimas/a2a-wiki-agent:main
+    # Fallback to local build if needed for development
+    build:
+      context: ./apps/wiki-agent
+    container_name: wiki-agent
+    labels:
+      - "com.a2a.agent=true"
+      - "com.a2a.agent.id=wiki-agent"
+      - "com.a2a.agent.network=a2a-network"
+    networks:
+      - a2a-network
+    env_file:
+      - ./apps/wiki-agent/.env.local
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped

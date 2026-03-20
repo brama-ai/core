@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Api\A2AGateway;
 
-use App\A2AGateway\SkillCatalogBuilder;
+use App\A2AGateway\SkillCatalogBuilderInterface;
 use App\Logging\PayloadSanitizer;
 use App\Logging\TraceEvent;
 use Psr\Cache\CacheItemPoolInterface;
@@ -21,7 +21,7 @@ final class DiscoveryController extends AbstractController
     private const CACHE_TTL = 30;
 
     public function __construct(
-        private readonly SkillCatalogBuilder $catalogBuilder,
+        private readonly SkillCatalogBuilderInterface $catalogBuilder,
         private readonly CacheItemPoolInterface $cache,
         private readonly LoggerInterface $logger,
         private readonly PayloadSanitizer $payloadSanitizer,

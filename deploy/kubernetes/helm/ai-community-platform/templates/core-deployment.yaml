@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core
+  labels:
+    app.kubernetes.io/name: ai-community-platform
+    app.kubernetes.io/component: core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ai-community-platform
+      app.kubernetes.io/component: core
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ai-community-platform
+        app.kubernetes.io/component: core
+    spec:
+      containers:
+        - name: core
+          image: "ai-community-platform/core:0.1.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://app:app@postgresql:5432/ai_community_platform"
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: OPENSEARCH_URL
+              value: "http://opensearch:9200"
+            - name: RABBITMQ_URL
+              value: "amqp://app:app@rabbitmq:5672"
+            - name: LANGFUSE_ENABLED
+              value: "false"
+            - name: EDGE_AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ai-community-platform-secrets
+                  key: edge-auth-jwt-secret
+            - name: EDGE_AUTH_COOKIE_NAME
+              value: "ACP_EDGE_TOKEN"
+            - name: EDGE_AUTH_TOKEN_TTL
+              value: "43200"
+            - name: EDGE_AUTH_COOKIE_DOMAIN
+              value: "ai-community-platform.local"
+            - name: APP_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ai-community-platform-secrets
+                  key: internal-token

@@ -1,12 +1,16 @@
 services:
   devcontainer:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
     volumes:
-      - ..:/workspaces/ai-community-platform:cached
+      - .:/workspaces/ai-community-platform:cached
       - vscode-server:/home/vscode/.vscode-server
-      - claude-config:/home/vscode/.claude
+      - ${HOME}/.claude:/home/vscode/.claude:cached
+      - ${HOME}/.config/opencode:/home/vscode/.config/opencode:cached
+      - ${HOME}/.local/share/opencode:/home/vscode/.local/share/opencode:cached
+      - ${HOME}/.gitconfig:/home/vscode/.gitconfig:ro
+      - ${HOME}/.ssh:/home/vscode/.ssh:ro
       # Docker-in-Docker support
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
@@ -18,22 +22,14 @@ services:
       - CLAUDE_AUTO_APPROVE_ALL=true
       - DOCKER_HOST=unix:///var/run/docker.sock
     command: sleep infinity
-    # Required for Docker-in-Docker
-    privileged: true
-
-  codex:
-    image: ghcr.io/semanser/codel:latest
-    volumes:
-      - ..:/workspaces/ai-community-platform:cached
-      - codex-config:/root/.codex
-    environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    ports:
-      - "8080:8080"
-    command: ["serve", "--host", "0.0.0.0"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - dev-edge
+      - agents-internal
 
 volumes:
   vscode-server:
-  claude-config:
-  codex-config:
-

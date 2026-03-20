@@ -41,6 +41,10 @@ BOLD='\033[1m'
 DIM='\033[2m'
 NC='\033[0m'
 
+# Shared telemetry/cost helpers
+# shellcheck source=/dev/null
+source "$REPO_ROOT/builder/cost-tracker.sh"
+
 # ── Event log (live activity feed for monitor) ────────────────────────
 EVENT_LOG="$PIPELINE_DIR/events.log"
 
@@ -62,6 +66,7 @@ PIPELINE_TIMEOUT_VALIDATOR="${PIPELINE_TIMEOUT_VALIDATOR:-1200}"   # 20 min
 PIPELINE_TIMEOUT_TESTER="${PIPELINE_TIMEOUT_TESTER:-1800}"         # 30 min
 PIPELINE_TIMEOUT_DOCUMENTER="${PIPELINE_TIMEOUT_DOCUMENTER:-900}"  # 15 min
 PIPELINE_TIMEOUT_AUDITOR="${PIPELINE_TIMEOUT_AUDITOR:-1200}"       # 20 min
+PIPELINE_TIMEOUT_E2E="${PIPELINE_TIMEOUT_E2E:-600}"               # 10 min
 PIPELINE_TIMEOUT_SUMMARIZER="${PIPELINE_TIMEOUT_SUMMARIZER:-900}"  # 15 min
 
 # Retry config
@@ -86,13 +91,14 @@ FREE_MODELS="${PIPELINE_FREE_MODELS:-opencode/big-pickle,opencode/gpt-5-nano,ope
 # "free" expands to: opencode/big-pickle,opencode/gpt-5-nano,opencode/minimax-m2.5-free
 # "cheap" expands to: openrouter/deepseek-v3.2,openrouter/gemini-3.1-flash-lite
 # Order: available providers first (openrouter, opencode, minimax), then rate-limited (openai, google, anthropic)
-FALLBACK_ARCHITECT="${PIPELINE_FALLBACK_ARCHITECT:-openrouter/anthropic/claude-sonnet-4,opencode/claude-opus-4-6,minimax/minimax-m2.7,openai/gpt-5.1-codex,google/antigravity-gemini-3.1-pro}"
-FALLBACK_CODER="${PIPELINE_FALLBACK_CODER:-openrouter/anthropic/claude-sonnet-4,opencode/claude-sonnet-4-6,minimax/minimax-m2.7,openai/gpt-5.4,google/antigravity-gemini-3.1-pro}"
-FALLBACK_VALIDATOR="${PIPELINE_FALLBACK_VALIDATOR:-openrouter/deepseek/deepseek-v3.2,opencode/gpt-5-nano,minimax/minimax-m2.7,anthropic/claude-haiku-4-5,google/antigravity-gemini-3-flash}"
-FALLBACK_TESTER="${PIPELINE_FALLBACK_TESTER:-openrouter/anthropic/claude-sonnet-4,opencode/claude-sonnet-4-6,minimax/minimax-m2.7,openai/gpt-5.4,google/antigravity-gemini-3.1-pro}"
-FALLBACK_DOCUMENTER="${PIPELINE_FALLBACK_DOCUMENTER:-openrouter/anthropic/claude-sonnet-4,opencode/gpt-5.4,minimax/minimax-m2.7,anthropic/claude-sonnet-4-6,google/antigravity-gemini-3.1-pro}"
-FALLBACK_AUDITOR="${PIPELINE_FALLBACK_AUDITOR:-openrouter/anthropic/claude-sonnet-4,opencode/claude-opus-4-6,minimax/minimax-m2.7,openai/gpt-5.1-codex,google/antigravity-gemini-3.1-pro}"
-FALLBACK_SUMMARIZER="${PIPELINE_FALLBACK_SUMMARIZER:-openrouter/anthropic/claude-sonnet-4,opencode/gpt-5.4,minimax/minimax-m2.7,anthropic/claude-sonnet-4-6,google/antigravity-gemini-3.1-pro}"
+FALLBACK_ARCHITECT="${PIPELINE_FALLBACK_ARCHITECT:-openai/gpt-5.4,opencode-go/glm-5,minimax/MiniMax-M2.7,google/gemini-3.1-pro-preview,opencode/big-pickle,openrouter/free}"
+FALLBACK_CODER="${PIPELINE_FALLBACK_CODER:-minimax/MiniMax-M2.7,openai/gpt-5.3-codex,opencode-go/glm-5,google/gemini-3.1-pro-preview,opencode/big-pickle,openrouter/qwen/qwen3-coder:free}"
+FALLBACK_VALIDATOR="${PIPELINE_FALLBACK_VALIDATOR:-openai/gpt-5.2,opencode-go/kimi-k2.5,opencode/minimax-m2.5-free,google/gemini-3.1-flash-lite-preview,openrouter/deepseek/deepseek-r1-0528-qwen3-8b:free}"
+FALLBACK_TESTER="${PIPELINE_FALLBACK_TESTER:-openai/gpt-5.3-codex,minimax/MiniMax-M2.7-highspeed,opencode/big-pickle,google/gemini-3.1-pro-preview,openrouter/qwen/qwen3-coder:free}"
+FALLBACK_DOCUMENTER="${PIPELINE_FALLBACK_DOCUMENTER:-anthropic/claude-sonnet-4-6,google/gemini-3-flash-preview,minimax/MiniMax-M2.5,opencode-go/kimi-k2.5,opencode/big-pickle,openrouter/free}"
+FALLBACK_AUDITOR="${PIPELINE_FALLBACK_AUDITOR:-openai/gpt-5.4,opencode-go/glm-5,minimax/MiniMax-M2.7,opencode/big-pickle,google/gemini-3.1-pro-preview,openrouter/free}"
+FALLBACK_E2E="${PIPELINE_FALLBACK_E2E:-opencode-go/glm-5,openai/gpt-5.4,minimax/minimax-m2.7,google/gemini-2.5-flash,openrouter/qwen/qwen3-coder:free}"
+FALLBACK_SUMMARIZER="${PIPELINE_FALLBACK_SUMMARIZER:-anthropic/claude-opus-4-6,google/gemini-3.1-pro-preview,minimax/MiniMax-M2.7,opencode-go/glm-5,opencode/big-pickle,openrouter/deepseek/deepseek-r1-0528:free}"
 
 # ── Help ──────────────────────────────────────────────────────────────
 
@@ -119,7 +125,7 @@ Options:
   --skip-env-check    Skip environment prerequisites check
   -h, --help          Show this help
 
-Agents: planner, architect, coder, auditor, validator, tester, documenter, summarizer
+Agents: planner, architect, coder, auditor, validator, tester, e2e, documenter, summarizer
 
 Profiles:
   quick-fix    — coder + validator + summarizer
@@ -150,12 +156,12 @@ Telegram (env vars):
 
 Fallback models (env vars, comma-separated):
   Tiers: subscriptions (Claude+Codex) → free → cheap (per-token)
-  PIPELINE_FALLBACK_ARCHITECT    (default: sonnet,codex,free,cheap)
-  PIPELINE_FALLBACK_CODER        (default: codex,opus,free,cheap)
-  PIPELINE_FALLBACK_VALIDATOR    (default: sonnet,codex-mini,free,cheap)
-  PIPELINE_FALLBACK_TESTER       (default: sonnet,codex-mini,free,cheap)
-  PIPELINE_FALLBACK_DOCUMENTER   (default: opus,free,cheap)
-  PIPELINE_FALLBACK_SUMMARIZER   (default: gpt-5.4,gpt-5.3-codex,free,cheap)
+  PIPELINE_FALLBACK_ARCHITECT    (default: gpt-5.4,glm-5,M2.7,gemini,big-pickle,free)
+  PIPELINE_FALLBACK_CODER        (default: M2.7,gpt-5.3-codex,glm-5,gemini,big-pickle,qwen3-coder:free)
+  PIPELINE_FALLBACK_VALIDATOR    (default: gpt-5.2,kimi-k2.5,minimax-m2.5-free,gemini-flash-lite,deepseek:free)
+  PIPELINE_FALLBACK_TESTER       (default: gpt-5.3-codex,M2.7-highspeed,big-pickle,gemini,qwen3-coder:free)
+  PIPELINE_FALLBACK_DOCUMENTER   (default: sonnet,gemini-flash,M2.5,kimi,big-pickle,free)
+  PIPELINE_FALLBACK_SUMMARIZER   (default: opus,gemini-pro,M2.7,glm-5,big-pickle,deepseek:free)
   PIPELINE_CHEAP_MODELS          (default: deepseek-v3.2,gemini-3.1-flash-lite)
   PIPELINE_FREE_MODELS           (default: big-pickle,gpt-5-nano,minimax-m2.5-free)
 
@@ -204,6 +210,7 @@ PIPELINE_TOKEN_BUDGET_VALIDATOR="${PIPELINE_TOKEN_BUDGET_VALIDATOR:-500000}"
 PIPELINE_TOKEN_BUDGET_TESTER="${PIPELINE_TOKEN_BUDGET_TESTER:-500000}"
 PIPELINE_TOKEN_BUDGET_DOCUMENTER="${PIPELINE_TOKEN_BUDGET_DOCUMENTER:-300000}"
 PIPELINE_TOKEN_BUDGET_AUDITOR="${PIPELINE_TOKEN_BUDGET_AUDITOR:-300000}"
+PIPELINE_TOKEN_BUDGET_E2E="${PIPELINE_TOKEN_BUDGET_E2E:-300000}"
 PIPELINE_TOKEN_BUDGET_SUMMARIZER="${PIPELINE_TOKEN_BUDGET_SUMMARIZER:-300000}"
 
 while [[ $# -gt 0 ]]; do
@@ -713,10 +720,12 @@ init_artifacts() {
   local branch="$2"
   ARTIFACTS_DIR="$ARTIFACTS_BASE/$slug"
   CHECKPOINT_FILE="$ARTIFACTS_DIR/checkpoint.json"
+  TELEMETRY_DIR="$ARTIFACTS_DIR/telemetry"
   TASK_SUMMARY_DIR="$REPO_ROOT/builder/tasks/summary"
   TASK_SUMMARY_FILE="$TASK_SUMMARY_DIR/${TIMESTAMP}-${slug}.md"
 
   mkdir -p "$ARTIFACTS_DIR"
+  mkdir -p "$TELEMETRY_DIR"
   mkdir -p "$TASK_SUMMARY_DIR"
 
   # Only create new checkpoint if not resuming
@@ -730,6 +739,7 @@ init_artifacts() {
 {
   "task": $(printf '%s' "$TASK_MESSAGE" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'),
   "branch": "$branch",
+  "workflow": "builder",
   "started": "$(date '+%Y-%m-%d %H:%M:%S')",
   "agents": {}
 }
@@ -830,7 +840,7 @@ get_resume_agent() {
 import json, sys
 with open(sys.argv[1], 'r') as f:
     data = json.load(f)
-agents_order = data.get('planned_agents') or ['planner', 'architect', 'coder', 'auditor', 'validator', 'tester', 'documenter', 'summarizer']
+agents_order = data.get('planned_agents') or ['planner', 'architect', 'coder', 'auditor', 'validator', 'tester', 'e2e', 'documenter', 'summarizer']
 completed = data.get('agents', {})
 for agent in agents_order:
     info = completed.get(agent, {})
@@ -1060,22 +1070,14 @@ query_session_tokens() {
 
   local tmp_file="/tmp/pipeline_session_${$}_${RANDOM}.json"
 
-  # Export to temp file — piping truncates large sessions
-  if ! opencode export "$session_id" > "$tmp_file" 2>/dev/null; then
+  if ! export_session_json "$session_id" "$tmp_file"; then
     rm -f "$tmp_file"
     echo "$fallback"
     return
   fi
 
-  # Aggregate tokens across all messages
   local result
-  result=$(jq '{
-    input_tokens: [.messages[].info.tokens.input // 0] | add,
-    output_tokens: [.messages[].info.tokens.output // 0] | add,
-    cache_read: [.messages[].info.tokens.cache.read // 0] | add,
-    cache_write: [.messages[].info.tokens.cache.write // 0] | add,
-    cost: 0
-  }' "$tmp_file" 2>/dev/null) || result=""
+  result=$(summarize_export_tokens "$tmp_file" 2>/dev/null) || result=""
 
   rm -f "$tmp_file"
 
@@ -1084,7 +1086,15 @@ query_session_tokens() {
     return
   fi
 
-  echo "$result"
+  local input_tokens output_tokens cache_read
+  input_tokens=$(echo "$result" | jq -r '.input_tokens // 0' 2>/dev/null || echo 0)
+  output_tokens=$(echo "$result" | jq -r '.output_tokens // 0' 2>/dev/null || echo 0)
+  cache_read=$(echo "$result" | jq -r '.cache_read // 0' 2>/dev/null || echo 0)
+  local model="unknown"
+  local cost="0"
+  cost=$(calculate_cost_from_values "$model" "$input_tokens" "$output_tokens" "$cache_read" 2>/dev/null || echo 0)
+
+  echo "$result" | jq --argjson cost "$cost" '. + {cost: $cost}' 2>/dev/null || echo "$fallback"
 }
 
 # Detect worker ID from worktree path (e.g. .pipeline-worktrees/worker-2 → worker-2)
@@ -1106,6 +1116,8 @@ write_agent_meta() {
   local exit_code="$5"
   local log_file="$6"
   local tokens_json="${7:-{}}"
+  local step_cost="${8:-0}"
+  local session_id="${9:-}"
 
   local meta_file="$LOG_DIR/${TIMESTAMP}_${agent}.meta.json"
   local log_bytes=0
@@ -1124,6 +1136,7 @@ write_agent_meta() {
 
   cat > "$meta_file" << META_EOF
 {
+  "workflow": "builder",
   "agent": "$agent",
   "model": "$model",
   "task": "$task_slug",
@@ -1135,6 +1148,8 @@ write_agent_meta() {
   "log_file": "$(basename "$log_file")",
   "log_bytes": $log_bytes,
   "log_lines": $log_lines,
+  "session_id": "$session_id",
+  "cost": $step_cost,
   "tokens": $tokens_json
 }
 META_EOF
@@ -1524,9 +1539,32 @@ run_agent() {
       echo -e "${RED}✗ Loop detected for '${agent}': ${loop_info}${NC}"
 
       # Query tokens from opencode session export
+      local export_file="/tmp/pipeline_export_${agent}_${$}_${RANDOM}.json"
       local tokens_json
-      tokens_json=$(query_session_tokens "$session_id")
-      write_agent_meta "$agent" "$(get_current_model "$agent")" "$agent_start_epoch" "$agent_end_epoch" "2" "$log_file" "$tokens_json"
+      local tools_json='[]'
+      local files_json='[]'
+      local actual_model_used
+      actual_model_used="$(get_current_model "$agent")"
+      if [[ -n "$session_id" ]] && export_session_json "$session_id" "$export_file"; then
+        tokens_json=$(summarize_export_tokens "$export_file")
+        tools_json=$(extract_session_tools "$export_file")
+        files_json=$(extract_session_files_read "$export_file")
+      else
+        tokens_json='{"input_tokens":0,"output_tokens":0,"cache_read":0,"cache_write":0}'
+      fi
+      local in_tok out_tok cache_r step_cost
+      in_tok=$(echo "$tokens_json" | jq -r '.input_tokens // 0' 2>/dev/null || echo 0)
+      out_tok=$(echo "$tokens_json" | jq -r '.output_tokens // 0' 2>/dev/null || echo 0)
+      cache_r=$(echo "$tokens_json" | jq -r '.cache_read // 0' 2>/dev/null || echo 0)
+      step_cost=$(calculate_cost_from_values "$actual_model_used" "$in_tok" "$out_tok" "$cache_r")
+      tokens_json=$(echo "$tokens_json" | jq --argjson cost "$step_cost" '. + {cost: $cost}' 2>/dev/null || echo "$tokens_json")
+      write_agent_meta "$agent" "$actual_model_used" "$agent_start_epoch" "$agent_end_epoch" "2" "$log_file" "$tokens_json" "$step_cost" "$session_id"
+      write_telemetry_record "$TELEMETRY_DIR/${agent}.json" "builder" "$agent" "$actual_model_used" "$(( agent_end_epoch - agent_start_epoch ))" "2" "$session_id" "$tokens_json" "$tools_json" "$files_json" "$step_cost"
+      if [[ -f "$export_file" ]]; then
+        cp "$export_file" "$ARTIFACTS_DIR/$agent.session.json" 2>/dev/null || true
+        cp "$export_file" "$LOG_DIR/${TIMESTAMP}_${agent}.session.json" 2>/dev/null || true
+        rm -f "$export_file"
+      fi
 
       # Store token results for report
       set_agent_tokens "$agent" "$tokens_json"
@@ -1556,9 +1594,37 @@ run_agent() {
     fi
 
     # Query token usage from opencode session export
+    local export_file="/tmp/pipeline_export_${agent}_${$}_${RANDOM}.json"
     local tokens_json
-    tokens_json=$(query_session_tokens "$session_id")
-    write_agent_meta "$agent" "$(get_current_model "$agent")" "$agent_start_epoch" "$agent_end_epoch" "$exit_code" "$log_file" "$tokens_json"
+    local tools_json='[]'
+    local files_json='[]'
+    local actual_model_used
+    actual_model_used=$(get_current_model "$agent")
+    if [[ -n "$session_id" ]] && export_session_json "$session_id" "$export_file"; then
+      tokens_json=$(summarize_export_tokens "$export_file")
+      tools_json=$(extract_session_tools "$export_file")
+      files_json=$(extract_session_files_read "$export_file")
+      local detected_model
+      detected_model=$(extract_export_model "$export_file" 2>/dev/null || echo "")
+      [[ -n "$detected_model" && "$detected_model" != "unknown" ]] && actual_model_used="$detected_model"
+    else
+      tokens_json='{"input_tokens":0,"output_tokens":0,"cache_read":0,"cache_write":0}'
+    fi
+    local in_tok out_tok cache_r cache_w
+    in_tok=$(echo "$tokens_json" | jq -r '.input_tokens // 0' 2>/dev/null || echo 0)
+    out_tok=$(echo "$tokens_json" | jq -r '.output_tokens // 0' 2>/dev/null || echo 0)
+    cache_r=$(echo "$tokens_json" | jq -r '.cache_read // 0' 2>/dev/null || echo 0)
+    cache_w=$(echo "$tokens_json" | jq -r '.cache_write // 0' 2>/dev/null || echo 0)
+    local step_cost
+    step_cost=$(calculate_cost_from_values "$actual_model_used" "$in_tok" "$out_tok" "$cache_r")
+    tokens_json=$(echo "$tokens_json" | jq --argjson cost "$step_cost" '. + {cost: $cost}' 2>/dev/null || echo "$tokens_json")
+    write_agent_meta "$agent" "$actual_model_used" "$agent_start_epoch" "$agent_end_epoch" "$exit_code" "$log_file" "$tokens_json" "$step_cost" "$session_id"
+    write_telemetry_record "$TELEMETRY_DIR/${agent}.json" "builder" "$agent" "$actual_model_used" "$(( agent_end_epoch - agent_start_epoch ))" "$exit_code" "$session_id" "$tokens_json" "$tools_json" "$files_json" "$step_cost"
+    if [[ -f "$export_file" ]]; then
+      cp "$export_file" "$ARTIFACTS_DIR/$agent.session.json" 2>/dev/null || true
+      cp "$export_file" "$LOG_DIR/${TIMESTAMP}_${agent}.session.json" 2>/dev/null || true
+      rm -f "$export_file"
+    fi
 
     # Store token results for report
     set_agent_tokens "$agent" "$tokens_json"
@@ -1566,18 +1632,11 @@ run_agent() {
     local agent_cost
     agent_cost=$(echo "$tokens_json" | jq -r '.cost' 2>/dev/null || echo 0)
     CUMULATIVE_COST=$(echo "$CUMULATIVE_COST $agent_cost" | awk '{printf "%.4f", $1 + $2}')
+    emit_event "COST" "agent=${agent}|model=${actual_model_used}|input=${in_tok}|output=${out_tok}|price=${agent_cost}|time=$(( agent_end_epoch - agent_start_epoch ))s"
 
     # Check result
     if [[ $exit_code -eq 0 ]]; then
-      local in_tok out_tok cache_r cache_w
-      in_tok=$(echo "$tokens_json" | jq -r '.input_tokens' 2>/dev/null || echo 0)
-      out_tok=$(echo "$tokens_json" | jq -r '.output_tokens' 2>/dev/null || echo 0)
-      cache_r=$(echo "$tokens_json" | jq -r '.cache_read' 2>/dev/null || echo 0)
-      cache_w=$(echo "$tokens_json" | jq -r '.cache_write' 2>/dev/null || echo 0)
-
       local agent_dur=$(( agent_end_epoch - agent_start_epoch ))
-      local actual_model_used
-      actual_model_used=$(get_current_model "$agent")
       emit_event "AGENT_DONE" "agent=${agent}|model=${actual_model_used}|status=ok|duration=${agent_dur}s|tokens=${in_tok}/${out_tok}|cache=${cache_r}"
 
       echo ""
@@ -1680,7 +1739,7 @@ Write ONLY a JSON file to \`pipeline-plan.json\` (in the repo root) with this ex
 **Fields**:
 - \`is_agent_task\`: set to \`true\` when the task creates, modifies, or significantly changes an agent (any app in \`apps/\` with \`-agent\` suffix, or agent configs in \`.opencode/agents/\`). When true, the pipeline auto-injects an auditor step after the coder to verify agent compliance.
 
-Agent options: planner, architect, coder, auditor, validator, tester, documenter, summarizer.
+Agent options: planner, architect, coder, auditor, validator, tester, e2e, documenter, summarizer.
 For quick-fix: typically ["coder", "validator", "summarizer"].
 For standard: typically ["architect", "coder", "validator", "tester", "summarizer"].
 For complex: add "auditor" and increase timeouts.
@@ -1837,14 +1896,31 @@ Read \`.opencode/pipeline/handoff.md\` for the task description and full pipelin
 4. Check test coverage for new code — if new classes/methods have no tests, write them
 5. Follow existing test patterns: Codeception Cest format for PHP, pytest for Python
 6. If the change touches agent config (manifest, compose), also run: \`make conventions-test\`
-7. Run the full suite one last time to ensure nothing is broken
+
+### E2E Coverage Check (step 7)
+
+7. If the change touches UI (templates, controllers, CSS, JS, admin pages):
+   a. Read \`docs/agent-requirements/e2e-cuj-matrix.md\`
+   b. Check: does a CUJ row exist for this feature?
+   c. If CUJ exists but E2E test is missing → write E2E test + Page Object
+   d. If no CUJ exists for a new UI feature → add CUJ row to matrix + write test
+   e. Follow Page Object patterns in \`tests/e2e/support/pages/\`
+   f. Register new Page Objects in \`tests/e2e/codecept.conf.js\`
+   g. Tag tests: \`@admin\` for UI, \`@smoke\` for API, plus feature tag
+
+8. If E2E infra is available (\`make e2e-prepare\` succeeds): run \`make e2e\`
+9. If E2E infra is NOT available: write tests anyway, note in handoff
+10. Run full unit/functional suite one last time to ensure nothing is broken
 
 ## Test Conventions
 
 - PHP test files: \`tests/Unit/\` and \`tests/Functional/\`, mirroring \`src/\` structure
 - Test naming: \`*Cest.php\` (Codeception), test methods with \`test\` prefix
+- E2E test files: \`tests/e2e/tests/admin/*_test.js\`, Codecept.js Feature/Scenario
+- E2E Page Objects: \`tests/e2e/support/pages/*.js\`, encapsulate selectors and actions
 - Reference: \`docs/agent-requirements/test-cases.md\` (TC-01..TC-05)
 - Reference: \`docs/agent-requirements/e2e-testing.md\` for isolation patterns
+- Reference: \`docs/agent-requirements/e2e-cuj-matrix.md\` for CUJ coverage
 
 ## Handoff
 
@@ -1852,6 +1928,51 @@ Update \`.opencode/pipeline/handoff.md\` — Tester section:
 - Test results per suite (passed/failed/skipped counts)
 - New tests written (file paths)
 - Tests updated and why
+- E2E coverage: CUJ check result, new E2E tests written (or "N/A — no UI changes")
+PROMPT
+      ;;
+    e2e)
+      cat << PROMPT
+Read \`.opencode/pipeline/handoff.md\` for the task description and full pipeline context.
+
+## Instructions
+
+You are the E2E test runner. Your job is to run browser-based E2E tests and report results.
+
+### Pre-flight
+
+1. Check if E2E infra is available: run \`make e2e-prepare\`
+   - If it succeeds: proceed to step 2
+   - If it fails (Docker not available, containers can't start): report "E2E SKIPPED — infra unavailable" in handoff and exit
+
+### Run E2E
+
+2. Run the full E2E suite: \`make e2e\`
+3. If tests fail:
+   a. Read failing test file and related Page Object
+   b. Read the tested page/controller to understand what changed
+   c. Fix the E2E test if it's a test issue (outdated selector, timing, etc.)
+   d. Fix the production code if it's a real bug — keep changes minimal
+   e. Re-run \`make e2e\` to verify
+
+### CUJ Verification
+
+4. Read \`docs/agent-requirements/e2e-cuj-matrix.md\`
+5. From handoff.md, check which UI features were changed
+6. Verify every changed UI feature has a CUJ with a passing E2E test
+7. If CUJ is missing: flag as WARN in handoff (do NOT create tests — tester does that)
+
+### Cleanup
+
+8. Run \`make e2e-cleanup\` to stop E2E containers
+
+## Handoff
+
+Update \`.opencode/pipeline/handoff.md\` — E2E section:
+- E2E result: PASS / FAIL / SKIPPED (with reason)
+- Tests run: total/passed/failed/skipped
+- CUJ coverage: checked / gaps found
+- Fixes applied (if any)
 PROMPT
       ;;
     documenter)
@@ -1924,10 +2045,11 @@ Task: Create the final task summary for this pipeline run.
 
 1. Read \`.opencode/pipeline/handoff.md\` for cross-agent context.
 2. Read \`${CHECKPOINT_FILE}\` to see which agents actually ran, their statuses, durations, and commits.
-3. Read the available logs in \`.opencode/pipeline/logs/${TIMESTAMP}_*.log\`.
-4. Read \`.opencode/pipeline/reports/${TIMESTAMP}.md\` if it already exists.
-5. Write the final markdown summary to \`${TASK_SUMMARY_FILE}\`.
-6. Write the report in Ukrainian.
+3. Generate the telemetry markdown block via: \`builder/cost-tracker.sh summary-block --workflow builder --task-slug "$(_task_slug "$TASK_MESSAGE")"\`
+4. Read the available logs in \`.opencode/pipeline/logs/${TIMESTAMP}_*.log\`.
+5. Read \`.opencode/pipeline/reports/${TIMESTAMP}.md\` if it already exists.
+6. Write the final markdown summary to \`${TASK_SUMMARY_FILE}\`.
+7. Write the report in Ukrainian.
 
 ## Required Report Structure
 
@@ -1938,6 +2060,10 @@ Task: Create the final task summary for this pipeline run.
 - Статус пайплайну
 - Гілка
 - Pipeline ID
+- Workflow
+
+## Telemetry
+<paste generated telemetry block here>
 
 ## Агенти
 ### <agent>

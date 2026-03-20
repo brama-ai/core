@@ -2,22 +2,23 @@
 
 ## Why
 
-The platform already has a proven multi-agent coding pipeline (`scripts/pipeline.sh`, `pipeline-batch.sh`, `pipeline-monitor.sh`) that runs architect, coder, validator, tester, and documenter stages. However, this pipeline is entirely CLI-based -- operators must SSH into the machine, manage task files manually, and monitor progress through a terminal TUI. There is no way to create, prioritize, or monitor coding tasks from the admin panel, and no integration with the platform's A2A protocol or existing worker infrastructure.
+The repository already has a working builder workflow in `builder/` with task folders, a multi-agent pipeline, and a terminal monitor. That workflow is useful but operator-hostile: it requires shell access, manual task file creation, and terminal-based monitoring.
 
-A built-in Platform Coder Agent will wrap the existing pipeline logic in a PHP/Symfony service, expose task management through the admin UI, support concurrent workers via git worktrees, and integrate with the A2A protocol so other agents can trigger coding tasks programmatically.
+The platform needs a first-class Core-admin interface for this workflow so admins can create tasks, inspect progress, manage queue state, and review logs without leaving the web UI. The first release must keep the existing builder runtime operational instead of replacing it.
 
 ## What Changes
 
-- **New capability: `coder-agent-pipeline`** -- PHP service that orchestrates the pipeline stages (architect, coder, validator, tester, documenter, summarizer, plus optional auditor) with stage gate verification, retry policies, and model fallback chains via LiteLLM gateway
-- **New capability: `coder-agent-admin`** -- Admin panel pages for task CRUD, priority management, pipeline monitoring dashboard with real-time progress (SSE), log viewing, and task templates (ADR, HLD, feature spec, bug fix, refactor)
-- **New capability: `coder-agent-worker`** -- Background worker management: spawn, monitor, and kill workers; priority queue with configurable concurrency; task state machine (todo/queued/in-progress/done/failed)
-- **New capability: `coder-agent-worktree`** -- Git worktree lifecycle management for worker isolation: create, track, and cleanup worktrees per task
-- **Modified: A2A integration** -- New A2A skills (`coder.submit_task`, `coder.task_status`, `coder.cancel_task`) so other platform agents can request coding work
-- **Modified: admin navigation** -- New "Coder" section in admin sidebar
+- **New capability: `coder-agent-admin`** -- admin pages under `/admin/coder` for task creation, task list, detail view, worker visibility, and live monitoring
+- **New capability: `coder-agent-worker`** -- Symfony worker commands and task lifecycle tracking in Core
+- **New capability: `coder-agent-pipeline`** -- Core wrapper around the existing `builder/pipeline.sh` runtime with subprocess log capture and stage detection
+- **New capability: `coder-agent-worktree`** -- worktree tracking and artifact visibility compatible with the existing builder layout
+- **Modified: admin navigation** -- new `Coder` entry in the Core sidebar
+- **Modified architecture** -- Core DB becomes the primary UI state store while `builder/tasks/*` and `.opencode/pipeline/*` remain the compatibility/runtime layer in phase 1
+- **Deferred** -- A2A exposure is designed to align with the data model but is not required for the first web-admin delivery
 
 ## Impact
 
-- Affected specs: coder-agent-pipeline (new), coder-agent-admin (new), coder-agent-worker (new), coder-agent-worktree (new), admin-tools-navigation (modified)
-- Affected code: new `apps/core/src/CoderAgent/` namespace, new admin controllers and templates, new Symfony commands for workers, new database tables, modifications to admin navigation
-- **New external dependencies**: none beyond existing stack (PHP 8.5, Symfony 7, Postgres, Redis for queue); existing LiteLLM gateway for model selection
-- **No breaking changes** to existing agents or platform APIs
+- Affected specs: `coder-agent-admin`, `coder-agent-pipeline`, `coder-agent-worker`, `coder-agent-worktree`, `admin-tools-navigation`
+- Affected code: new `apps/core/src/CoderAgent/` namespace, migrations, repositories, worker commands, admin controllers, internal APIs, Twig templates, and sidebar updates
+- Runtime impact: existing `builder/pipeline.sh`, `builder/pipeline-batch.sh`, and `builder/monitor/pipeline-monitor.sh` remain supported
+- No breaking change to the current builder CLI workflow

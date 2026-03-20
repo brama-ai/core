@@ -90,6 +90,20 @@ builder/
 
 Клавіші: `[s]` старт, `[k]` зупинити, `[f]` повторити failed, `[+/-]` пріоритет, `[q]` вийти.
 
+### Web UI в Core
+
+Для builder workflow тепер доступний Core admin UI:
+
+- `/admin/coder` — список задач, статуси, воркери, активність
+- `/admin/coder/create` — створення задачі з шаблону
+- `/admin/coder/{id}` — деталі задачі, stage timeline, live logs
+
+Поточна реалізація працює в режимі сумісності:
+
+- Core UI зберігає стан у БД
+- `builder/tasks/*` і `.opencode/pipeline/*` лишаються runtime-шаром для існуючих скриптів
+- `pipeline-monitor.sh` лишається підтриманим fallback-інструментом для операторів
+
 ### Прямий запуск
 
 ```bash

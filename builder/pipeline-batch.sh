@@ -70,6 +70,13 @@ WATCH_INTERVAL=15  # seconds between polls for new tasks
 AUTO_FIX=false
 MAX_AUTO_FIX_RETRIES="${PIPELINE_MAX_RETRIES:-10}"
 
+# ── Safeguard limits ──────────────────────────────────────────────────
+CONSECUTIVE_FAIL_LIMIT="${PIPELINE_CONSECUTIVE_FAIL_LIMIT:-3}"
+BATCH_DURATION_CAP="${PIPELINE_BATCH_DURATION_CAP:-14400}"    # 4 hours default
+BATCH_FAIL_CAP="${PIPELINE_BATCH_FAIL_CAP:-5}"                # max total failures before suspend
+CONSECUTIVE_FAILS=0                                            # runtime counter
+SAFEGUARD_TRIGGERED=""                                         # reason string when triggered
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-stop-on-failure)
@@ -86,6 +93,18 @@ while [[ $# -gt 0 ]]; do
       ;;
     --watch-interval)
       WATCH_INTERVAL="$2"
+      shift 2
+      ;;
+    --consecutive-fail-limit)
+      CONSECUTIVE_FAIL_LIMIT="$2"
+      shift 2
+      ;;
+    --batch-duration-cap)
+      BATCH_DURATION_CAP="$2"
+      shift 2
+      ;;
+    --batch-fail-cap)
+      BATCH_FAIL_CAP="$2"
       shift 2
       ;;
     --workers)
@@ -143,6 +162,11 @@ if [[ -z "$TASK_SOURCE" ]]; then
   echo "  --watch               Keep running and pick up new tasks from todo/"
   echo "  --watch-interval N    Seconds between polls for new tasks (default: 15)"
   echo ""
+  echo "Safeguard options (prevent runaway API spend):"
+  echo "  --consecutive-fail-limit N  Suspend after N consecutive failures (default: 3)"
+  echo "  --batch-fail-cap N          Suspend after N total failures (default: 5)"
+  echo "  --batch-duration-cap N      Suspend after N seconds total (default: 14400 = 4h)"
+  echo ""
   echo "Pipeline options are passed through to pipeline.sh:"
   echo "  --skip-architect    Skip the architect stage"
   echo "  --from <agent>      Start from a specific agent"
@@ -192,7 +216,7 @@ load_tasks_from_folder() {
   local todo_dir="$folder/todo"
 
   # Ensure all lifecycle folders exist (tasks/ is gitignored)
-  mkdir -p "$folder/todo" "$folder/in-progress" "$folder/done" "$folder/failed" "$folder/summary"
+  mkdir -p "$folder/todo" "$folder/in-progress" "$folder/done" "$folder/failed" "$folder/suspended" "$folder/summary"
 
   # Read .md files sorted by name for predictable order
   local files=()
@@ -255,6 +279,24 @@ if [[ -d "$REPO_ROOT/.pipeline-worktrees" ]]; then
   git -C "$REPO_ROOT" worktree prune 2>/dev/null || true
 fi
 
+# Recover orphaned tasks stuck in in-progress/ (no running pipeline process)
+if $FOLDER_MODE && [[ -d "${TASK_SOURCE}/in-progress" ]]; then
+  orphan_count=0
+  for f in "${TASK_SOURCE}/in-progress"/*.md; do
+    [[ -f "$f" ]] || continue
+    [[ "$(basename "$f")" == ".gitkeep" ]] && continue
+    # Check if any pipeline.sh process is working on this task
+    task_basename=$(basename "$f" .md)
+    if ! pgrep -f "pipeline.*${task_basename}" > /dev/null 2>&1; then
+      echo -e "${YELLOW}Recovering orphaned task: $(basename "$f") → failed/${NC}"
+      mkdir -p "${TASK_SOURCE}/failed"
+      mv "$f" "${TASK_SOURCE}/failed/$(basename "$f")"
+      orphan_count=$((orphan_count + 1))
+    fi
+  done
+  [[ $orphan_count -gt 0 ]] && echo -e "${YELLOW}Recovered ${orphan_count} orphaned task(s)${NC}"
+fi
+
 # Display mode
 if $FOLDER_MODE; then
   SOURCE_LABEL="${TASK_SOURCE}/todo/ (folder mode)"
@@ -276,6 +318,7 @@ echo -e "${BLUE}Watch mode:${NC}       ${WATCH_MODE}"
 echo -e "${BLUE}Extra args:${NC}       ${EXTRA_ARGS:-none}"
 echo -e "${BLUE}Original branch:${NC}  ${ORIGINAL_BRANCH}"
 echo -e "${BLUE}Results:${NC}          ${RESULTS_FILE}"
+echo -e "${BLUE}Safeguards:${NC}       fail-streak=${CONSECUTIVE_FAIL_LIMIT}, fail-cap=${BATCH_FAIL_CAP}, duration-cap=$((BATCH_DURATION_CAP / 3600))h"
 echo ""
 
 # Log header
@@ -608,6 +651,132 @@ Be concise. One line response."
 }
 
 # ---------------------------------------------------------------------------
+# Safeguard: suspend remaining tasks when limits are hit
+# ---------------------------------------------------------------------------
+
+suspend_remaining_tasks() {
+  local reason="$1"
+  local suspended_dir="${TASK_SOURCE}/suspended"
+  mkdir -p "$suspended_dir"
+
+  local count=0
+  for f in "$TASK_SOURCE/todo"/*.md; do
+    [[ -f "$f" ]] || continue
+    local base; base=$(basename "$f")
+    {
+      echo "<!-- suspended: $(date '+%Y-%m-%d %H:%M:%S') | reason: ${reason} -->"
+      cat "$f"
+    } > "$suspended_dir/$base"
+    rm -f "$f"
+    count=$((count + 1))
+  done
+
+  if [[ $count -gt 0 ]]; then
+    echo -e "${YELLOW}⏸ Suspended ${count} remaining task(s) → suspended/ (reason: ${reason})${NC}"
+  fi
+}
+
+check_safeguards() {
+  local task_status="$1"   # "pass" or "fail"
+
+  # Update consecutive failure counter
+  if [[ "$task_status" == "fail" ]]; then
+    CONSECUTIVE_FAILS=$((CONSECUTIVE_FAILS + 1))
+  else
+    CONSECUTIVE_FAILS=0
+  fi
+
+  # Check 1: Consecutive failure limit
+  if [[ $CONSECUTIVE_FAILS -ge $CONSECUTIVE_FAIL_LIMIT ]]; then
+    SAFEGUARD_TRIGGERED="consecutive-failures:${CONSECUTIVE_FAILS}/${CONSECUTIVE_FAIL_LIMIT}"
+    echo -e "${RED}⛔ SAFEGUARD: ${CONSECUTIVE_FAILS} consecutive failures (limit: ${CONSECUTIVE_FAIL_LIMIT})${NC}"
+    suspend_remaining_tasks "$SAFEGUARD_TRIGGERED"
+    write_safeguard_summary "$SAFEGUARD_TRIGGERED"
+    return 1
+  fi
+
+  # Check 2: Total failure cap
+  if [[ $FAILED -ge $BATCH_FAIL_CAP ]]; then
+    SAFEGUARD_TRIGGERED="total-failures:${FAILED}/${BATCH_FAIL_CAP}"
+    echo -e "${RED}⛔ SAFEGUARD: Total failures ${FAILED} reached cap ${BATCH_FAIL_CAP}${NC}"
+    suspend_remaining_tasks "$SAFEGUARD_TRIGGERED"
+    write_safeguard_summary "$SAFEGUARD_TRIGGERED"
+    return 1
+  fi
+
+  # Check 3: Batch duration cap
+  local elapsed=$(( $(date +%s) - BATCH_START ))
+  if [[ $elapsed -ge $BATCH_DURATION_CAP ]]; then
+    SAFEGUARD_TRIGGERED="duration-cap:${elapsed}s/${BATCH_DURATION_CAP}s"
+    echo -e "${RED}⛔ SAFEGUARD: Batch duration ${elapsed}s exceeded cap ${BATCH_DURATION_CAP}s${NC}"
+    suspend_remaining_tasks "$SAFEGUARD_TRIGGERED"
+    write_safeguard_summary "$SAFEGUARD_TRIGGERED"
+    return 1
+  fi
+
+  return 0
+}
+
+write_safeguard_summary() {
+  local reason="$1"
+  local report_file="$REPO_ROOT/.opencode/pipeline/reports/safeguard_${BATCH_TIMESTAMP}.md"
+
+  local elapsed=$(( $(date +%s) - BATCH_START ))
+
+  {
+    echo "# Pipeline Safeguard Triggered"
+    echo ""
+    echo "- **Time**: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "- **Reason**: \`${reason}\`"
+    echo "- **Tasks passed**: ${PASSED}"
+    echo "- **Tasks failed**: ${FAILED}"
+    echo "- **Consecutive failures**: ${CONSECUTIVE_FAILS}"
+    echo "- **Batch duration**: ${elapsed}s ($((elapsed / 60)) min)"
+    echo ""
+    echo "## Problem"
+    echo ""
+    case "$reason" in
+      consecutive-failures:*)
+        echo "Pipeline hit ${CONSECUTIVE_FAILS} consecutive task failures."
+        echo "This usually indicates a systemic issue: API rate limits, broken worktree,"
+        echo "or a class of tasks that cannot succeed in current conditions."
+        ;;
+      total-failures:*)
+        echo "Total failed tasks (${FAILED}) reached the batch cap (${BATCH_FAIL_CAP})."
+        echo "Too many tasks are failing — remaining batch was suspended to save API budget."
+        ;;
+      duration-cap:*)
+        echo "Batch has been running for over $((BATCH_DURATION_CAP / 3600))h ($((elapsed / 60)) min)."
+        echo "Remaining tasks were suspended to prevent unbounded resource consumption."
+        ;;
+    esac
+    echo ""
+    echo "## Suggested Solutions"
+    echo ""
+    echo "1. Review failed task logs: \`.opencode/pipeline/logs/\`"
+    echo "2. Check API rate limit status on provider dashboard"
+    echo "3. Resume suspended tasks: move files from \`builder/tasks/suspended/\` → \`builder/tasks/todo/\`"
+    echo "4. Or use monitor \`[u]\` key to resume individual tasks, \`[U]\` to resume all"
+    echo "5. Adjust limits via env vars or CLI flags:"
+    echo "   - \`PIPELINE_CONSECUTIVE_FAIL_LIMIT=${CONSECUTIVE_FAIL_LIMIT}\` (--consecutive-fail-limit)"
+    echo "   - \`PIPELINE_BATCH_FAIL_CAP=${BATCH_FAIL_CAP}\` (--batch-fail-cap)"
+    echo "   - \`PIPELINE_BATCH_DURATION_CAP=${BATCH_DURATION_CAP}\` (--batch-duration-cap)"
+    echo ""
+    echo "## Suspended Tasks"
+    echo ""
+    local has_suspended=false
+    for f in "$TASK_SOURCE/suspended"/*.md; do
+      [[ -f "$f" ]] || continue
+      has_suspended=true
+      echo "- $(basename "$f" .md)"
+    done
+    $has_suspended || echo "_(none — all tasks already processed)_"
+  } > "$report_file"
+
+  echo -e "${YELLOW}Safeguard report: ${report_file}${NC}"
+}
+
+# ---------------------------------------------------------------------------
 # Build pipeline.sh arguments for a task
 # ---------------------------------------------------------------------------
 pipeline_args() {
@@ -739,6 +908,17 @@ run_sequential() {
         done
         break
       fi
+    fi
+
+    # Check safeguards after each task
+    local task_result="pass"
+    [[ $exit_code -ne 0 ]] && task_result="fail"
+    if ! check_safeguards "$task_result"; then
+      STOPPED=true
+      for j in $(seq $((i + 1)) $((TOTAL - 1))); do
+        echo "| $((j + 1)) | ${TASK_NAMES[$j]} | ⏸ SUSPENDED | — | — |" >> "$RESULTS_FILE"
+      done
+      break
     fi
 
     echo ""
@@ -976,6 +1156,16 @@ run_parallel() {
 
   echo ""
   echo -e "${BLUE}Worker logs: ${TASK_RESULT_DIR}${NC}"
+
+  # Post-round safeguard check for parallel mode
+  # (can't stop mid-round, but can suspend remaining todo tasks for next round)
+  if [[ $FAILED -gt 0 ]]; then
+    local task_result="fail"
+    CONSECUTIVE_FAILS=$FAILED  # In parallel mode, treat all failures as consecutive
+    if ! check_safeguards "$task_result"; then
+      STOPPED=true
+    fi
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -1037,6 +1227,9 @@ print_summary() {
     if $STOPPED; then
       echo "- **Skipped**: $((TOTAL - PASSED - FAILED))/${TOTAL}"
     fi
+    if [[ -n "$SAFEGUARD_TRIGGERED" ]]; then
+      echo "- **Safeguard**: ${SAFEGUARD_TRIGGERED}"
+    fi
     echo "- **Workers**: ${WORKERS}"
     echo "- **Watch mode**: ${WATCH_MODE}"
     echo "- **Total duration**: ${batch_duration}s ($(( batch_duration / 60 )) min)"
@@ -1066,6 +1259,12 @@ run_round
 print_summary
 
 if $WATCH_MODE && $FOLDER_MODE; then
+  # Exit watch mode if safeguard already triggered in first round
+  if [[ -n "$SAFEGUARD_TRIGGERED" ]]; then
+    echo -e "${RED}⛔ Watch mode stopped — safeguard triggered: ${SAFEGUARD_TRIGGERED}${NC}"
+    echo -e "${YELLOW}Resume suspended tasks manually or via monitor [u] key${NC}"
+  else
+
   echo ""
   echo -e "${CYAN}Watch mode active — polling todo/ every ${WATCH_INTERVAL}s (Ctrl-C to stop)${NC}"
 
@@ -1102,8 +1301,17 @@ if $WATCH_MODE && $FOLDER_MODE; then
 
       run_round
       print_summary
+
+      # Stop watch if safeguard triggered during this round
+      if [[ -n "$SAFEGUARD_TRIGGERED" ]]; then
+        echo -e "${RED}⛔ Watch mode stopped — safeguard triggered: ${SAFEGUARD_TRIGGERED}${NC}"
+        echo -e "${YELLOW}Resume suspended tasks manually or via monitor [u] key${NC}"
+        break
+      fi
     fi
   done
+
+  fi  # end of safeguard-not-triggered block
 fi
 
 # Return to original branch

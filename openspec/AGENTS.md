@@ -61,7 +61,10 @@ Track these steps as TODOs and complete them one by one.
    - Unit tests for business logic
    - Integration tests for services
    - Functional tests for user flows
+   - E2E tests for admin UI changes (Codecept.js + Playwright in `tests/e2e/`)
    - All tests MUST be written before implementation
+   - If the change adds or modifies admin pages/routes, add E2E test(s) in `tests/e2e/tests/admin/`
+   - If the change adds a new admin section, create a Page Object in `tests/e2e/support/pages/`
 6. **Implement tasks sequentially** - Complete in order, committing frequently:
    - Make atomic commits with descriptive messages
    - Push regularly to feature branch
@@ -232,12 +235,22 @@ If multiple capabilities are affected, create multiple delta files under `change
 - [ ] 1.1 Create database schema
 - [ ] 1.2 Implement API endpoint
 - [ ] 1.3 Add frontend component
-- [ ] 1.4 Write tests
 
-## N. Documentation  ← REQUIRED in every proposal
-- [ ] N.1 Update or create relevant documents in `docs/`
-- [ ] N.2 Add `.en.md` mirror for any Ukrainian user-facing docs added
-- [ ] N.3 Update `docs/agent-requirements/` if agent contracts changed
+## N-2. Tests  ← REQUIRED in every proposal
+- [ ] Unit tests for business logic
+- [ ] Functional tests for user flows (Codeception)
+- [ ] E2E tests for admin UI changes (Codecept.js + Playwright in tests/e2e/)
+      — Include Page Object if adding a new admin section
+
+## N-1. Documentation  ← REQUIRED in every proposal
+- [ ] N-1.1 Update or create relevant documents in `docs/`
+- [ ] N-1.2 Add `.en.md` mirror for any Ukrainian user-facing docs added
+- [ ] N-1.3 Update `docs/agent-requirements/` if agent contracts changed
+
+## N. Quality Checks  ← REQUIRED in every proposal
+- [ ] N.1 `phpstan analyse` — zero errors at level 8
+- [ ] N.2 `codecept run` — all unit + functional suites pass
+- [ ] N.3 `make e2e` — Playwright E2E passes (requires running Docker stack)
 ```
 
 5. **Create design.md when needed:**

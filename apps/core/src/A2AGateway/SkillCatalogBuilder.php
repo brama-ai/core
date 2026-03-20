@@ -7,7 +7,7 @@ namespace App\A2AGateway;
 use App\AgentRegistry\AgentRegistryInterface;
 use App\AgentRegistry\ManifestValidator;
 
-final class SkillCatalogBuilder
+final class SkillCatalogBuilder implements SkillCatalogBuilderInterface
 {
     public function __construct(
         private readonly AgentRegistryInterface $registry,

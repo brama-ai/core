@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-claude-auth"],
+  "lsp": {
+    "php": {
+      "command": ["intelephense", "--stdio"],
+      "extensions": [".php"]
+    }
+  }
+}

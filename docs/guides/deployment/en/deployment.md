@@ -2,7 +2,9 @@
 
 ## Overview
 
-The AI Community Platform runs as a Docker Compose stack on a single VPS. Deployment is automated via GitHub Actions on push to `main`. This guide covers initial server setup, configuration, and ongoing operations.
+Brama Agent Platform runs as a Docker Compose stack on a single VPS. Deployment is automated via
+GitHub Actions on push to `main`. This guide covers initial server setup, configuration, and
+ongoing operations.
 
 ## Prerequisites
 
@@ -51,6 +53,9 @@ git clone https://github.com/nmdimas/ai-community-platform.git
 cd ai-community-platform
 ```
 
+The repository name still uses `ai-community-platform`. The product brand and public domain are
+`Brama Agent Platform` and `brama.dev`.
+
 ### 3. Create Environment File
 
 ```bash
@@ -65,7 +70,7 @@ Required variables:
 | `OPENROUTER_API_KEY` | Yes (one LLM key) | API key from [openrouter.ai](https://openrouter.ai/) |
 | `TELEGRAM_BOT_TOKEN` | Optional | Token from Telegram @BotFather |
 | `OPENCLAW_GATEWAY_TOKEN` | Auto-generated | Leave empty for auto-generation |
-| `LANGFUSE_PUBLIC_URL` | For production | `https://langfuse.yourdomain.org` |
+| `LANGFUSE_PUBLIC_URL` | For production | `https://langfuse.brama.dev` |
 
 ### 4. Create Compose Override (Domain Config)
 
@@ -76,21 +81,21 @@ cat > compose.override.yaml << 'EOF'
 services:
   core:
     environment:
-      EDGE_AUTH_LOGIN_BASE_URL: https://yourdomain.org
+      EDGE_AUTH_LOGIN_BASE_URL: https://brama.dev
 
   langfuse-web:
     environment:
-      LANGFUSE_PUBLIC_URL: https://langfuse.yourdomain.org
-      NEXTAUTH_URL: https://langfuse.yourdomain.org
+      LANGFUSE_PUBLIC_URL: https://langfuse.brama.dev
+      NEXTAUTH_URL: https://langfuse.brama.dev
 
   langfuse-worker:
     environment:
-      LANGFUSE_PUBLIC_URL: https://langfuse.yourdomain.org
-      NEXTAUTH_URL: https://langfuse.yourdomain.org
+      LANGFUSE_PUBLIC_URL: https://langfuse.brama.dev
+      NEXTAUTH_URL: https://langfuse.brama.dev
 EOF
 ```
 
-Replace `yourdomain.org` with your actual domain.
+Adjust these examples if you use a different production domain than `brama.dev`.
 
 ### 5. Bootstrap & Start
 
@@ -121,14 +126,15 @@ Traefik routes traffic by hostname. Each compose file defines dual `Host()` rule
 
 | Service | Production URL | Local URL |
 |---------|---------------|-----------|
-| Core platform | `https://yourdomain.org` | `http://localhost` |
-| Langfuse | `https://langfuse.yourdomain.org` | `http://langfuse.localhost` |
-| OpenClaw | `https://openclaw.yourdomain.org` | `http://openclaw.localhost` |
-| LiteLLM | `https://litellm.yourdomain.org` | `http://litellm.localhost` |
-| Slides | `https://slides.yourdomain.org` | `http://slides.localhost` |
-| Traefik | `https://traefik.yourdomain.org` | `http://traefik.localhost` |
+| Brama core platform | `https://brama.dev` | `http://localhost` |
+| Langfuse | `https://langfuse.brama.dev` | `http://langfuse.localhost` |
+| OpenClaw | `https://openclaw.brama.dev` | `http://openclaw.localhost` |
+| LiteLLM | `https://litellm.brama.dev` | `http://litellm.localhost` |
+| Slides | `https://slides.brama.dev` | `http://slides.localhost` |
+| Traefik | `https://traefik.brama.dev` | `http://traefik.localhost` |
 
-**DNS**: Create A records pointing your domain and subdomains (`langfuse.`, `openclaw.`, `litellm.`, `slides.`, `traefik.`) to the server IP.
+**DNS**: Create A records pointing `brama.dev` and the subdomains `langfuse.`, `openclaw.`,
+`litellm.`, `slides.`, and `traefik.` to the server IP.
 
 **TLS**: Not yet configured. Options:
 - Traefik built-in Let's Encrypt (ACME)
@@ -217,7 +223,7 @@ done
 
 ### Langfuse (LLM Observability)
 
-- URL: `https://langfuse.yourdomain.org`
+- URL: `https://langfuse.brama.dev`
 - Login: edge auth → Langfuse app login
 - Default: `admin@local.dev` / `test-password`
 
@@ -245,7 +251,7 @@ For production, change these dev defaults:
 
 - [ ] `APP_SECRET` in `apps/core/.env` and each agent `.env`
 - [ ] `EDGE_AUTH_JWT_SECRET` in `apps/core/.env`
-- [ ] `EDGE_AUTH_COOKIE_DOMAIN` — set to `.yourdomain.org` for cross-subdomain cookies
+- [ ] `EDGE_AUTH_COOKIE_DOMAIN` — set to `.brama.dev` for cross-subdomain cookies
 - [ ] Admin password — change via `docker compose exec core php bin/console security:hash-password`
 - [ ] Langfuse password — change in Langfuse UI account settings
 - [ ] Configure TLS (Let's Encrypt or Cloudflare)

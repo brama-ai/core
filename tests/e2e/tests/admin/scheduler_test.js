@@ -225,3 +225,9 @@ Scenario(
         I.see('hello-agent', 'table');
     },
 ).tag('@admin').tag('@scheduler').tag('@visual-cron');
+
+Scenario(
+    'create job with delivery channel selected (requires add-scheduler-delivery)',
+    async ({ I, schedulerPage }) => {
+    },
+).tag('@admin').tag('@scheduler').tag('@delivery').skip('Requires add-scheduler-delivery implementation');

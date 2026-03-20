@@ -51,7 +51,7 @@ All events dispatched through the Event Bus SHALL use a standardized envelope fo
 ---
 
 ### Requirement: Async Event Dispatch
-The platform SHOULD support asynchronous event dispatch where high-volume events are enqueued to a message transport (`agent_invoke` queue) rather than processed synchronously in the webhook request.
+The platform SHALL support asynchronous event dispatch for high-volume events by enqueuing them to a message transport (`agent_invoke` queue) rather than processing them synchronously in the webhook request.
 
 #### Scenario: Async dispatch for message events
 - **WHEN** a `message_created` event is published in a high-traffic group

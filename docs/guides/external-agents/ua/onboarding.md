@@ -53,15 +53,29 @@ cp projects/my-agent/compose.fragment.yaml compose.fragments/my-agent.yaml
 
 ### 2. Перевірити compose-фрагмент
 
-Відкрийте `compose.fragments/my-agent.yaml` і перевірте:
+Відкрийте `compose.fragments/hello-agent.yaml` і перевірте:
 
-- Ім'я сервісу закінчується на `-agent` (наприклад, `my-agent`)
-- Мітка `ai.platform.agent=true` присутня
-- `PLATFORM_CORE_URL: http://core` встановлено
-- Мережа — `dev-edge`
+- Ім'я сервісу закінчується на `-agent` (наприклад, `hello-agent`)
+- Мітка `com.a2a.agent=true` присутня
+- Мережа — `a2a-network`
 - Healthcheck налаштований
+- Використовується GHCR Image-First Workflow (див. нижче)
 
-Дивіться `compose.fragments/example-agent.yaml.template` як референс.
+#### GHCR Image-First Workflow
+
+Ми наполегливо рекомендуємо **GHCR Image-First Workflow** для зовнішніх агентів. Замість того, щоб збирати агента з вихідного коду при кожному розгортанні, платформа завантажує готовий образ з GitHub Container Registry (GHCR), використовуючи локальну збірку лише як запасний варіант для розробки.
+
+**Приклад `compose.fragment.yaml` (з hello-agent):**
+```yaml
+services:
+  hello-agent:
+    image: ghcr.io/nmdimas/a2a-hello-agent:main
+    build:
+      context: ./projects/hello-agent
+...
+```
+- **Коли завантажувати (Pull):** У продакшені або тестуванні, якщо образ існує на GHCR, Docker автоматично завантажить і використає його. Це значно швидше.
+- **Коли збирати (Build):** Якщо ви активно розробляєте агента, ви можете виконати `docker compose build hello-agent`, щоб примусово запустити секцію `build:` для збірки з локального коду.
 
 ### 3. Налаштувати секрети агента
 
@@ -81,7 +95,7 @@ env_file:
 ### 4. Запустити агента
 
 ```bash
-make external-agent-up name=my-agent
+make external-agent-up name=hello-agent
 ```
 
 Це збирає образ агента з `projects/my-agent/` і запускає сервіс у мережі платформи.

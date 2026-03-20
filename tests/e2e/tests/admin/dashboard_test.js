@@ -1,0 +1,104 @@
+// E2E: Admin dashboard metrics
+// Tests the metrics section that shows A2A stats, agent activity, and scheduler stats.
+// Seeds test records into a2a_message_audit and scheduler_job_logs, verifies metrics display.
+
+const { execSync } = require('child_process');
+const assert = require('assert');
+
+const PROJECT_ROOT = process.cwd().replace(/\/tests\/e2e$/, '');
+const CORE_DB_NAME = process.env.CORE_DB_NAME || 'ai_community_platform_test';
+const PSQL = `docker compose exec -T postgres psql -U app -d ${CORE_DB_NAME} -c`;
+const TEST_TRACE_ID = 'e2e-test-dashboard-metrics-001';
+const TEST_AGENT = 'test-metrics-agent';
+const TEST_SKILL = 'test.metrics.skill';
+
+Feature('Admin: Dashboard Metrics');
+
+Before(async ({ I, loginPage }) => {
+    await loginPage.loginAsAdmin();
+});
+
+Scenario(
+    'setup: seed a2a_message_audit with test records for metrics',
+    async () => {
+        // Clean up any leftover test data first
+        execSync(
+            `${PSQL} "DELETE FROM a2a_message_audit WHERE trace_id LIKE 'e2e-test-dashboard-%'"`,
+            { cwd: PROJECT_ROOT },
+        );
+
+        // Insert test audit records for A2A metrics (within last 24h)
+        for (let i = 0; i < 5; i++) {
+            execSync(
+                `${PSQL} "INSERT INTO a2a_message_audit (skill, agent, trace_id, request_id, duration_ms, status, actor, created_at) VALUES ('${TEST_SKILL}', '${TEST_AGENT}', '${TEST_TRACE_ID}-${i}', 'e2e-req-${i}', ${100 + i * 50}, 'completed', 'openclaw', now() - interval '${i} hours')"`,
+                { cwd: PROJECT_ROOT },
+            );
+        }
+
+        // Insert one failed record for success rate calculation
+        execSync(
+            `${PSQL} "INSERT INTO a2a_message_audit (skill, agent, trace_id, request_id, duration_ms, status, actor, created_at) VALUES ('${TEST_SKILL}', '${TEST_AGENT}', '${TEST_TRACE_ID}-failed', 'e2e-req-failed', 200, 'failed', 'openclaw', now())"`,
+            { cwd: PROJECT_ROOT },
+        );
+    },
+).tag('@admin').tag('@dashboard');
+
+Scenario(
+    'dashboard page shows metrics section',
+    async ({ I, dashboardPage }) => {
+        await dashboardPage.open();
+        await dashboardPage.seeMetricsSection();
+    },
+).tag('@admin').tag('@dashboard');
+
+Scenario(
+    'dashboard shows A2A metrics card',
+    async ({ I, dashboardPage }) => {
+        await dashboardPage.open();
+        await dashboardPage.seeA2AMetrics();
+    },
+).tag('@admin').tag('@dashboard');
+
+Scenario(
+    'dashboard shows Agent Activity card',
+    async ({ I, dashboardPage }) => {
+        await dashboardPage.open();
+        await dashboardPage.seeAgentActivity();
+    },
+).tag('@admin').tag('@dashboard');
+
+Scenario(
+    'dashboard shows Scheduler Stats card',
+    async ({ I, dashboardPage }) => {
+        await dashboardPage.open();
+        await dashboardPage.seeSchedulerStats();
+    },
+).tag('@admin').tag('@dashboard');
+
+Scenario(
+    'dashboard shows seeded A2A call count',
+    async ({ I, dashboardPage }) => {
+        await dashboardPage.open();
+        // We seeded 6 records (5 completed + 1 failed) within 24h
+        I.see('6', '.metrics-grid');
+    },
+).tag('@admin').tag('@dashboard');
+
+Scenario(
+    'dashboard shows test agent in activity list',
+    async ({ I, dashboardPage }) => {
+        await dashboardPage.open();
+        // The test agent should appear in the agent activity list
+        I.see(TEST_AGENT, '.metrics-list');
+    },
+).tag('@admin').tag('@dashboard');
+
+Scenario(
+    'cleanup: remove test audit records',
+    async () => {
+        execSync(
+            `${PSQL} "DELETE FROM a2a_message_audit WHERE trace_id LIKE 'e2e-test-dashboard-%'"`,
+            { cwd: PROJECT_ROOT },
+        );
+    },
+).tag('@admin').tag('@dashboard');

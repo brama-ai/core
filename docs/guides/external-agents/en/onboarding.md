@@ -53,15 +53,29 @@ The `external-agent-clone` target:
 
 ### 2. Review the Compose Fragment
 
-Open `compose.fragments/my-agent.yaml` and verify:
+Open `compose.fragments/hello-agent.yaml` and verify:
 
-- Service name ends with `-agent` (e.g. `my-agent`)
-- Label `ai.platform.agent=true` is present
-- `PLATFORM_CORE_URL: http://core` is set
-- Network is `dev-edge`
+- Service name ends with `-agent` (e.g. `hello-agent`)
+- Label `com.a2a.agent=true` is present
+- Network is `a2a-network`
 - Healthcheck is configured
+- It uses the GHCR Image-First Workflow (see below)
 
-See `compose.fragments/example-agent.yaml.template` for a reference fragment.
+#### GHCR Image-First Workflow
+
+We strongly recommend the **GHCR Image-First Workflow** for external agents. Instead of building the agent from source on every deployment, the platform pulls a pre-built image from the GitHub Container Registry (GHCR), using local build only as a fallback for development.
+
+**Example `compose.fragment.yaml` (from hello-agent):**
+```yaml
+services:
+  hello-agent:
+    image: ghcr.io/nmdimas/a2a-hello-agent:main
+    build:
+      context: ./projects/hello-agent
+...
+```
+- **When to Pull:** In production or testing, if the image exists on GHCR, Docker will pull and use it automatically. It's much faster.
+- **When to Build:** If you are actively developing the agent, you can run `docker compose build hello-agent` to force the `build:` section to execute from local source.
 
 ### 3. Configure Agent Secrets
 
@@ -81,7 +95,7 @@ env_file:
 ### 4. Start the Agent
 
 ```bash
-make external-agent-up name=my-agent
+make external-agent-up name=hello-agent
 ```
 
 This builds the agent image from `projects/my-agent/` and starts the service in the platform

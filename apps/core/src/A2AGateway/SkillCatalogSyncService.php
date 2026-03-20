@@ -13,7 +13,7 @@ final class SkillCatalogSyncService
     private const SYNC_STATUS_TTL = 3600;
 
     public function __construct(
-        private readonly SkillCatalogBuilder $catalogBuilder,
+        private readonly SkillCatalogBuilderInterface $catalogBuilder,
         private readonly CacheItemPoolInterface $cache,
         private readonly LoggerInterface $logger,
         private readonly string $pushUrl,
@@ -31,9 +31,8 @@ final class SkillCatalogSyncService
             return;
         }
 
-        $payload = $this->catalogBuilder->build();
-
         try {
+            $payload = $this->catalogBuilder->build();
             $statusCode = $this->postDiscovery($payload);
             $success = $statusCode >= 200 && $statusCode < 300;
 

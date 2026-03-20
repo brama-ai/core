@@ -1,7 +1,7 @@
 ---
 description: "Tester subagent: runs tests, writes missing tests (runs parallel with validator)"
 mode: subagent
-model: anthropic/claude-sonnet-4-6
+model: opencode-go/kimi-k2.5
 temperature: 0
 steps: 50
 tools:

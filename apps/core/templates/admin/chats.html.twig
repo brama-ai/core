@@ -1,23 +1,23 @@
 {% extends 'admin/layout.html.twig' %}
 
-{% block title %}Чати — Admin{% endblock %}
-{% block page_title %}Чати{% endblock %}
+{% block title %}{{ 'chats.title'|trans }} — Admin{% endblock %}
+{% block page_title %}{{ 'chats.title'|trans }}{% endblock %}
 
 {% block content %}
     <div class="glass-card">
         <form method="get" action="{{ path('admin_chats') }}" class="log-filter-form">
             <div class="log-filter-row" style="margin-bottom:1rem;">
                 <div class="log-filter-field">
-                    <label class="form-label">Агент</label>
+                    <label class="form-label">{{ 'chats.filter.agent'|trans }}</label>
                     <input type="text" name="agent" value="{{ agent_filter }}" placeholder="hello-agent, knowledge-agent…" class="form-input">
                 </div>
                 <div class="log-filter-field">
-                    <label class="form-label">Статус</label>
+                    <label class="form-label">{{ 'chats.filter.status'|trans }}</label>
                     <input type="text" name="status" value="{{ status_filter }}" placeholder="completed, failed…" class="form-input">
                 </div>
                 <div class="log-filter-field" style="flex:0 0 auto;">
                     <label class="form-label">&nbsp;</label>
-                    <button type="submit" class="btn btn-primary" style="width:100%;">Фільтр</button>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">{{ 'chats.filter.submit'|trans }}</button>
                 </div>
             </div>
         </form>
@@ -25,21 +25,21 @@
         {% if chats is empty %}
             <div class="stub-content" style="min-height:200px;">
                 <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
-                <p>Немає чатів</p>
+                <p>{{ 'chats.empty'|trans }}</p>
             </div>
         {% else %}
             <div style="overflow-x:auto;">
                 <table class="admin-table">
                     <thead>
                         <tr>
-                            <th>Trace ID</th>
-                            <th>Агент</th>
-                            <th>Навичка</th>
-                            <th>Статус</th>
-                            <th>Повідомлень</th>
-                            <th>Тривалість</th>
-                            <th>Перше</th>
-                            <th>Останнє</th>
+                            <th>{{ 'chats.table.trace_id'|trans }}</th>
+                            <th>{{ 'chats.table.agent'|trans }}</th>
+                            <th>{{ 'chats.table.skill'|trans }}</th>
+                            <th>{{ 'chats.table.status'|trans }}</th>
+                            <th>{{ 'chats.table.messages'|trans }}</th>
+                            <th>{{ 'chats.table.duration'|trans }}</th>
+                            <th>{{ 'chats.table.first'|trans }}</th>
+                            <th>{{ 'chats.table.last'|trans }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -72,11 +72,11 @@
             {% if pages > 1 %}
                 <div class="log-pagination">
                     {% if page > 1 %}
-                        <a href="{{ path('admin_chats', {page: page - 1, agent: agent_filter, status: status_filter}) }}" class="btn btn-settings">&larr; Назад</a>
+                        <a href="{{ path('admin_chats', {page: page - 1, agent: agent_filter, status: status_filter}) }}" class="btn btn-settings">{{ 'chats.prev'|trans }}</a>
                     {% endif %}
-                    <span style="color:var(--text-secondary);font-size:.85rem;">Сторінка {{ page }} з {{ pages }} ({{ total }} чатів)</span>
+                    <span style="color:var(--text-secondary);font-size:.85rem;">{{ 'chats.page_info'|trans({page: page, pages: pages, total: total}) }}</span>
                     {% if page < pages %}
-                        <a href="{{ path('admin_chats', {page: page + 1, agent: agent_filter, status: status_filter}) }}" class="btn btn-settings">Далі &rarr;</a>
+                        <a href="{{ path('admin_chats', {page: page + 1, agent: agent_filter, status: status_filter}) }}" class="btn btn-settings">{{ 'chats.next'|trans }}</a>
                     {% endif %}
                 </div>
             {% endif %}

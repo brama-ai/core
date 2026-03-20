@@ -5,8 +5,11 @@ services:
       dockerfile: docker/core/Dockerfile
     env_file:
       - ./docker/openclaw/.env
+      - path: ./.env.deployment
+        required: false
     labels:
       - traefik.enable=true
+      - traefik.docker.network=ai-community-platform_dev-edge
       - traefik.http.routers.core.rule=Host(`ai-community-platform.org`) || Host(`localhost`)
       - traefik.http.routers.core.entrypoints=web
       - traefik.http.services.core.loadbalancer.server.port=80
@@ -19,24 +22,33 @@ services:
       - traefik.http.routers.edge-auth-subdomain.priority=300
       - traefik.http.routers.edge-auth-subdomain.service=core
     environment:
-      LANGFUSE_ENABLED: "true"
-      LANGFUSE_BASE_URL: http://langfuse-web:3000
-      LANGFUSE_PUBLIC_KEY: lf_pk_local_dev
-      LANGFUSE_SECRET_KEY: lf_sk_local_dev
-      LANGFUSE_ENV: local
-      ADMIN_OPENCLAW_URL: http://openclaw.localhost/
-      ADMIN_LANGFUSE_URL: http://langfuse.localhost/
-      ADMIN_TRAEFIK_URL: http://traefik.localhost/dashboard/
-      ADMIN_LITELLM_URL: http://litellm.localhost/ui/
-      EDGE_AUTH_JWT_SECRET: dev-edge-auth-secret-change-me
-      EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
-      EDGE_AUTH_TOKEN_TTL: 43200
-      EDGE_AUTH_LOGIN_BASE_URL: http://localhost
-      EDGE_AUTH_COOKIE_DOMAIN: localhost
+      # Use environment variables with Docker Compose defaults
+      DATABASE_URL: ${DATABASE_URL:-postgresql://app:app@postgres:5432/ai_community_platform?serverVersion=16&charset=utf8}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      POSTGRES_PROVISIONER_URL: ${POSTGRES_PROVISIONER_URL:-postgresql://app:app@postgres:5432/postgres?serverVersion=16&charset=utf8}
+      OPENSEARCH_URL: ${OPENSEARCH_URL:-http://opensearch:9200}
+      LANGFUSE_ENABLED: ${LANGFUSE_ENABLED:-true}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-http://langfuse-web:3000}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-lf_pk_local_dev}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-lf_sk_local_dev}
+      LANGFUSE_ENV: ${LANGFUSE_ENV:-local}
+      ADMIN_OPENCLAW_URL: ${ADMIN_OPENCLAW_URL:-http://openclaw.localhost/}
+      ADMIN_LANGFUSE_URL: ${ADMIN_LANGFUSE_URL:-http://langfuse.localhost/}
+      ADMIN_TRAEFIK_URL: ${ADMIN_TRAEFIK_URL:-http://traefik.localhost/dashboard/}
+      ADMIN_LITELLM_URL: ${ADMIN_LITELLM_URL:-http://litellm.localhost/ui/}
+      EDGE_AUTH_JWT_SECRET: ${EDGE_AUTH_JWT_SECRET:-dev-edge-auth-secret-change-me}
+      EDGE_AUTH_COOKIE_NAME: ${EDGE_AUTH_COOKIE_NAME:-ACP_EDGE_TOKEN}
+      EDGE_AUTH_TOKEN_TTL: ${EDGE_AUTH_TOKEN_TTL:-43200}
+      EDGE_AUTH_LOGIN_BASE_URL: ${EDGE_AUTH_LOGIN_BASE_URL:-http://localhost}
+      EDGE_AUTH_COOKIE_DOMAIN: ${EDGE_AUTH_COOKIE_DOMAIN:-localhost}
+    ports:
+      # Direct access bypass (useful when Traefik has issues; does not conflict with Traefik ports)
+      - "8081:80"
     volumes:
       - ./apps/core:/var/www/html
     networks:
       - dev-edge
+      - agents-internal
 
   core-scheduler:
     build:
@@ -44,22 +56,28 @@ services:
       dockerfile: docker/core/Dockerfile
     env_file:
       - ./docker/openclaw/.env
+      - path: ./.env.deployment
+        required: false
     command: ["php", "bin/console", "scheduler:run"]
     environment:
-      LANGFUSE_ENABLED: "true"
-      LANGFUSE_BASE_URL: http://langfuse-web:3000
-      LANGFUSE_PUBLIC_KEY: lf_pk_local_dev
-      LANGFUSE_SECRET_KEY: lf_sk_local_dev
-      LANGFUSE_ENV: local
-      ADMIN_OPENCLAW_URL: http://openclaw.localhost/
-      ADMIN_LANGFUSE_URL: http://langfuse.localhost/
-      ADMIN_TRAEFIK_URL: http://traefik.localhost/dashboard/
-      ADMIN_LITELLM_URL: http://litellm.localhost/ui/
-      EDGE_AUTH_JWT_SECRET: dev-edge-auth-secret-change-me
-      EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
-      EDGE_AUTH_TOKEN_TTL: 43200
-      EDGE_AUTH_LOGIN_BASE_URL: http://localhost
-      EDGE_AUTH_COOKIE_DOMAIN: localhost
+      DATABASE_URL: ${DATABASE_URL:-postgresql://app:app@postgres:5432/ai_community_platform?serverVersion=16&charset=utf8}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      POSTGRES_PROVISIONER_URL: ${POSTGRES_PROVISIONER_URL:-postgresql://app:app@postgres:5432/postgres?serverVersion=16&charset=utf8}
+      OPENSEARCH_URL: ${OPENSEARCH_URL:-http://opensearch:9200}
+      LANGFUSE_ENABLED: ${LANGFUSE_ENABLED:-true}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-http://langfuse-web:3000}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-lf_pk_local_dev}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-lf_sk_local_dev}
+      LANGFUSE_ENV: ${LANGFUSE_ENV:-local}
+      ADMIN_OPENCLAW_URL: ${ADMIN_OPENCLAW_URL:-http://openclaw.localhost/}
+      ADMIN_LANGFUSE_URL: ${ADMIN_LANGFUSE_URL:-http://langfuse.localhost/}
+      ADMIN_TRAEFIK_URL: ${ADMIN_TRAEFIK_URL:-http://traefik.localhost/dashboard/}
+      ADMIN_LITELLM_URL: ${ADMIN_LITELLM_URL:-http://litellm.localhost/ui/}
+      EDGE_AUTH_JWT_SECRET: ${EDGE_AUTH_JWT_SECRET:-dev-edge-auth-secret-change-me}
+      EDGE_AUTH_COOKIE_NAME: ${EDGE_AUTH_COOKIE_NAME:-ACP_EDGE_TOKEN}
+      EDGE_AUTH_TOKEN_TTL: ${EDGE_AUTH_TOKEN_TTL:-43200}
+      EDGE_AUTH_LOGIN_BASE_URL: ${EDGE_AUTH_LOGIN_BASE_URL:-http://localhost}
+      EDGE_AUTH_COOKIE_DOMAIN: ${EDGE_AUTH_COOKIE_DOMAIN:-localhost}
     volumes:
       - ./apps/core:/var/www/html
     depends_on:
@@ -67,6 +85,7 @@ services:
     restart: unless-stopped
     networks:
       - dev-edge
+      - agents-internal
 
   core-e2e:
     profiles: [e2e]
@@ -75,19 +94,21 @@ services:
       dockerfile: docker/core/Dockerfile
     env_file:
       - ./docker/openclaw/.env
+      - path: ./.env.deployment
+        required: false
     environment:
-      DATABASE_URL: postgresql://app:app@postgres:5432/ai_community_platform_test?serverVersion=16&charset=utf8
-      POSTGRES_PROVISIONER_URL: postgresql://app:app@postgres:5432/postgres?serverVersion=16&charset=utf8
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/ai_community_platform_test?serverVersion=16&charset=utf8
+      POSTGRES_PROVISIONER_URL: ${POSTGRES_PROVISIONER_URL:-postgresql://app:app@postgres:5432/postgres?serverVersion=16&charset=utf8}
       LANGFUSE_ENABLED: "false"
-      EDGE_AUTH_JWT_SECRET: dev-edge-auth-secret-change-me
-      EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
-      EDGE_AUTH_TOKEN_TTL: 43200
+      EDGE_AUTH_JWT_SECRET: ${EDGE_AUTH_JWT_SECRET:-dev-edge-auth-secret-change-me}
+      EDGE_AUTH_COOKIE_NAME: ${EDGE_AUTH_COOKIE_NAME:-ACP_EDGE_TOKEN}
+      EDGE_AUTH_TOKEN_TTL: ${EDGE_AUTH_TOKEN_TTL:-43200}
       EDGE_AUTH_LOGIN_BASE_URL: http://localhost:18080
       EDGE_AUTH_COOKIE_DOMAIN: localhost
-      ADMIN_OPENCLAW_URL: http://openclaw.localhost/
-      ADMIN_LANGFUSE_URL: http://langfuse.localhost/
-      ADMIN_TRAEFIK_URL: http://traefik.localhost/dashboard/
-      ADMIN_LITELLM_URL: http://litellm.localhost/ui/
+      ADMIN_OPENCLAW_URL: ${ADMIN_OPENCLAW_URL:-http://openclaw.localhost/}
+      ADMIN_LANGFUSE_URL: ${ADMIN_LANGFUSE_URL:-http://langfuse.localhost/}
+      ADMIN_TRAEFIK_URL: ${ADMIN_TRAEFIK_URL:-http://traefik.localhost/dashboard/}
+      ADMIN_LITELLM_URL: ${ADMIN_LITELLM_URL:-http://litellm.localhost/ui/}
     ports:
       - "18080:80"
     volumes:

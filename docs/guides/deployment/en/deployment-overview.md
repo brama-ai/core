@@ -1,6 +1,6 @@
 # Deployment Overview
 
-The AI Community Platform supports two official deployment modes:
+Brama Agent Platform supports two official deployment modes:
 
 | Mode | Best for | Packaging |
 |------|----------|-----------|
@@ -84,9 +84,12 @@ See [docker-deployment-contract.md](./docker-deployment-contract.md) for the ful
 ## Local Development
 
 Local development uses the same Docker Compose stack as the Docker self-hosted path.
-See [docs/local-dev.md](../../../local-dev.md) for the local development guide.
+See [docs/setup/local-dev/en/local-dev.md](../../../setup/local-dev/en/local-dev.md) for the local development guide.
 
 The key difference from production:
 - Dev defaults are used for secrets (change before going live)
 - Source code is mounted as volumes for live reload
 - E2E test containers run in parallel with isolated databases
+
+The repository and some runtime identifiers still use `ai-community-platform` until the
+infrastructure rename is handled separately.

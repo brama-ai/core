@@ -1,0 +1,251 @@
+# Default values for ai-community-platform
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+# Core platform configuration
+core:
+  image:
+    repository: ai-community-platform/core
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  
+  replicaCount: 1
+  
+  service:
+    type: ClusterIP
+    port: 80
+  
+  ingress:
+    enabled: true
+    className: ""
+    annotations: {}
+    hosts:
+      - host: ai-community-platform.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  # Health check configuration
+  livenessProbe:
+    httpGet:
+      path: /health/live
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  
+  readinessProbe:
+    httpGet:
+      path: /health/ready
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+# Scheduler configuration
+scheduler:
+  enabled: true
+  image:
+    repository: ai-community-platform/core
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  
+  replicaCount: 1
+  
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Agent configurations
+agents:
+  hello:
+    enabled: true
+    image:
+      repository: ai-community-platform/hello-agent
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+    replicaCount: 1
+    
+  knowledge:
+    enabled: true
+    image:
+      repository: ai-community-platform/knowledge-agent
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+    replicaCount: 1
+    
+    worker:
+      enabled: true
+      replicaCount: 1
+    
+  newsMaker:
+    enabled: true
+    image:
+      repository: ai-community-platform/news-maker-agent
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+    replicaCount: 1
+
+# External dependencies configuration
+postgresql:
+  # Set to false to use external PostgreSQL
+  enabled: true
+  auth:
+    postgresPassword: "changeme"
+    username: "app"
+    password: "app"
+    database: "ai_community_platform"
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+redis:
+  # Set to false to use external Redis
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+opensearch:
+  # Set to false to use external OpenSearch
+  enabled: true
+  singleNode: true
+  persistence:
+    enabled: true
+    size: 8Gi
+
+rabbitmq:
+  # Set to false to use external RabbitMQ
+  enabled: true
+  auth:
+    username: "app"
+    password: "app"
+  persistence:
+    enabled: true
+    size: 8Gi
+
+# External service configuration (when internal services are disabled)
+externalServices:
+  postgresql:
+    host: ""
+    port: 5432
+    username: ""
+    password: ""
+    database: ""
+    # Use existing secret
+    existingSecret: ""
+    secretKeys:
+      userPasswordKey: ""
+  
+  redis:
+    host: ""
+    port: 6379
+    password: ""
+    # Use existing secret
+    existingSecret: ""
+    secretKeys:
+      passwordKey: ""
+  
+  opensearch:
+    host: ""
+    port: 9200
+    username: ""
+    password: ""
+    # Use existing secret
+    existingSecret: ""
+    secretKeys:
+      usernameKey: ""
+      passwordKey: ""
+  
+  rabbitmq:
+    host: ""
+    port: 5672
+    username: ""
+    password: ""
+    # Use existing secret
+    existingSecret: ""
+    secretKeys:
+      usernameKey: ""
+      passwordKey: ""
+
+# LLM configuration
+llm:
+  litellm:
+    enabled: true
+    image:
+      repository: ghcr.io/berriai/litellm
+      tag: "main-latest"
+      pullPolicy: IfNotPresent
+    
+    config:
+      masterKey: "dev-key"
+      models:
+        - model_name: "minimax/minimax-m2.5"
+          litellm_params:
+            model: "minimax/minimax-m2.5"
+            api_key: "your-api-key"
+
+# Observability
+langfuse:
+  enabled: false
+  # Configure external Langfuse or use subchart
+
+# Security
+security:
+  # Edge authentication configuration
+  edgeAuth:
+    jwtSecret: "change-me-in-production"
+    cookieName: "ACP_EDGE_TOKEN"
+    tokenTtl: 43200
+    cookieDomain: "ai-community-platform.local"
+  
+  # Internal service token
+  internalToken: "change-me-in-production"
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 2000
+
+# Container security context
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}

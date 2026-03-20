@@ -1,0 +1,49 @@
+{
+  "timestamp": "2026-03-19T16:57:09Z",
+  "exit_code": 0,
+  "summary": "All 4 checks passed",
+  "duration_ms": 0,
+  "checks": [
+    {
+      "name": "jq",
+      "category": "tool",
+      "status": "pass",
+      "detail": "jq 1.7 available",
+      "required_by": [
+        "global"
+      ]
+    },
+    {
+      "name": "git",
+      "category": "tool",
+      "status": "pass",
+      "detail": "git available: git version 2.53.0",
+      "required_by": [
+        "global"
+      ]
+    },
+    {
+      "name": "postgresql",
+      "category": "service",
+      "status": "pass",
+      "detail": "PostgreSQL accepting connections (16.13)",
+      "required_by": [
+        "global"
+      ]
+    },
+    {
+      "name": "redis",
+      "category": "service",
+      "status": "pass",
+      "detail": "Redis responding to PING (7.0.15)",
+      "required_by": [
+        "global"
+      ]
+    }
+  ],
+  "environment": {
+    "postgresql": "16.13",
+    "redis": "7.0.15",
+    "git": "2.53.0"
+  }
+}

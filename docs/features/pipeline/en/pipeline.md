@@ -10,6 +10,22 @@ Task → Planner → Architect → Coder → [Auditor] → Validator → Tester 
 
 The pipeline automatically determines task complexity and selects the appropriate set of agents.
 
+```mermaid
+flowchart LR
+    A[Task] --> B[planner]
+    B --> C[architect]
+    C --> D[coder]
+    D --> E{agent task?}
+    E -- yes --> F[auditor]
+    E -- no --> G[validator]
+    F --> G
+    G --> H[tester]
+    H --> I{docs needed?}
+    I -- yes --> J[documenter]
+    I -- no --> K[summarizer]
+    J --> K
+```
+
 ## Quick Start
 
 ```bash
@@ -28,7 +44,7 @@ make pipeline-batch FILE=tasks.txt
 
 ## Auto-Planning
 
-The first step is the **Planner** agent (Sonnet, 5 min limit). It analyzes the task and generates `plan.json` with the pipeline configuration.
+The first step is the **Planner** agent (Opus 4.6, 5 min limit). It analyzes the task and generates `plan.json` with the pipeline configuration.
 
 ### Profiles
 
@@ -77,8 +93,23 @@ The first step is the **Planner** agent (Sonnet, 5 min limit). It analyzes the t
 
 ## Agents
 
+### Builder Model Table
+
+For shared roles, Builder intentionally mirrors the same `primary` models and base fallbacks as Ultraworks.
+
+| Agent | Workflow | Primary | Fallback 1 | Fallback 2 | Fallback 3 |
+|-------|----------|---------|------------|------------|------------|
+| `planner` | `Builder only` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
+| `architect` | `Builder + Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
+| `coder` | `Builder + Ultraworks` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.3-codex` | `opencode-go/glm-5` |
+| `validator` | `Builder + Ultraworks` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.2` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` |
+| `tester` | `Builder + Ultraworks` | `opencode-go/kimi-k2.5` | `openai/gpt-5.3-codex` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` |
+| `auditor` | `Builder + Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
+| `documenter` | `Builder + Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-sonnet-4-6` | `google/gemini-3-flash-preview` | `minimax/MiniMax-M2.5` |
+| `summarizer` | `Builder + Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-opus-4-6` | `google/gemini-3.1-pro-preview` | `minimax/MiniMax-M2.7` |
+
 ### Planner (5 min)
-- **Model**: Sonnet 4.6
+- **Model**: Opus 4.6
 - **Role**: analyzes complexity, generates plan
 - **Output**: `.opencode/pipeline/plan.json`
 
@@ -95,24 +126,24 @@ The first step is the **Planner** agent (Sonnet, 5 min limit). It analyzes the t
 - **Stage gate**: verifies that coder actually modified files
 
 ### Validator (20 min)
-- **Model**: Codex
+- **Model**: MiniMax M2.5 Highspeed
 - **Role**: PHPStan level 8 + CS Fixer, fixes all issues
 - **Loop**: cs-fix → cs-check → analyse → repeat until zero errors
 
 ### Tester (30 min)
-- **Model**: Codex
+- **Model**: Kimi K2.5
 - **Role**: runs tests, writes missing ones, fixes failures
 - **Targets**: Codeception (PHP), pytest (Python), convention-test
 
 ### Auditor (20 min)
-- **Model**: Sonnet 4.6
+- **Model**: Opus 4.6
 - **Role**: quality and platform standards compliance check
 - **Checklist**: Structure, Testing, Config, Security, Observability, Docs
 - **Output**: report with PASS/WARN/FAIL verdicts
 - **Activation**: `--audit` flag, `complex` profile, or automatically for agent tasks
 
 ### Documenter (15 min)
-- **Model**: Sonnet 4.6
+- **Model**: GPT-5.4
 - **Role**: updates bilingual documentation (UA + EN)
 - **Not needed by default**: coder writes docs from tasks.md
 

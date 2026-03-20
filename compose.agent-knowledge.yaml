@@ -13,18 +13,21 @@ services:
     environment:
       PHP_INI_SCAN_DIR: /var/www/html/conf.d:/usr/local/etc/php/conf.d
       MIGRATE_ON_START: "1"
-      DATABASE_URL: postgresql://knowledge_agent:knowledge_agent@postgres:5432/knowledge_agent?serverVersion=16&charset=utf8
-      OPENSEARCH_URL: http://opensearch:9200
+      DATABASE_URL: ${KNOWLEDGE_AGENT_DATABASE_URL:-postgresql://knowledge_agent:knowledge_agent@postgres:5432/knowledge_agent?serverVersion=16&charset=utf8}
+      OPENSEARCH_URL: ${OPENSEARCH_URL:-http://opensearch:9200}
       OPENSEARCH_INDEX: knowledge_agent_knowledge_entries
-      REDIS_URL: redis://redis:6379/2
-      RABBITMQ_URL: amqp://app:app@rabbitmq:5672
-      APP_INTERNAL_TOKEN: dev-internal-token
-      PLATFORM_CORE_URL: http://core
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}/2
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://app:app@rabbitmq:5672}
+      APP_INTERNAL_TOKEN: ${APP_INTERNAL_TOKEN:-dev-internal-token}
+      PLATFORM_CORE_URL: ${CORE_PLATFORM_URL:-http://core}
       LANGFUSE_ENABLED: "0"
-      LANGFUSE_BASE_URL: http://langfuse-web:3000
-      LANGFUSE_PUBLIC_KEY: lf_pk_local_dev
-      LANGFUSE_SECRET_KEY: lf_sk_local_dev
-      LANGFUSE_ENV: local
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-http://langfuse-web:3000}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-lf_pk_local_dev}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-lf_sk_local_dev}
+      LANGFUSE_ENV: ${LANGFUSE_ENV:-local}
+    env_file:
+      - path: ./.env.deployment
+        required: false
     volumes:
       - ./apps/knowledge-agent:/var/www/html
     depends_on:
@@ -32,7 +35,7 @@ services:
       - opensearch
       - rabbitmq
     networks:
-      - dev-edge
+      - agents-internal
 
   knowledge-worker:
     build:
@@ -56,7 +59,7 @@ services:
       - rabbitmq
       - litellm
     networks:
-      - dev-edge
+      - agents-internal
     restart: unless-stopped
 
   knowledge-agent-e2e:

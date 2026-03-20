@@ -1,0 +1,80 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'coder.create.title'|trans }}{% endblock %}
+{% block page_title %}{{ 'coder.create.title'|trans }}{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1rem;">
+            <div>
+                <h2 style="margin:0;">{{ 'coder.create.new_task'|trans }}</h2>
+                <div style="color:var(--text-muted);font-size:.9rem;">{{ 'coder.create.template_hint'|trans }}</div>
+            </div>
+            <a href="{{ path('admin_coder') }}" class="btn btn-settings">{{ 'coder.create.back_list'|trans }}</a>
+        </div>
+
+        {% if error %}
+            <div class="alert alert-error" style="margin-bottom:1rem;">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" style="display:grid;gap:1rem;">
+            <div>
+                <label>{{ 'coder.create.template'|trans }}</label>
+                <select name="template" id="template-select">
+                    {% for template in templates %}
+                        <option value="{{ template.id }}" data-description="{{ template.description|e('html_attr') }}" {{ values.template == template.id ? 'selected' : '' }}>{{ template.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>{{ 'coder.create.task_name'|trans }}</label>
+                <input type="text" name="title" value="{{ values.title }}" required>
+            </div>
+
+            <div>
+                <label>{{ 'coder.create.task_desc'|trans }}</label>
+                <textarea name="description" id="description" rows="16" required>{{ values.description }}</textarea>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
+                <div>
+                    <label>{{ 'coder.create.priority'|trans }}</label>
+                    <input type="number" min="1" max="10" name="priority" value="{{ values.priority }}">
+                </div>
+                <div>
+                    <label><input type="checkbox" name="queue_now" value="1" {{ values.queue_now ? 'checked' : '' }}> {{ 'coder.create.queue_now'|trans }}</label>
+                </div>
+            </div>
+
+            <div>
+                <label>{{ 'coder.create.skip_stages'|trans }}</label>
+                <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+                    {% for stage in ['planner','architect','auditor','tester','documenter'] %}
+                        <label><input type="checkbox" name="skip_stages[]" value="{{ stage }}" {{ stage in values.skip_stages ? 'checked' : '' }}> {{ stage }}</label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div style="display:flex;gap:.75rem;">
+                <button type="submit" class="btn btn-primary">{{ 'coder.create.submit'|trans }}</button>
+                <a href="{{ path('admin_coder') }}" class="btn btn-settings">{{ 'coder.create.cancel'|trans }}</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+    const templateSelect = document.getElementById('template-select');
+    const description = document.getElementById('description');
+    if (description.value.trim() === '') {
+        description.value = templateSelect.selectedOptions[0].dataset.description || '';
+    }
+    templateSelect.addEventListener('change', function () {
+        if (description.value.trim() === '' || confirm('Замінити опис шаблоном?')) {
+            description.value = this.selectedOptions[0].dataset.description || '';
+        }
+    });
+    </script>
+{% endblock %}

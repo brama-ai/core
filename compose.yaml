@@ -2,7 +2,7 @@ name: ai-community-platform
 
 services:
   traefik:
-    image: traefik:v3.1
+    image: traefik:v3.6
     command:
       - --configFile=/etc/traefik/traefik.yml
     ports:
@@ -46,6 +46,7 @@ services:
       retries: 5
     networks:
       - dev-edge
+      - agents-internal
 
   redis:
     image: redis:7-alpine
@@ -61,6 +62,7 @@ services:
       retries: 5
     networks:
       - dev-edge
+      - agents-internal
 
   opensearch:
     image: opensearchproject/opensearch:2.11.1
@@ -80,6 +82,7 @@ services:
       - opensearch-data:/usr/share/opensearch/data
     networks:
       - dev-edge
+      - agents-internal
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
@@ -98,6 +101,7 @@ services:
       retries: 5
     networks:
       - dev-edge
+      - agents-internal
 
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
@@ -132,10 +136,14 @@ services:
         condition: service_healthy
     networks:
       - dev-edge
+      - agents-internal
 
 networks:
   dev-edge:
     driver: bridge
+  agents-internal:
+    driver: bridge
+    internal: true
 
 volumes:
   postgres-data:
