@@ -76,7 +76,25 @@ npm install -g intelephense          # PHP LSP для агентів
 opencode --version                                    # 1.0.150+
 cat ~/.config/opencode/opencode.json                  # "oh-my-opencode" в plugins
 intelephense --version                                # PHP LSP активний
+printenv | grep -E 'OPENAI|ANTHROPIC|GOOGLE|MINIMAX|OPENCODE|OPENROUTER'
 ```
+
+Якщо ви використовуєте direct providers у маршрутизації OmO, додайте їхні ключі у локальний `.env.local`. Devcontainer тепер прокидає `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `MINIMAX_API_KEY`, `OPENCODE_API_KEY` і `OPENROUTER_API_KEY` всередину процесу OpenCode.
+
+Рекомендований `.env.local` для OpenCode в devcontainer:
+- `OPENROUTER_API_KEY` для базового локального маршруту
+- `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MINIMAX_API_KEY`, `OPENCODE_API_KEY`, якщо ви використовуєте ці провайдери напряму в OmO routing
+- `ANTHROPIC_API_KEY` лише якщо ви свідомо використовуєте Anthropic як direct API-key provider; якщо Anthropic підключений через OpenCode OAuth/subscription, він з'являється в `Credentials`, а не в `Environment`
+
+Перевірити, що саме бачить OpenCode, можна так:
+
+```bash
+opencode auth list
+```
+
+Очікувана структура:
+- секція `Credentials`: провайдери через OAuth/subscription
+- секція `Environment`: провайдери, знайдені через `.env.local` / env процесу
 
 ## Workflow
 

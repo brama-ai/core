@@ -126,6 +126,32 @@ When the devcontainer starts for the first time, `post-create.sh` runs:
 6. Health check all infrastructure services
 7. Print runtime versions
 
+## Sanity Check After Reopen
+
+After `Reopen in Container`, these checks should pass:
+
+```bash
+whoami
+docker info >/dev/null && echo "docker ok"
+opencode auth list
+zsh -ic 'echo $HISTSIZE && echo sanity_zsh_history_test'
+tail -n 5 /commandhistory/.zsh_history
+```
+
+Expected result:
+
+- `whoami` returns `vscode`
+- `docker info` succeeds
+- `opencode auth list` shows at least `2` provider entries (`● ...`)
+- the `zsh` command is appended to `/commandhistory/.zsh_history`
+
+If `opencode auth list` shows fewer than 2 providers, check `.env.local`,
+recreate the devcontainer, and rerun:
+
+```bash
+bash .devcontainer/post-start.sh
+```
+
 ## Troubleshooting
 
 ### All services show FAIL

@@ -109,6 +109,29 @@ If ALL services are down, restart everything:
 docker compose up -d
 ```
 
+### 0d. Check OpenCode provider wiring
+
+OpenCode should have at least two configured providers visible from the
+devcontainer. This confirms that `.env.local` is being forwarded correctly and
+the coding agents have fallback capacity.
+
+```bash
+opencode auth list
+```
+
+Expected minimum:
+
+- At least `2` provider entries (lines starting with `● `)
+- Typical healthy output includes `Environment` providers such as
+  `OpenRouter`, `MiniMax`, or `OpenCode`
+
+If fewer than 2 providers are visible:
+
+> OpenCode does not have enough configured providers inside the devcontainer.
+> Check `.env.local`, verify `.devcontainer/docker-compose.yml` forwards it via
+> `env_file`, and rerun `bash .devcontainer/post-start.sh` after recreating the
+> container.
+
 ## Environment Summary
 
 This devcontainer runs **Ubuntu (noble)** with these runtimes pre-installed:

@@ -71,3 +71,10 @@ RUN cd /tmp/tests-e2e \
 RUN mkdir -p /home/vscode/.claude && chown vscode:vscode /home/vscode/.claude \
     && mkdir -p "${PLAYWRIGHT_BROWSERS_PATH}" \
     && chown -R vscode:vscode "${PLAYWRIGHT_BROWSERS_PATH}"
+
+# Load persistent shell history settings for both bash and zsh in the devcontainer.
+RUN grep -Fq '.devcontainer/shell-history.sh' /home/vscode/.zshrc \
+      || printf '\n[ -f /workspaces/ai-community-platform/.devcontainer/shell-history.sh ] && . /workspaces/ai-community-platform/.devcontainer/shell-history.sh\n' >> /home/vscode/.zshrc \
+    && grep -Fq '.devcontainer/shell-history.sh' /home/vscode/.bashrc \
+      || printf '\n[ -f /workspaces/ai-community-platform/.devcontainer/shell-history.sh ] && . /workspaces/ai-community-platform/.devcontainer/shell-history.sh\n' >> /home/vscode/.bashrc \
+    && chown vscode:vscode /home/vscode/.zshrc /home/vscode/.bashrc

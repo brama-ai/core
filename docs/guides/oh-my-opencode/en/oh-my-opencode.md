@@ -76,7 +76,25 @@ npm install -g intelephense          # PHP LSP for agents
 opencode --version                                    # 1.0.150+
 cat ~/.config/opencode/opencode.json                  # "oh-my-opencode" in plugins
 intelephense --version                                # PHP LSP active
+printenv | grep -E 'OPENAI|ANTHROPIC|GOOGLE|MINIMAX|OPENCODE|OPENROUTER'
 ```
+
+If you use direct providers in OmO routing, define their keys in your local `.env.local`. The devcontainer now forwards `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `MINIMAX_API_KEY`, `OPENCODE_API_KEY`, and `OPENROUTER_API_KEY` into the OpenCode process.
+
+Recommended `.env.local` setup for devcontainer-based OpenCode:
+- `OPENROUTER_API_KEY` for the default local routing path
+- `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MINIMAX_API_KEY`, `OPENCODE_API_KEY` if you use these providers directly in OmO routing
+- `ANTHROPIC_API_KEY` only if you explicitly use Anthropic as a raw API-key provider; if you use Anthropic via OpenCode OAuth/subscription, it appears under `Credentials`, not under `Environment`
+
+You can verify what OpenCode sees with:
+
+```bash
+opencode auth list
+```
+
+Expected output shape:
+- `Credentials` section: OAuth/subscription-backed providers
+- `Environment` section: providers discovered from `.env.local` / process env
 
 ## Workflows
 

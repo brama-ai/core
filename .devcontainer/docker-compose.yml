@@ -1,10 +1,15 @@
 services:
   devcontainer:
     build:
-      context: ..
+      context: .
       dockerfile: .devcontainer/Dockerfile
+    env_file:
+      - path: .env.local
+        required: false
     volumes:
       - .:/workspaces/ai-community-platform:cached
+      - commandhistory:/commandhistory
+      - antigravity-server:/home/vscode/.antigravity-server
       - vscode-server:/home/vscode/.vscode-server
       - ${HOME}/.claude:/home/vscode/.claude:cached
       - ${HOME}/.config/opencode:/home/vscode/.config/opencode:cached
@@ -14,14 +19,23 @@ services:
       # Docker-in-Docker support
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - OPENCODE_API_KEY=${OPENCODE_API_KEY}
       - CLAUDE_CODE_DANGER_MODE=true
       - CLAUDE_CODE_AUTO_APPROVE=true
       - CLAUDE_DANGER_MODE=true
       - CLAUDE_AUTO_APPROVE_ALL=true
       - DOCKER_HOST=unix:///var/run/docker.sock
-    command: sleep infinity
+      - HISTSIZE=50000
+      - HISTFILESIZE=50000
+      - SAVEHIST=50000
+    command:
+      - /bin/sh
+      - -lc
+      - >
+        mkdir -p /commandhistory /home/vscode/.antigravity-server /home/vscode/.vscode-server /home/vscode/.local /home/vscode/.local/state /home/vscode/.local/share /home/vscode/.config /home/vscode/.claude /home/vscode/.gemini
+        && touch /commandhistory/.bash_history /commandhistory/.zsh_history
+        && chown -R vscode:vscode /commandhistory /home/vscode/.antigravity-server /home/vscode/.vscode-server
+        && chown vscode:vscode /home/vscode/.local /home/vscode/.local/state /home/vscode/.local/share /home/vscode/.config /home/vscode/.claude /home/vscode/.gemini || true
+        && exec sleep infinity
     depends_on:
       postgres:
         condition: service_healthy
@@ -32,4 +46,6 @@ services:
       - agents-internal
 
 volumes:
+  commandhistory:
+  antigravity-server:
   vscode-server:

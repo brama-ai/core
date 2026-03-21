@@ -1,0 +1,38 @@
+{
+  "workflow": "builder",
+  "agent": "coder",
+  "model": "anthropic/claude-sonnet-4-6",
+  "duration_ms": 25000,
+  "duration_seconds": 25,
+  "exit_code": 0,
+  "session_id": "ses_2f06ed0f4ffe6O11UHve1AOjFN",
+  "tokens": {
+    "input_tokens": 7,
+    "output_tokens": 1096,
+    "cache_read": 66215,
+    "cache_write": 18777
+  },
+  "tools": [
+    {
+      "name": "edit",
+      "count": 1
+    },
+    {
+      "name": "glob",
+      "count": 2
+    },
+    {
+      "name": "read",
+      "count": 2
+    },
+    {
+      "name": "skill",
+      "count": 1
+    }
+  ],
+  "files_read": [
+    ".Claude/pipeline/handoff.md",
+    ".opencode/pipeline/handoff.md"
+  ],
+  "cost": 0.036325
+}

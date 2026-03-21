@@ -126,6 +126,32 @@ depends_on:
 6. Health check всіх інфраструктурних сервісів
 7. Виведення версій рантаймів
 
+## Sanity Check Після Reopen
+
+Після `Reopen in Container` мають проходити такі перевірки:
+
+```bash
+whoami
+docker info >/dev/null && echo "docker ok"
+opencode auth list
+zsh -ic 'echo $HISTSIZE && echo sanity_zsh_history_test'
+tail -n 5 /commandhistory/.zsh_history
+```
+
+Очікуваний результат:
+
+- `whoami` повертає `vscode`
+- `docker info` виконується успішно
+- `opencode auth list` показує щонайменше `2` провайдери (`● ...`)
+- команда з `zsh` додається в `/commandhistory/.zsh_history`
+
+Якщо `opencode auth list` показує менше 2 провайдерів, перевірте `.env.local`,
+пересоздайте devcontainer і повторно виконайте:
+
+```bash
+bash .devcontainer/post-start.sh
+```
+
 ## Вирішення проблем
 
 ### Всі сервіси показують FAIL

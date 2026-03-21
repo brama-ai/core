@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-03-19T16:57:09Z",
+  "timestamp": "2026-03-21T08:43:47Z",
   "exit_code": 0,
-  "summary": "All 4 checks passed",
-  "duration_ms": 0,
+  "summary": "All 5 checks passed",
+  "duration_ms": 2000,
   "checks": [
     {
       "name": "jq",
@@ -39,11 +39,21 @@
       "required_by": [
         "global"
       ]
+    },
+    {
+      "name": "opencode_providers",
+      "category": "tool",
+      "status": "pass",
+      "detail": "OpenCode has 9 configured providers (minimum 2)",
+      "required_by": [
+        "global"
+      ]
     }
   ],
   "environment": {
     "postgresql": "16.13",
     "redis": "7.0.15",
-    "git": "2.53.0"
+    "git": "2.53.0",
+    "opencode_providers": "9"
   }
 }

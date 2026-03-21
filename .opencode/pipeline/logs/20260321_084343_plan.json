@@ -1,0 +1,13 @@
+{
+  "profile": "quick-fix",
+  "reasoning": "Task is a minimal test task with no specific requirements, no files to change, and no apps affected. Using quick-fix profile as the simplest pipeline.",
+  "agents": ["coder", "validator", "summarizer"],
+  "skip_openspec": true,
+  "estimated_files": 0,
+  "apps_affected": [],
+  "needs_migration": false,
+  "needs_api_change": false,
+  "is_agent_task": false,
+  "timeout_overrides": {},
+  "model_overrides": {}
+}

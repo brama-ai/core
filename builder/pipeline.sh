@@ -29,6 +29,7 @@ REPORT_DIR="$PIPELINE_DIR/reports"
 HANDOFF_LINK="$PIPELINE_DIR/handoff.md"       # symlink — agents always read this path
 HANDOFF_TEMPLATE="$PIPELINE_DIR/handoff-template.md"
 # Actual per-task handoff file is set in init_handoff()
+HANDOFF_FILE=""
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Colors

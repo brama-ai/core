@@ -1,12 +1,1 @@
-{
-  "profile": "standard+e2e",
-  "reasoning": "OpenSpec for add-e2e-cuj-coverage is already prepared, so the pipeline should skip architect, initialize handoff for this task, then run coder -> reviewer -> validate || test -> e2e -> audit loop -> docs || summary. Scope includes new E2E page objects, eight new test files, Codecept config updates, and CUJ matrix updates for UI coverage.",
-  "agents": ["coder", "reviewer", "validator", "tester", "e2e", "auditor", "documenter", "summarizer"],
-  "skip_openspec": true,
-  "skip_architect": true,
-  "estimated_files": 16,
-  "apps_affected": ["core"],
-  "needs_migration": false,
-  "needs_api_change": false,
-  "change_id": "add-e2e-cuj-coverage"
-}
+{"profile":"complex+infra","reasoning":"K3s migration from Docker Compose - large infrastructure task with Helm charts, CI/CD, and deployment changes","agents":["architect","coder","validator","tester","auditor","documenter","summarizer"]}

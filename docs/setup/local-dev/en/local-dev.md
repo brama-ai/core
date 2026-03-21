@@ -77,6 +77,9 @@ Copy `.env.local.example` → `.env.local` and fill in:
 | `OPENROUTER_API_KEY` | One LLM key required (OpenClaw + LiteLLM) | [openrouter.ai](https://openrouter.ai/) |
 | `OPENAI_API_KEY` | (alternative) | [platform.openai.com](https://platform.openai.com/) |
 | `ANTHROPIC_API_KEY` | (alternative) | [console.anthropic.com](https://console.anthropic.com/) |
+| `GOOGLE_API_KEY` | Optional for `google/*` models in OpenCode / OmO | [aistudio.google.com](https://aistudio.google.com/) |
+| `MINIMAX_API_KEY` | Optional for `minimax/*` models in OpenCode / OmO | MiniMax platform |
+| `OPENCODE_API_KEY` | Optional for `opencode/*` and `opencode-go/*` models | OpenCode account |
 | `TELEGRAM_BOT_TOKEN` | Optional | Telegram @BotFather → `/newbot` |
 | `OPENCLAW_GATEWAY_TOKEN` | Auto-generated | Leave empty for auto-generation |
 

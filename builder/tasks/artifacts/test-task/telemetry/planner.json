@@ -1,0 +1,38 @@
+{
+  "workflow": "builder",
+  "agent": "planner",
+  "model": "anthropic/claude-opus-4-6",
+  "duration_ms": 36000,
+  "duration_seconds": 36,
+  "exit_code": 0,
+  "session_id": "ses_2f06f5fddffeqEBSmE7Cx5KeZO",
+  "tokens": {
+    "input_tokens": 9,
+    "output_tokens": 1243,
+    "cache_read": 137842,
+    "cache_write": 25406
+  },
+  "tools": [
+    {
+      "name": "bash",
+      "count": 1
+    },
+    {
+      "name": "read",
+      "count": 2
+    },
+    {
+      "name": "skill",
+      "count": 1
+    },
+    {
+      "name": "write",
+      "count": 3
+    }
+  ],
+  "files_read": [
+    ".Claude/pipeline/handoff.md",
+    "pipeline-plan.json"
+  ],
+  "cost": 0.300123
+}

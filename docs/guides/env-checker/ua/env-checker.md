@@ -6,6 +6,7 @@
 
 - **Глобальні інструменти**: git, jq
 - **Сервіси**: PostgreSQL, Redis
+- **Провайдери OpenCode**: щонайменше 2 налаштовані провайдери, видимі в `opencode auth list`
 - **Раннтайми**: PHP (>= 8.5), Python (>= 3.12), Node (>= 20)
 - **Менеджери пакетів**: composer, npm, pip
 - **Розширення PHP**: json, mbstring, xml, pdo_pgsql, intl, curl (налаштовується для кожного app)
@@ -56,6 +57,7 @@ Global checks
   ✓ jq 1.7.1
   ✓ postgresql accepting connections
   ✓ redis PONG
+  ✓ opencode_providers 7 configured (>= 2)
 
 App: core (php >= 8.5)
   ✓ php_version 8.5.1 (>= 8.5)
@@ -91,6 +93,7 @@ Report: .opencode/pipeline/env-report.json
     "node": "22.3.0",
     "composer": "2.8.1",
     "npm": "10.8.0",
+    "opencode_providers": "7",
     "postgresql": "16.2",
     "redis": "7.2.5"
   }

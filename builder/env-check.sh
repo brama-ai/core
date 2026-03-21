@@ -72,7 +72,7 @@ HAS_FATAL=false HAS_JQ=false
 
 # Discovered versions
 ENV_PHP="" ENV_PYTHON="" ENV_NODE="" ENV_COMPOSER=""
-ENV_NPM="" ENV_PIP="" ENV_PG="" ENV_REDIS="" ENV_GIT=""
+ENV_NPM="" ENV_PIP="" ENV_PG="" ENV_REDIS="" ENV_GIT="" ENV_OPENCODE_PROVIDERS=""
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -183,6 +183,39 @@ check_redis() {
   else
     record_check "redis" "service" "warn" "redis-cli not found — cannot verify Redis" "global"
     pcheck "warn" "redis" "redis-cli not found"
+  fi
+}
+
+check_opencode_providers() {
+  local required_by="${1:-global}"
+  local min_count=2
+
+  if ! command -v opencode &>/dev/null; then
+    record_check "opencode_providers" "tool" "warn" "opencode not found — cannot verify configured providers" "$required_by"
+    pcheck "warn" "opencode_providers" "opencode not found"
+    return 0
+  fi
+
+  local output
+  local exit_code=0
+  output=$(opencode auth list 2>/dev/null) || exit_code=$?
+  if [[ $exit_code -ne 0 ]]; then
+    record_check "opencode_providers" "tool" "fail" "opencode auth list failed" "$required_by"
+    pcheck "fail" "opencode_providers" "opencode auth list failed"
+    return 1
+  fi
+
+  local count
+  count=$(printf '%s\n' "$output" | grep -c '^● ' || true)
+  ENV_OPENCODE_PROVIDERS="$count"
+
+  if [[ "$count" -ge "$min_count" ]]; then
+    record_check "opencode_providers" "tool" "pass" "OpenCode has ${count} configured providers (minimum ${min_count})" "$required_by"
+    pcheck "pass" "opencode_providers" "${count} configured (>= ${min_count})"
+  else
+    record_check "opencode_providers" "tool" "fail" "OpenCode has ${count} configured providers (minimum ${min_count} required)" "$required_by"
+    pcheck "fail" "opencode_providers" "${count} configured (< ${min_count})"
+    return 1
   fi
 }
 
@@ -307,6 +340,7 @@ run_global_checks() {
   check_tool "git" "global"
   check_postgresql
   check_redis
+  check_opencode_providers "global"
 }
 
 # ── Per-app checks ────────────────────────────────────────────────────
@@ -385,6 +419,7 @@ write_json_report() {
   _ef "php" "$ENV_PHP"; _ef "python" "$ENV_PYTHON"; _ef "node" "$ENV_NODE"
   _ef "composer" "$ENV_COMPOSER"; _ef "npm" "$ENV_NPM"; _ef "pip" "$ENV_PIP"
   _ef "postgresql" "$ENV_PG"; _ef "redis" "$ENV_REDIS"; _ef "git" "$ENV_GIT"
+  _ef "opencode_providers" "$ENV_OPENCODE_PROVIDERS"
   env_json+="}"
 
   local report

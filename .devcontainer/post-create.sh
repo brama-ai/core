@@ -4,13 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# Fix ownership of volume-mounted dirs (Docker creates them as root)
-sudo chown -R vscode:vscode /home/vscode/.claude 2>/dev/null || true
-
-# Ensure Docker socket is accessible (DooD — Docker-outside-of-Docker)
-if [ -S /var/run/docker.sock ]; then
-  sudo chmod 666 /var/run/docker.sock 2>/dev/null || true
-fi
+# Normalize permissions for mounted tool state on first container creation.
+bash /workspaces/ai-community-platform/.devcontainer/post-start.sh
 
 echo "==> Waiting for infrastructure services..."
 # Postgres and Redis are guaranteed by depends_on in docker-compose.yml,
@@ -36,6 +31,14 @@ check_service "OpenSearch"  "curl -sf http://opensearch:9200"
 check_service "RabbitMQ"    "curl -sf http://rabbitmq:15672"
 check_service "LiteLLM"     "curl -sf http://litellm:4000/health/liveliness"
 check_service "Traefik"     "curl -sf http://traefik:8080/api/rawdata"
+
+echo ""
+echo "==> Checking OpenCode providers..."
+if OPENCODE_AUTH_LIST="$(opencode auth list 2>/dev/null)"; then
+  echo "$OPENCODE_AUTH_LIST" | sed 's/^/  /'
+else
+  echo "  [FAIL] OpenCode provider listing"
+fi
 
 echo ""
 echo "==> Done! Devcontainer ready."

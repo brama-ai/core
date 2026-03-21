@@ -1,0 +1,21 @@
+{
+  "task": "test task",
+  "branch": "pipeline/test-task",
+  "workflow": "builder",
+  "started": "2026-03-21 08:43:47",
+  "agents": {
+    "planner": {
+      "status": "done",
+      "model": "anthropic/claude-opus-4-6",
+      "duration": 38,
+      "commit": "",
+      "finished": "2026-03-21 08:44:25",
+      "tokens": {}
+    }
+  },
+  "planned_agents": [
+    "coder",
+    "validator",
+    "summarizer"
+  ]
+}

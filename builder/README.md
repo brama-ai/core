@@ -115,8 +115,11 @@ builder/
 ## Environment
 **Runtime Versions**: PHP 8.5, Python 3.12, Node 22
 **Services**: PostgreSQL 16, Redis 7
+**OpenCode Providers**: 2+
 **Check Status**: pass — All 12 checks passed
 ```
+
+Глобальний env-check тепер також перевіряє `opencode auth list` і очікує щонайменше `2` налаштовані провайдери OpenCode (`Credentials` + `Environment` сумарно).
 
 ### Реєстр вимог
 

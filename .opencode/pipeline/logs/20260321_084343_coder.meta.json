@@ -1,0 +1,23 @@
+{
+  "workflow": "builder",
+  "agent": "coder",
+  "model": "anthropic/claude-sonnet-4-6",
+  "task": "test-task",
+  "worker": "main",
+  "started_epoch": 1774082665,
+  "finished_epoch": 1774082690,
+  "duration_seconds": 25,
+  "exit_code": 0,
+  "log_file": "20260321_084343_coder.log",
+  "log_bytes": 2456,
+  "log_lines": 71,
+  "session_id": "ses_2f06ed0f4ffe6O11UHve1AOjFN",
+  "cost": 0.036325,
+  "tokens": {
+  "input_tokens": 7,
+  "output_tokens": 1096,
+  "cache_read": 66215,
+  "cache_write": 18777,
+  "cost": 0.036325
+}}
+}

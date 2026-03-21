@@ -6,6 +6,7 @@ The `builder/env-check.sh` script validates environment prerequisites before any
 
 - **Global tools**: git, jq
 - **Services**: PostgreSQL, Redis
+- **OpenCode providers**: at least 2 configured providers visible in `opencode auth list`
 - **Runtimes**: PHP (>= 8.5), Python (>= 3.12), Node (>= 20)
 - **Package managers**: composer, npm, pip
 - **PHP extensions**: json, mbstring, xml, pdo_pgsql, intl, curl (per-app configurable)
@@ -56,6 +57,7 @@ Global checks
   ✓ jq 1.7.1
   ✓ postgresql accepting connections
   ✓ redis PONG
+  ✓ opencode_providers 7 configured (>= 2)
 
 App: core (php >= 8.5)
   ✓ php_version 8.5.1 (>= 8.5)
@@ -91,6 +93,7 @@ Report: .opencode/pipeline/env-report.json
     "node": "22.3.0",
     "composer": "2.8.1",
     "npm": "10.8.0",
+    "opencode_providers": "7",
     "postgresql": "16.2",
     "redis": "7.2.5"
   }
