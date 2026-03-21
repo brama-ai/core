@@ -22,6 +22,11 @@ Load the `documenter` skill — it contains doc structure, language rules, templ
 Read `.opencode/pipeline/handoff.md` for what was implemented.
 Read `openspec/changes/<id>/proposal.md` for feature context.
 
+## Scope
+
+- Only document features implemented in the current task
+- If you notice outdated docs elsewhere — do NOT update them, add to `## Recommended follow-up tasks` in handoff
+
 ## Handoff
 
 Append to `.opencode/pipeline/handoff.md` — **Documenter** section:

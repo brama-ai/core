@@ -27,13 +27,36 @@ description: "Coder role: implementation workflow, tech stack, per-app targets, 
 | apps/news-maker-agent/ | `make news-test` | `make news-analyse` | `make news-cs-fix` | `make news-migrate` |
 | apps/wiki-agent/ | `make wiki-test` | `make wiki-build` | — | — |
 
+## Scope Rules (CRITICAL)
+
+Your job is to implement **only** the tasks listed in `tasks.md`. Nothing else.
+
+- If a task is marked `[x]`, skip it
+- If all tasks are done, update handoff and finish
+- If you're changing more than ~15 source files, STOP — re-read the task list
+
+### What to do when you notice work beyond your scope
+
+While coding you may spot things that need attention — broken naming, missing docs, refactoring opportunities, new features. **Do NOT act on them.** Instead, collect them and write a `## Recommended follow-up tasks` section in your handoff update. Each item should have:
+- A short task title
+- Why it's needed (what you noticed)
+- Which files/area it affects
+
+Examples of things to recommend, NOT do:
+- New OpenSpec proposals or design docs
+- Documentation (docs/, README)
+- Refactoring or renaming outside current scope
+- Fixing pre-existing bugs unrelated to your task
+
 ## Workflow
 
 1. Read spec/tasks from OpenSpec proposal or delegation context
-2. Implement tasks sequentially, marking each `- [x]` in tasks.md
-3. Read surrounding code first — match existing patterns
-4. After creating migrations, run per-app `migrate` target
-5. Run `make <app>-test` to catch obvious breaks before handoff
+2. **Check which tasks are NOT yet marked `[x]`** — only implement those
+3. Implement tasks sequentially, marking each `- [x]` in tasks.md
+4. Read surrounding code first — match existing patterns
+5. After creating migrations, run per-app `migrate` target
+6. Run `make <app>-test` to catch obvious breaks before handoff
+7. **When done, update handoff.md and STOP** — do not continue looking for work
 
 ## Code Conventions
 

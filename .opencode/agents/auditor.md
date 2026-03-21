@@ -26,6 +26,11 @@ Read `.opencode/pipeline/handoff.md` for changed apps.
 Write audit report to `.opencode/pipeline/reports/<timestamp>_audit.md`.
 In pipeline mode, fix non-architectural issues directly, then re-run checks.
 
+## Scope
+
+- Audit and fix only apps/files changed in the current task
+- Issues in unchanged code — do NOT fix, add to `## Recommended follow-up tasks` in handoff
+
 ## Handoff
 
 Append to `.opencode/pipeline/handoff.md` — **Auditor** section:

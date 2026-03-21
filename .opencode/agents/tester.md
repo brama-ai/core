@@ -21,6 +21,11 @@ Load the `tester` skill — it contains per-app targets, frameworks, conventions
 
 Read `.opencode/pipeline/handoff.md` for changed apps and files.
 
+## Scope
+
+- Only test code that was changed or added in the current task
+- If you find flaky/broken tests unrelated to the task — do NOT fix them, add to `## Recommended follow-up tasks` in handoff
+
 ## Handoff
 
 Append to `.opencode/pipeline/handoff.md` — **Tester** section:

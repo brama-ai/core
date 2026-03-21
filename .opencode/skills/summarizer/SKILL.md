@@ -5,7 +5,11 @@ description: "Summarizer role: final pipeline summary format, Ukrainian output"
 
 ## Summary Format
 
-Write in **Ukrainian**. File: `builder/tasks/summary/<timestamp>-<slug>.md`
+Write in **Ukrainian**. File naming convention:
+- **Builder** workflow: `builder/tasks/summary/b-<timestamp>-<slug>.md`
+- **Ultraworks** workflow: `builder/tasks/summary/u-<timestamp>-<slug>.md`
+
+Determine the workflow from handoff.md (`**Workflow:**` field) or from the pipeline context.
 
 ```markdown
 # <Назва задачі>
@@ -50,6 +54,12 @@ Write in **Ukrainian**. File: `builder/tasks/summary/<timestamp>-<slug>.md`
 > Ця секція ОБОВ'ЯЗКОВА якщо виконується будь-яка з умов нижче. Інакше — не додавати.
 
 (див. Anomaly Detection Rules нижче)
+
+## Рекомендовані задачі
+> Зібрані з `## Recommended follow-up tasks` у handoff.md — пропозиції від агентів
+> які помітили роботу поза їхнім scope. Кожна — окрема задача для pipeline.
+
+- **[Назва]** — [чому потрібно], зачіпає [файли/область]
 
 ## Наступна задача
 Одна конкретна пропозиція що робити далі.
@@ -101,7 +111,8 @@ Required section order:
 8. `## Труднощі`
 9. `## Незавершене`
 10. `## Рекомендації по оптимізації` (**only if anomaly detected** — see rules below)
-11. `## Наступна задача`
+11. `## Рекомендовані задачі` (collect from `## Recommended follow-up tasks` in handoff.md — omit if none)
+12. `## Наступна задача`
 
 For the telemetry sections, prefer pasting the helper output verbatim and only adjust surrounding narrative text.
 

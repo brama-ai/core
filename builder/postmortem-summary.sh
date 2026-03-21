@@ -39,7 +39,7 @@ if not slug or slug == "unknown":
 print((slug or "postmortem")[:50])
 PYEOF
 )
-SUMMARY_FILE="$SUMMARY_DIR/${TIMESTAMP}-${SLUG}.md"
+SUMMARY_FILE="$SUMMARY_DIR/u-${TIMESTAMP}-${SLUG}.md"
 
 # Check if summary already exists
 if ls "$SUMMARY_DIR"/*"$SLUG"* 2>/dev/null | head -1 | grep -q .; then

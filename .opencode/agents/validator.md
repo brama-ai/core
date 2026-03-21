@@ -1,7 +1,7 @@
 ---
 description: "Validator: runs PHPStan, CS-check, fixes all issues"
 mode: primary
-model: minimax/MiniMax-M2.5-highspeed
+model: openai/gpt-5.2
 temperature: 0
 tools:
   edit: true
@@ -20,6 +20,11 @@ Load the `validator` skill — it contains per-app targets, tool config, fix str
 ## Context Source
 
 Read `.opencode/pipeline/handoff.md` for changed apps.
+
+## Scope
+
+- Only fix errors in apps listed as changed in handoff.md
+- If you find pre-existing errors in unchanged apps — do NOT fix them, add to `## Recommended follow-up tasks` in handoff
 
 ## Handoff
 

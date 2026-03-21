@@ -71,6 +71,11 @@ This template defines the standard sections for agent handoff during pipeline ex
 
 ---
 
+## Recommended follow-up tasks
+
+> Agents add items here when they notice work outside their current scope.
+> Summarizer collects these into actionable task recommendations.
+
 ## Notes
 
 Use this section for any cross-agent notes or important context.
