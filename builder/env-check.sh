@@ -150,11 +150,13 @@ check_tool() {
 }
 
 check_postgresql() {
-  if command -v pg_isready &>/dev/null && pg_isready -q 2>/dev/null; then
+  local pg_host="${POSTGRES_HOST:-postgres}"
+  local pg_port="${POSTGRES_PORT:-5432}"
+  if command -v pg_isready &>/dev/null && pg_isready -h "$pg_host" -p "$pg_port" -q 2>/dev/null; then
     local ver; ver=$(psql --version 2>/dev/null | awk '{print $3}' || echo "")
     [[ -n "$ver" ]] && ENV_PG="$ver"
     record_check "postgresql" "service" "pass" "PostgreSQL accepting connections${ver:+ (${ver})}" "global"
-    pcheck "pass" "postgresql" "$(pg_isready 2>/dev/null || echo "accepting connections")"
+    pcheck "pass" "postgresql" "$(pg_isready -h "$pg_host" -p "$pg_port" 2>/dev/null || echo "accepting connections")"
   elif command -v pg_isready &>/dev/null; then
     record_check "postgresql" "service" "fail" "PostgreSQL not accepting connections" "global"
     pcheck "fail" "postgresql" "not accepting connections"
@@ -165,8 +167,10 @@ check_postgresql() {
 }
 
 check_redis() {
+  local redis_host="${REDIS_HOST:-redis}"
+  local redis_port="${REDIS_PORT:-6379}"
   if command -v redis-cli &>/dev/null; then
-    local pong; pong=$(redis-cli ping 2>/dev/null || echo "")
+    local pong; pong=$(redis-cli -h "$redis_host" -p "$redis_port" ping 2>/dev/null || echo "")
     if [[ "$pong" == "PONG" ]]; then
       local ver; ver=$(redis-cli --version 2>/dev/null | awk '{print $2}' || echo "")
       [[ -n "$ver" ]] && ENV_REDIS="$ver"
