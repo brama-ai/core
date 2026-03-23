@@ -2,8 +2,8 @@
 
 ## Огляд
 
-Цей гайд описує встановлення AI Community Platform на кластер Kubernetes за допомогою офіційного
-Helm-чарту, розташованого в `deploy/charts/ai-community-platform/`.
+Цей гайд описує встановлення Brama на кластер Kubernetes за допомогою офіційного
+Helm-чарту, розташованого в `deploy/charts/brama/`.
 
 > **Статус**: Початковий скелет пакування. Чарт визначає операторський контракт для конфігурації,
 > секретів, міграцій, проб та ingress. Публікація образів та хостинг чарт-репозиторію заплановані
@@ -66,10 +66,10 @@ Helm-чарту, розташованого в `deploy/charts/ai-community-platf
 ### Секрети core
 
 ```bash
-kubectl create namespace acp
+kubectl create namespace brama
 
 kubectl create secret generic core-secrets \
-  --namespace acp \
+  --namespace brama \
   --from-literal=APP_SECRET="$(openssl rand -hex 32)" \
   --from-literal=EDGE_AUTH_JWT_SECRET="$(openssl rand -hex 32)" \
   --from-literal=DATABASE_URL="postgresql://app:PASSWORD@postgres-host:5432/ai_community_platform?serverVersion=16&charset=utf8" \
@@ -81,7 +81,7 @@ kubectl create secret generic core-secrets \
 
 ```bash
 kubectl create secret generic litellm-secrets \
-  --namespace acp \
+  --namespace brama \
   --from-literal=LITELLM_MASTER_KEY="$(openssl rand -hex 32)" \
   --from-literal=DATABASE_URL="postgresql://app:PASSWORD@postgres-host:5432/litellm?serverVersion=16&charset=utf8" \
   --from-literal=OPENROUTER_API_KEY="sk-or-your-key"
@@ -95,7 +95,7 @@ kubectl create secret generic litellm-secrets \
 Скопіюйте приклад values-файлу та налаштуйте його:
 
 ```bash
-cp deploy/charts/ai-community-platform/values-prod.example.yaml values-prod.yaml
+cp deploy/charts/brama/values-prod.example.yaml values-prod.yaml
 ```
 
 Відредагуйте `values-prod.yaml`:
@@ -121,9 +121,9 @@ cp deploy/charts/ai-community-platform/values-prod.example.yaml values-prod.yaml
 ## Крок 3: Встановлення чарту
 
 ```bash
-helm upgrade --install ai-community-platform \
-  ./deploy/charts/ai-community-platform \
-  --namespace acp \
+helm upgrade --install brama \
+  ./deploy/charts/brama \
+  --namespace brama \
   --create-namespace \
   -f values-prod.yaml \
   --wait \
@@ -138,7 +138,7 @@ helm upgrade --install ai-community-platform \
 ### Перевірка статусу подів
 
 ```bash
-kubectl get pods -n acp
+kubectl get pods -n brama
 ```
 
 Всі поди мають досягти стану `Running`. Под завдання міграції покаже `Completed`.
@@ -146,8 +146,8 @@ kubectl get pods -n acp
 ### Перевірка завдання міграції
 
 ```bash
-kubectl get jobs -n acp
-kubectl logs job/ai-community-platform-migrate-1 -n acp
+kubectl get jobs -n brama
+kubectl logs job/brama-migrate-1 -n brama
 ```
 
 Логи завдання міграції мають завершуватися рядком `==> Migrations complete`.
@@ -155,13 +155,13 @@ kubectl logs job/ai-community-platform-migrate-1 -n acp
 ### Перевірка статусу розгортання
 
 ```bash
-kubectl rollout status deploy/ai-community-platform-core -n acp
+kubectl rollout status deploy/brama-core -n brama
 ```
 
 ### Перевірка ingress
 
 ```bash
-kubectl get ingress -n acp
+kubectl get ingress -n brama
 ```
 
 ### Тест health endpoint
@@ -173,7 +173,7 @@ curl -sf https://platform.example.com/health
 Або через port-forward:
 
 ```bash
-kubectl port-forward -n acp svc/ai-community-platform-core 8080:80
+kubectl port-forward -n brama svc/brama-core 8080:80
 curl -sf http://localhost:8080/health
 ```
 
@@ -207,7 +207,7 @@ helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
 ### Под застряг у Pending
 
 ```bash
-kubectl describe pod <pod-name> -n acp
+kubectl describe pod <pod-name> -n brama
 ```
 
 Типові причини: недостатньо ресурсів кластера, відсутній PVC, відсутній секрет.
@@ -215,7 +215,7 @@ kubectl describe pod <pod-name> -n acp
 ### Завдання міграції завершилося з помилкою
 
 ```bash
-kubectl logs job/ai-community-platform-migrate-1 -n acp
+kubectl logs job/brama-migrate-1 -n brama
 ```
 
 Перевірте проблеми з підключенням до бази даних або конфлікти схеми.
@@ -223,7 +223,7 @@ kubectl logs job/ai-community-platform-migrate-1 -n acp
 ### Под core у CrashLoopBackOff
 
 ```bash
-kubectl logs deploy/ai-community-platform-core -n acp --previous
+kubectl logs deploy/brama-core -n brama --previous
 ```
 
 Типові причини: відсутнє посилання на секрет, неправильний DATABASE_URL, невдала міграція.

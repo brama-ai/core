@@ -66,12 +66,12 @@ make down
 
 # Back up named volumes
 docker run --rm \
-  -v ai-community-platform_postgres-data:/data \
+  -v brama_postgres-data:/data \
   -v $(pwd)/backups:/backup \
   alpine tar czf /backup/postgres-data-$(date +%Y%m%d).tar.gz -C /data .
 
 docker run --rm \
-  -v ai-community-platform_redis-data:/data \
+  -v brama_redis-data:/data \
   -v $(pwd)/backups:/backup \
   alpine tar czf /backup/redis-data-$(date +%Y%m%d).tar.gz -C /data .
 
@@ -119,7 +119,7 @@ docker compose restart openclaw-gateway
 make down
 
 docker run --rm \
-  -v ai-community-platform_postgres-data:/data \
+  -v brama_postgres-data:/data \
   -v $(pwd)/backups:/backup \
   alpine sh -c "rm -rf /data/* && tar xzf /backup/postgres-data-YYYYMMDD.tar.gz -C /data"
 

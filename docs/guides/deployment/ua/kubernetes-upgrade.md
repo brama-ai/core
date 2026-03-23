@@ -3,7 +3,7 @@
 ## Огляд
 
 Цей runbook описує підтримуваний процес оновлення для Kubernetes-інсталяції, керованої через
-офіційний Helm-чарт `deploy/charts/ai-community-platform/`.
+офіційний Helm-чарт `deploy/charts/brama/`.
 
 Англійська версія: [`docs/guides/deployment/en/kubernetes-upgrade.md`](../en/kubernetes-upgrade.md)
 
@@ -24,9 +24,9 @@
 ### 1. Зафіксуйте поточний стан релізу
 
 ```bash
-helm list -n acp
-helm history ai-community-platform -n acp
-kubectl get pods -n acp
+helm list -n brama
+helm history brama -n brama
+kubectl get pods -n brama
 ```
 
 Запишіть поточний номер ревізії — він знадобиться для відкату.
@@ -43,7 +43,7 @@ kubectl get pods -n acp
 ### 3. Порівняйте поточні та цільові values
 
 ```bash
-helm get values ai-community-platform -n acp -o yaml > current-values.yaml
+helm get values brama -n brama -o yaml > current-values.yaml
 ```
 
 Порівняйте `current-values.yaml` з вашим `values-prod.yaml` та новим `values.yaml` чарту.
@@ -51,8 +51,8 @@ helm get values ai-community-platform -n acp -o yaml > current-values.yaml
 Якщо доступний плагін Helm diff:
 
 ```bash
-helm diff upgrade ai-community-platform ./deploy/charts/ai-community-platform \
-  -n acp \
+helm diff upgrade brama ./deploy/charts/brama \
+  -n brama \
   -f values-prod.yaml
 ```
 
@@ -66,8 +66,8 @@ helm diff upgrade ai-community-platform ./deploy/charts/ai-community-platform \
 ### 5. Перевірте здоров'я кластера
 
 ```bash
-kubectl get deploy,statefulset,job -n acp
-kubectl top pods -n acp
+kubectl get deploy,statefulset,job -n brama
+kubectl top pods -n brama
 ```
 
 Не оновлюйте, якщо існуючі workload-и нездорові або кластер під тиском ресурсів.
@@ -103,15 +103,15 @@ migrations:
 ### 2. Оновіть залежності чарту (якщо потрібно)
 
 ```bash
-helm dependency update ./deploy/charts/ai-community-platform
+helm dependency update ./deploy/charts/brama
 ```
 
 ### 3. Застосуйте оновлення
 
 ```bash
-helm upgrade --install ai-community-platform \
-  ./deploy/charts/ai-community-platform \
-  --namespace acp \
+helm upgrade --install brama \
+  ./deploy/charts/brama \
+  --namespace brama \
   -f values-prod.yaml \
   --wait \
   --timeout 15m
@@ -122,8 +122,8 @@ helm upgrade --install ai-community-platform \
 Завдання міграції запускається як хук `pre-upgrade` до старту нових подів застосунку.
 
 ```bash
-kubectl get jobs -n acp
-kubectl logs job/ai-community-platform-migrate-<revision> -n acp
+kubectl get jobs -n brama
+kubectl logs job/brama-migrate-<revision> -n brama
 ```
 
 Якщо завдання міграції завершилося з помилкою:
@@ -134,8 +134,8 @@ kubectl logs job/ai-community-platform-migrate-<revision> -n acp
 ### 5. Спостерігайте за статусом розгортання
 
 ```bash
-kubectl rollout status deploy/ai-community-platform-core -n acp
-kubectl rollout status deploy/ai-community-platform-core-scheduler -n acp
+kubectl rollout status deploy/brama-core -n brama
+kubectl rollout status deploy/brama-core-scheduler -n brama
 ```
 
 ### 6. Перевірка після оновлення
@@ -157,7 +157,7 @@ kubectl rollout status deploy/ai-community-platform-core-scheduler -n acp
 ### 1. Перегляньте історію релізів
 
 ```bash
-helm history ai-community-platform -n acp
+helm history brama -n brama
 ```
 
 Визначте номер останньої відомо-справної ревізії.
@@ -165,14 +165,14 @@ helm history ai-community-platform -n acp
 ### 2. Відкатіть Helm-реліз
 
 ```bash
-helm rollback ai-community-platform <revision> -n acp --wait --timeout 15m
+helm rollback brama <revision> -n brama --wait --timeout 15m
 ```
 
 ### 3. Перевірте розгортання після відкату
 
 ```bash
-kubectl get pods -n acp
-kubectl rollout status deploy/ai-community-platform-core -n acp
+kubectl get pods -n brama
+kubectl rollout status deploy/brama-core -n brama
 curl -sf https://platform.example.com/health
 ```
 
@@ -182,12 +182,12 @@ curl -sf https://platform.example.com/health
 
 1. Зупиніть поди застосунку:
    ```bash
-   kubectl scale deploy/ai-community-platform-core -n acp --replicas=0
+   kubectl scale deploy/brama-core -n brama --replicas=0
    ```
 2. Відновіть уражені бази даних з резервної копії до оновлення
 3. Масштабуйте застосунок назад:
    ```bash
-   kubectl scale deploy/ai-community-platform-core -n acp --replicas=1
+   kubectl scale deploy/brama-core -n brama --replicas=1
    ```
 4. Повторно запустіть перевірку здоров'я
 

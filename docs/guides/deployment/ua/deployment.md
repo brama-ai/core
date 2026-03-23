@@ -48,12 +48,9 @@ curl -fsSL https://get.docker.com | sh
 ```bash
 mkdir -p /root/app
 cd /root/app
-git clone https://github.com/nmdimas/ai-community-platform.git
-cd ai-community-platform
+git clone <workspace-repo>
+cd brama-workspace
 ```
-
-Назва репозиторію поки що лишається `ai-community-platform`. Продуктовий бренд і публічний домен
-тепер `Brama Agent Platform` і `brama.dev`.
 
 ### 3. Створити файл оточення
 
@@ -168,7 +165,7 @@ Push в `main` автоматично запускає деплой через `
 
 ```bash
 ssh root@your-server
-cd /root/app/ai-community-platform
+cd /root/app/brama-workspace
 git pull origin main
 docker compose -f compose.yaml -f compose.core.yaml \
   $(for f in compose.agent-*.yaml compose.langfuse.yaml compose.openclaw.yaml; do [ -f "$f" ] && echo -n "-f $f "; done) \

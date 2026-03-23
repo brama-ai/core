@@ -91,5 +91,4 @@ The key difference from production:
 - Source code is mounted as volumes for live reload
 - E2E test containers run in parallel with isolated databases
 
-The repository and some runtime identifiers still use `ai-community-platform` until the
-infrastructure rename is handled separately.
+Repository, runtime, and deployment naming use `brama`.

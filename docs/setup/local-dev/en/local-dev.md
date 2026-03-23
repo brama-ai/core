@@ -14,8 +14,8 @@ and all platform services.
 
 ```bash
 # 1. Clone
-git clone https://github.com/nmdimas/ai-community-platform.git
-cd ai-community-platform
+git clone <workspace-repo>
+cd brama-workspace
 
 # 2. Configure secrets (one file, one time)
 cp .env.local.example .env.local
@@ -37,9 +37,6 @@ make migrate
 # 7. Verify
 make test
 ```
-
-The repository slug is still `ai-community-platform` for now. The product brand and public domain
-are `Brama Agent Platform` and `brama.dev`.
 
 After this:
 - Brama platform: `http://localhost/`
@@ -264,10 +261,10 @@ docker compose exec postgres psql -U app -d ai_community_platform \
 ```bash
 docker compose down
 docker volume rm \
-  ai-community-platform_langfuse-postgres-data \
-  ai-community-platform_langfuse-clickhouse-data \
-  ai-community-platform_langfuse-redis-data \
-  ai-community-platform_langfuse-minio-data
+  brama_langfuse-postgres-data \
+  brama_langfuse-clickhouse-data \
+  brama_langfuse-redis-data \
+  brama_langfuse-minio-data
 docker compose up -d langfuse-postgres langfuse-clickhouse langfuse-redis langfuse-minio langfuse-minio-init langfuse-web langfuse-worker
 ```
 

@@ -1,4 +1,4 @@
-# AI Community Platform — Helm Chart Default Values
+# Brama — Helm Chart Default Values
 #
 # This file documents every configurable value with safe defaults.
 # For production, create a values-prod.yaml that overrides only what you need.
@@ -25,7 +25,7 @@ global:
 core:
   enabled: true
   image:
-    repository: ghcr.io/nmdimas/ai-community-platform/core
+    repository: ghcr.io/nmdimas/brama/core
     # Pin to a specific release tag in production. Never use "latest".
     tag: "0.1.0"
     pullPolicy: IfNotPresent
@@ -100,7 +100,7 @@ coreScheduler:
   enabled: true
 
   image:
-    repository: ghcr.io/nmdimas/ai-community-platform/core
+    repository: ghcr.io/nmdimas/brama/core
     tag: "0.1.0"
     pullPolicy: IfNotPresent
 
@@ -134,7 +134,7 @@ agents:
   knowledge:
     enabled: true
     image:
-      repository: ghcr.io/nmdimas/ai-community-platform/knowledge-agent
+      repository: ghcr.io/nmdimas/brama/knowledge-agent
       tag: "0.1.0"
       pullPolicy: IfNotPresent
     replicaCount: 1
@@ -164,7 +164,7 @@ agents:
   hello:
     enabled: true
     image:
-      repository: ghcr.io/nmdimas/ai-community-platform/hello-agent
+      repository: ghcr.io/nmdimas/brama/hello-agent
       tag: "0.1.0"
       pullPolicy: IfNotPresent
     replicaCount: 1
@@ -194,7 +194,7 @@ agents:
   newsMaker:
     enabled: false
     image:
-      repository: ghcr.io/nmdimas/ai-community-platform/news-maker-agent
+      repository: ghcr.io/nmdimas/brama/news-maker-agent
       tag: "0.1.0"
       pullPolicy: IfNotPresent
     replicaCount: 1
@@ -413,7 +413,7 @@ migrations:
   # When true, a Job is created to run database migrations before app rollout
   enabled: true
   image:
-    repository: ghcr.io/nmdimas/ai-community-platform/core
+    repository: ghcr.io/nmdimas/brama/core
     tag: "0.1.0"
     pullPolicy: IfNotPresent
   # Hook annotations control when the job runs relative to the release lifecycle

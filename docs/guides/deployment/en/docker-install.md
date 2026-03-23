@@ -49,8 +49,8 @@ docker compose version
 ```bash
 mkdir -p /root/app
 cd /root/app
-git clone https://github.com/nmdimas/ai-community-platform.git
-cd ai-community-platform
+git clone <workspace-repo>
+cd brama-workspace
 ```
 
 ## Step 3: Configure Secrets

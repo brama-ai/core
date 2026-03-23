@@ -1,0 +1,184 @@
+# K3S Local Development Values
+#
+# Use this profile to deploy the platform into a local Rancher K3S cluster
+# from the devcontainer. Application images are built locally and imported
+# directly into K3S containerd via `make k8s-load`.
+#
+# Quick start:
+#   make k8s-setup    # build + load + secrets + deploy
+#
+# Individual steps:
+#   make k8s-build && make k8s-load
+#   make k8s-secrets
+#   make k8s-deploy
+
+global:
+  imagePullPolicy: IfNotPresent
+  security:
+    allowInsecureImages: true
+
+# ---------------------------------------------------------------------------
+# Core
+# ---------------------------------------------------------------------------
+core:
+  enabled: true
+  image:
+    repository: brama/core
+    tag: "dev"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    APP_ENV: dev
+    APP_DEBUG: "1"
+    LANGFUSE_ENABLED: "false"
+    EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
+    EDGE_AUTH_TOKEN_TTL: "43200"
+  secretRef: brama-core-secrets
+
+coreScheduler:
+  enabled: true
+  image:
+    repository: brama/core
+    tag: "dev"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# ---------------------------------------------------------------------------
+# Agents
+# ---------------------------------------------------------------------------
+agents:
+  knowledge:
+    enabled: false
+  hello:
+    enabled: true
+    image:
+      repository: brama/hello-agent
+      tag: "dev"
+      pullPolicy: IfNotPresent
+    replicaCount: 1
+    service:
+      port: 80
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 80
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 80
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+  newsMaker:
+    enabled: false
+
+# ---------------------------------------------------------------------------
+# LiteLLM
+# ---------------------------------------------------------------------------
+litellm:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# Website
+# ---------------------------------------------------------------------------
+website:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# Ingress — Traefik (K3S default)
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: true
+  className: traefik
+  hosts:
+    core: core.localhost
+  tls:
+    enabled: false
+
+# ---------------------------------------------------------------------------
+# Migrations
+# ---------------------------------------------------------------------------
+migrations:
+  enabled: true
+  image:
+    repository: brama/core
+    tag: "dev"
+    pullPolicy: IfNotPresent
+
+# ---------------------------------------------------------------------------
+# Infrastructure — in-cluster via Bitnami sub-charts
+# ---------------------------------------------------------------------------
+postgresql:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/postgresql
+  auth:
+    database: ai_community_platform
+    username: app
+    password: app
+    postgresPassword: postgres
+  primary:
+    persistence:
+      enabled: true
+      storageClass: local-path
+      size: 2Gi
+
+redis:
+  enabled: true
+  architecture: standalone
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/redis
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      storageClass: local-path
+      size: 1Gi
+
+rabbitmq:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/rabbitmq
+  auth:
+    username: app
+    password: app
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 1Gi
+
+opensearch:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# Pod security — relaxed for local dev
+# ---------------------------------------------------------------------------
+podSecurityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+  fsGroup: 0

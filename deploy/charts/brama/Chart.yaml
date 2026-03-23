@@ -1,6 +1,6 @@
 apiVersion: v2
-name: ai-community-platform
-description: AI Community Platform — Helm umbrella chart for Kubernetes deployment
+name: brama
+description: Brama — Helm umbrella chart for Kubernetes deployment
 type: application
 
 # Chart version — bump on every chart change
@@ -16,10 +16,10 @@ keywords:
   - agents
   - llm
 
-home: https://github.com/nmdimas/ai-community-platform
+home: https://github.com/nmdimas/brama-workspace
 
 maintainers:
-  - name: AI Community Platform Team
+  - name: Brama Team
 
 # Bundled sub-charts for optional in-cluster stateful dependencies.
 # Operators who use managed external services should disable these.

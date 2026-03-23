@@ -48,12 +48,9 @@ curl -fsSL https://get.docker.com | sh
 ```bash
 mkdir -p /root/app
 cd /root/app
-git clone https://github.com/nmdimas/ai-community-platform.git
-cd ai-community-platform
+git clone <workspace-repo>
+cd brama-workspace
 ```
-
-The repository name still uses `ai-community-platform`. The product brand and public domain are
-`Brama Agent Platform` and `brama.dev`.
 
 ### 3. Create Environment File
 
@@ -168,7 +165,7 @@ Or SSH manually:
 
 ```bash
 ssh root@your-server
-cd /root/app/ai-community-platform
+cd /root/app/brama-workspace
 git pull origin main
 docker compose -f compose.yaml -f compose.core.yaml \
   $(for f in compose.agent-*.yaml compose.langfuse.yaml compose.openclaw.yaml; do [ -f "$f" ] && echo -n "-f $f "; done) \

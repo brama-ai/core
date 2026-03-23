@@ -1,12 +1,12 @@
-# AI Community Platform — Production Values Example
+# Brama — Production Values Example
 #
 # Copy this file to values-prod.yaml and fill in your environment-specific values.
 # Never commit values-prod.yaml to version control — it contains references to secrets.
 #
 # Usage:
-#   helm upgrade --install ai-community-platform ./deploy/charts/ai-community-platform \
-#     -n acp --create-namespace \
-#     -f deploy/charts/ai-community-platform/values-prod.example.yaml \
+#   helm upgrade --install brama ./deploy/charts/brama \
+#     -n brama --create-namespace \
+#     -f deploy/charts/brama/values-prod.example.yaml \
 #     -f values-prod.yaml \
 #     --wait --timeout 15m
 

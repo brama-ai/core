@@ -3,7 +3,7 @@
 ## Overview
 
 This runbook describes the supported upgrade flow for a Kubernetes-based installation managed
-through the official Helm chart at `deploy/charts/ai-community-platform/`.
+through the official Helm chart at `deploy/charts/brama/`.
 
 > **Status**: This runbook reflects the initial Helm chart skeleton. Workload names, migration job
 > names, and chart repository details will be tightened as the packaging matures.
@@ -22,9 +22,9 @@ For a fresh install, see [`kubernetes-install.md`](./kubernetes-install.md).
 ### 1. Record current release state
 
 ```bash
-helm list -n acp
-helm history ai-community-platform -n acp
-kubectl get pods -n acp
+helm list -n brama
+helm history brama -n brama
+kubectl get pods -n brama
 ```
 
 Note the current revision number — you will need it for rollback.
@@ -41,7 +41,7 @@ Before upgrading, check:
 ### 3. Diff current and target values
 
 ```bash
-helm get values ai-community-platform -n acp -o yaml > current-values.yaml
+helm get values brama -n brama -o yaml > current-values.yaml
 ```
 
 Compare `current-values.yaml` with your `values-prod.yaml` and the new chart's
@@ -50,8 +50,8 @@ Compare `current-values.yaml` with your `values-prod.yaml` and the new chart's
 If the Helm diff plugin is available:
 
 ```bash
-helm diff upgrade ai-community-platform ./deploy/charts/ai-community-platform \
-  -n acp \
+helm diff upgrade brama ./deploy/charts/brama \
+  -n brama \
   -f values-prod.yaml
 ```
 
@@ -72,8 +72,8 @@ Before applying any upgrade, confirm you have current backups of:
 ### 5. Confirm cluster health
 
 ```bash
-kubectl get deploy,statefulset,job -n acp
-kubectl top pods -n acp
+kubectl get deploy,statefulset,job -n brama
+kubectl top pods -n brama
 ```
 
 Do not upgrade if existing workloads are unhealthy or if the cluster is under resource pressure.
@@ -111,15 +111,15 @@ migrations:
 If the chart has sub-chart dependency changes:
 
 ```bash
-helm dependency update ./deploy/charts/ai-community-platform
+helm dependency update ./deploy/charts/brama
 ```
 
 ### 3. Apply the upgrade
 
 ```bash
-helm upgrade --install ai-community-platform \
-  ./deploy/charts/ai-community-platform \
-  --namespace acp \
+helm upgrade --install brama \
+  ./deploy/charts/brama \
+  --namespace brama \
   -f values-prod.yaml \
   --wait \
   --timeout 15m
@@ -135,8 +135,8 @@ The `--wait` flag causes Helm to wait until:
 The migration job runs as a `pre-upgrade` hook before new application pods start.
 
 ```bash
-kubectl get jobs -n acp
-kubectl logs job/ai-community-platform-migrate-<revision> -n acp
+kubectl get jobs -n brama
+kubectl logs job/brama-migrate-<revision> -n brama
 ```
 
 If the migration job fails:
@@ -148,15 +148,15 @@ If the migration job fails:
 ### 5. Observe rollout status
 
 ```bash
-kubectl rollout status deploy/ai-community-platform-core -n acp
-kubectl rollout status deploy/ai-community-platform-core-scheduler -n acp
+kubectl rollout status deploy/brama-core -n brama
+kubectl rollout status deploy/brama-core-scheduler -n brama
 ```
 
 For enabled agents:
 
 ```bash
-kubectl rollout status deploy/ai-community-platform-agent-knowledge -n acp
-kubectl rollout status deploy/ai-community-platform-agent-hello -n acp
+kubectl rollout status deploy/brama-agent-knowledge -n brama
+kubectl rollout status deploy/brama-agent-hello -n brama
 ```
 
 ### 6. Post-upgrade verification
@@ -171,9 +171,9 @@ Minimum verification gates:
 - [ ] At least one critical agent flow works
 
 ```bash
-kubectl get pods -n acp
-kubectl get ingress -n acp
-kubectl logs deploy/ai-community-platform-core -n acp --tail=100
+kubectl get pods -n brama
+kubectl get ingress -n brama
+kubectl logs deploy/brama-core -n brama --tail=100
 ```
 
 ## Rollback Flow
@@ -184,7 +184,7 @@ kubectl logs deploy/ai-community-platform-core -n acp --tail=100
 ### 1. Inspect release history
 
 ```bash
-helm history ai-community-platform -n acp
+helm history brama -n brama
 ```
 
 Identify the last known-good revision number.
@@ -192,14 +192,14 @@ Identify the last known-good revision number.
 ### 2. Roll back the Helm release
 
 ```bash
-helm rollback ai-community-platform <revision> -n acp --wait --timeout 15m
+helm rollback brama <revision> -n brama --wait --timeout 15m
 ```
 
 ### 3. Verify rollout after rollback
 
 ```bash
-kubectl get pods -n acp
-kubectl rollout status deploy/ai-community-platform-core -n acp
+kubectl get pods -n brama
+kubectl rollout status deploy/brama-core -n brama
 curl -sf https://platform.example.com/health
 ```
 
@@ -209,12 +209,12 @@ If the failed release changed schema or data in a non-reversible way:
 
 1. Stop the application pods to prevent further writes:
    ```bash
-   kubectl scale deploy/ai-community-platform-core -n acp --replicas=0
+   kubectl scale deploy/brama-core -n brama --replicas=0
    ```
 2. Restore the affected databases from the pre-upgrade backup
 3. Scale the application back up:
    ```bash
-   kubectl scale deploy/ai-community-platform-core -n acp --replicas=1
+   kubectl scale deploy/brama-core -n brama --replicas=1
    ```
 4. Re-run health verification
 
@@ -230,8 +230,8 @@ If the failed release changed schema or data in a non-reversible way:
 ### App rollout succeeded but readiness probes fail
 
 ```bash
-kubectl describe pod <pod-name> -n acp
-kubectl logs <pod-name> -n acp
+kubectl describe pod <pod-name> -n brama
+kubectl logs <pod-name> -n brama
 ```
 
 Common causes: wrong secret reference, missing env var, database connection failure.
@@ -239,14 +239,14 @@ Common causes: wrong secret reference, missing env var, database connection fail
 ### Rollout succeeded but ingress is broken
 
 ```bash
-kubectl describe ingress ai-community-platform -n acp
-kubectl get events -n acp --sort-by='.lastTimestamp'
+kubectl describe ingress brama -n brama
+kubectl get events -n brama --sort-by='.lastTimestamp'
 ```
 
 ### One worker or scheduler failed while web surfaces looked healthy
 
 ```bash
-kubectl logs deploy/ai-community-platform-core-scheduler -n acp --tail=100
+kubectl logs deploy/brama-core-scheduler -n brama --tail=100
 ```
 
 The scheduler runs as a single replica. If it is crash-looping, check for missing env vars or

@@ -2,8 +2,8 @@
 
 ## Overview
 
-This guide covers installing the AI Community Platform on a Kubernetes cluster using the official
-Helm chart located at `deploy/charts/ai-community-platform/`.
+This guide covers installing Brama on a Kubernetes cluster using the official
+Helm chart located at `deploy/charts/brama/`.
 
 > **Status**: Initial packaging skeleton. The chart defines the operator contract for configuration,
 > secrets, migrations, probes, and ingress. Image publishing and a hosted chart repository are
@@ -64,10 +64,10 @@ references them by name.
 ### Core secrets
 
 ```bash
-kubectl create namespace acp
+kubectl create namespace brama
 
 kubectl create secret generic core-secrets \
-  --namespace acp \
+  --namespace brama \
   --from-literal=APP_SECRET="$(openssl rand -hex 32)" \
   --from-literal=EDGE_AUTH_JWT_SECRET="$(openssl rand -hex 32)" \
   --from-literal=DATABASE_URL="postgresql://app:PASSWORD@postgres-host:5432/ai_community_platform?serverVersion=16&charset=utf8" \
@@ -79,7 +79,7 @@ kubectl create secret generic core-secrets \
 
 ```bash
 kubectl create secret generic litellm-secrets \
-  --namespace acp \
+  --namespace brama \
   --from-literal=LITELLM_MASTER_KEY="$(openssl rand -hex 32)" \
   --from-literal=DATABASE_URL="postgresql://app:PASSWORD@postgres-host:5432/litellm?serverVersion=16&charset=utf8" \
   --from-literal=OPENROUTER_API_KEY="sk-or-your-key"
@@ -89,7 +89,7 @@ kubectl create secret generic litellm-secrets \
 
 ```bash
 kubectl create secret generic knowledge-agent-secrets \
-  --namespace acp \
+  --namespace brama \
   --from-literal=APP_SECRET="$(openssl rand -hex 32)" \
   --from-literal=DATABASE_URL="postgresql://app:PASSWORD@postgres-host:5432/knowledge_agent?serverVersion=16&charset=utf8"
 ```
@@ -103,7 +103,7 @@ kubectl create secret generic knowledge-agent-secrets \
 Copy the example values file and customize it:
 
 ```bash
-cp deploy/charts/ai-community-platform/values-prod.example.yaml values-prod.yaml
+cp deploy/charts/brama/values-prod.example.yaml values-prod.yaml
 ```
 
 Edit `values-prod.yaml` with your environment-specific settings:
@@ -129,9 +129,9 @@ Edit `values-prod.yaml` with your environment-specific settings:
 ## Step 3: Install the Chart
 
 ```bash
-helm upgrade --install ai-community-platform \
-  ./deploy/charts/ai-community-platform \
-  --namespace acp \
+helm upgrade --install brama \
+  ./deploy/charts/brama \
+  --namespace brama \
   --create-namespace \
   -f values-prod.yaml \
   --wait \
@@ -146,7 +146,7 @@ returning. The migration job runs as a `post-install` hook before the applicatio
 ### Check pod status
 
 ```bash
-kubectl get pods -n acp
+kubectl get pods -n brama
 ```
 
 All pods should reach `Running` state. The migration job pod will show `Completed`.
@@ -154,8 +154,8 @@ All pods should reach `Running` state. The migration job pod will show `Complete
 ### Check migration job
 
 ```bash
-kubectl get jobs -n acp
-kubectl logs job/ai-community-platform-migrate-1 -n acp
+kubectl get jobs -n brama
+kubectl logs job/brama-migrate-1 -n brama
 ```
 
 The migration job logs should end with `==> Migrations complete`.
@@ -163,13 +163,13 @@ The migration job logs should end with `==> Migrations complete`.
 ### Check rollout status
 
 ```bash
-kubectl rollout status deploy/ai-community-platform-core -n acp
+kubectl rollout status deploy/brama-core -n brama
 ```
 
 ### Check ingress
 
 ```bash
-kubectl get ingress -n acp
+kubectl get ingress -n brama
 ```
 
 ### Test health endpoint
@@ -182,7 +182,7 @@ curl -sf https://platform.example.com/health
 Or with port-forward:
 
 ```bash
-kubectl port-forward -n acp svc/ai-community-platform-core 8080:80
+kubectl port-forward -n brama svc/brama-core 8080:80
 curl -sf http://localhost:8080/health
 ```
 
@@ -211,7 +211,7 @@ Minimum smoke checks after a fresh install:
 | `postgresql.enabled` | Bundle PostgreSQL sub-chart | `true` |
 | `redis.enabled` | Bundle Redis sub-chart | `true` |
 
-See `deploy/charts/ai-community-platform/values.yaml` for the full reference with all defaults.
+See `deploy/charts/brama/values.yaml` for the full reference with all defaults.
 
 ## Probe Behavior
 
@@ -248,7 +248,7 @@ validation until migrations complete successfully.
 ### Pod stuck in Pending
 
 ```bash
-kubectl describe pod <pod-name> -n acp
+kubectl describe pod <pod-name> -n brama
 ```
 
 Common causes: insufficient cluster resources, missing PVC, missing secret.
@@ -256,7 +256,7 @@ Common causes: insufficient cluster resources, missing PVC, missing secret.
 ### Migration job failed
 
 ```bash
-kubectl logs job/ai-community-platform-migrate-1 -n acp
+kubectl logs job/brama-migrate-1 -n brama
 ```
 
 Check for database connectivity issues or schema conflicts. Fix the root cause before retrying.
@@ -264,7 +264,7 @@ Check for database connectivity issues or schema conflicts. Fix the root cause b
 ### Core pod CrashLoopBackOff
 
 ```bash
-kubectl logs deploy/ai-community-platform-core -n acp --previous
+kubectl logs deploy/brama-core -n brama --previous
 ```
 
 Common causes: missing secret reference, wrong DATABASE_URL, failed migration.
@@ -272,8 +272,8 @@ Common causes: missing secret reference, wrong DATABASE_URL, failed migration.
 ### Ingress not routing
 
 ```bash
-kubectl describe ingress ai-community-platform -n acp
-kubectl get events -n acp --sort-by='.lastTimestamp'
+kubectl describe ingress brama -n brama
+kubectl get events -n brama --sort-by='.lastTimestamp'
 ```
 
 Verify the ingress controller is installed and the `ingressClassName` matches.
