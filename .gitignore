@@ -16,6 +16,8 @@ builder/tasks/suspended/
 # IDE / Editor
 .idea/
 .vscode/
+.cursor/
+.codex/
 *.swp
 *.swo
 *~
