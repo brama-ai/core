@@ -1,4 +1,4 @@
-name: ai-community-platform
+name: brama
 
 services:
   traefik:
@@ -12,6 +12,7 @@ services:
       - "8083:8083"
       - "8084:8084"
       - "8085:8085"
+      - "8086:8086"
       - "8087:8087"
       - "8088:8088"
       - "8090:8090"
@@ -20,8 +21,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
       - traefik.enable=true
-      - traefik.docker.network=ai-community-platform_dev-edge
-      - traefik.http.routers.traefik-dashboard.rule=Host(`traefik.ai-community-platform.org`) || Host(`traefik.localhost`)
+      - traefik.docker.network=brama_dev-edge
+      - traefik.http.routers.traefik-dashboard.rule=Host(`traefik.brama.localhost`) || Host(`traefik.localhost`)
       - traefik.http.routers.traefik-dashboard.entrypoints=web
       - traefik.http.routers.traefik-dashboard.middlewares=edge-auth@docker
       - traefik.http.routers.traefik-dashboard.service=api@internal
@@ -29,7 +30,7 @@ services:
       - dev-edge
 
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: ai_community_platform
       POSTGRES_USER: app
@@ -63,6 +64,26 @@ services:
     networks:
       - dev-edge
       - agents-internal
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.1
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      OPENSEARCH_USERNAME: admin
+      OPENSEARCH_PASSWORD: admin
+    ports:
+      - "5601:5601"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=brama_dev-edge
+      - traefik.http.routers.opensearch-dashboards.rule=Host(`opensearch-dashboards.brama.localhost`) || Host(`opensearch-dashboards.localhost`)
+      - traefik.http.routers.opensearch-dashboards.entrypoints=web
+      - traefik.http.routers.opensearch-dashboards.middlewares=edge-auth@docker
+      - traefik.http.services.opensearch-dashboards.loadbalancer.server.port=5601
+    depends_on:
+      - opensearch
+    networks:
+      - dev-edge
 
   opensearch:
     image: opensearchproject/opensearch:2.11.1
@@ -123,8 +144,8 @@ services:
       - "4000:4000"
     labels:
       - traefik.enable=true
-      - traefik.docker.network=ai-community-platform_dev-edge
-      - traefik.http.routers.litellm.rule=Host(`litellm.ai-community-platform.org`) || Host(`litellm.localhost`)
+      - traefik.docker.network=brama_dev-edge
+      - traefik.http.routers.litellm.rule=Host(`litellm.brama.localhost`) || Host(`litellm.localhost`)
       - traefik.http.routers.litellm.entrypoints=web
       - traefik.http.routers.litellm.middlewares=edge-auth@docker
       - traefik.http.routers.litellm.service=litellm

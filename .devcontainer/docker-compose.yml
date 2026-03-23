@@ -7,7 +7,7 @@ services:
       - path: .env.local
         required: false
     volumes:
-      - .:/workspaces/ai-community-platform:cached
+      - ../..:/workspaces/brama:cached
       - commandhistory:/commandhistory
       - antigravity-server:/home/vscode/.antigravity-server
       - vscode-server:/home/vscode/.vscode-server
