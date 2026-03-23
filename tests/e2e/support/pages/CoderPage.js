@@ -15,7 +15,7 @@ module.exports = {
 
     seeStats() {
         I.seeElement(this.statsGrid);
-        I.see('Завдання');
+        I.see('Всього');
     },
 
     seeTaskList() {
@@ -23,7 +23,7 @@ module.exports = {
     },
 
     seeEmptyState() {
-        I.see('Немає завдань');
+        I.see('Немає задач.');
     },
 
     async clickCreate() {
@@ -45,7 +45,7 @@ module.exports = {
     },
 
     seeWorkers() {
-        I.see('Працівники');
+        I.see('Воркери');
     },
 
     seeWorkerStatus(workerId, status) {

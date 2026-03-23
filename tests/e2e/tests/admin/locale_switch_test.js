@@ -25,7 +25,7 @@ Scenario(
         await localePage.switchToLocale('en');
 
         I.see('Dashboard');
-        I.see('Agents');
+        I.see('Agent Management');
         I.see('Settings');
     },
 ).tag('@admin').tag('@locale');
@@ -38,10 +38,12 @@ Scenario(
 
         I.see('Dashboard');
         I.amOnPage('/admin/agents');
-        I.see('Agents');
+        await I.waitForElement('.sidebar-nav', 10);
+        I.see('Agent Management');
         I.see('Settings');
 
         I.amOnPage('/admin/scheduler');
+        await I.waitForElement('.sidebar-nav', 10);
         I.see('Scheduler');
     },
 ).tag('@admin').tag('@locale');
@@ -55,6 +57,6 @@ Scenario(
         I.see('Dashboard');
 
         await localePage.switchToLocale('uk');
-        I.see('Головна');
+        I.see('Статистика');
     },
 ).tag('@admin').tag('@locale');

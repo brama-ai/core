@@ -14,7 +14,7 @@ Scenario(
         await schedulerPage.open();
         I.see('Планувальник завдань');
 
-        I.seeElement('//tr[1]//a[contains(@href, "/logs")]');
+        I.seeElement('//tbody//tr[1]//a[contains(@href, "/logs")]');
     },
 ).tag('@admin').tag('@scheduler').tag('@logs');
 
@@ -23,8 +23,8 @@ Scenario(
     async ({ I, schedulerPage }) => {
         await schedulerPage.open();
 
-        I.click('//tr[1]//a[contains(@href, "/logs")]');
-        await I.waitForElement('.glass-card table', 10);
+        I.click('//tbody//tr[1]//a[contains(@href, "/logs")]');
+        await I.waitForElement('.glass-card .admin-table', 10);
 
         I.seeInCurrentUrl('/logs');
     },
@@ -35,13 +35,15 @@ Scenario(
     async ({ I, schedulerPage }) => {
         await schedulerPage.open();
 
-        I.click('//tr[1]//a[contains(@href, "/logs")]');
-        await I.waitForElement('.glass-card table', 10);
+        I.click('//tbody//tr[1]//a[contains(@href, "/logs")]');
+        await I.waitForElement('.glass-card .admin-table', 10);
 
-        I.see('Старт');
-        I.see('Завершення');
-        I.see('Тривалість');
-        I.see('Статус');
+        // Table headers are rendered uppercase via CSS text-transform,
+        // so check the raw th text with XPath normalize-space.
+        I.seeElement('//th[contains(text(), "Початок") or contains(text(), "ПОЧАТОК")]');
+        I.seeElement('//th[contains(text(), "Завершення") or contains(text(), "ЗАВЕРШЕННЯ")]');
+        I.seeElement('//th[contains(text(), "Тривалість") or contains(text(), "ТРИВАЛІСТЬ")]');
+        I.seeElement('//th[contains(text(), "Статус") or contains(text(), "СТАТУС")]');
     },
 ).tag('@admin').tag('@scheduler').tag('@logs');
 
@@ -50,12 +52,12 @@ Scenario(
     async ({ I, schedulerPage }) => {
         await schedulerPage.open();
 
-        I.click('//tr[1]//a[contains(@href, "/logs")]');
+        I.click('//tbody//tr[1]//a[contains(@href, "/logs")]');
         await I.waitForElement('.glass-card', 10);
 
-        I.see('skill:');
-        I.see('cron:');
-        I.see('Всього:');
+        I.see('Скіл');
+        I.see('Cron');
+        I.see('Всього записів');
     },
 ).tag('@admin').tag('@scheduler').tag('@logs');
 
@@ -64,11 +66,11 @@ Scenario(
     async ({ I, schedulerPage }) => {
         await schedulerPage.open();
 
-        I.click('//tr[1]//a[contains(@href, "/logs")]');
+        I.click('//tbody//tr[1]//a[contains(@href, "/logs")]');
         await I.waitForElement('.glass-card', 10);
 
-        I.see('Назад');
-        I.click('Назад');
+        I.see('Планувальник');
+        I.click('Планувальник');
         await I.waitForElement('table', 10);
         I.seeInCurrentUrl('/admin/scheduler');
         I.dontSeeInCurrentUrl('/logs');
@@ -80,11 +82,16 @@ Scenario(
     async ({ I, schedulerPage }) => {
         await schedulerPage.open();
 
-        I.click('//tr[1]//a[contains(@href, "/logs")]');
+        I.click('//tbody//tr[1]//a[contains(@href, "/logs")]');
         await I.waitForElement('.glass-card', 10);
 
-        const totalText = await I.grabTextFrom('.glass-card span');
-        const total = parseInt(totalText.replace(/\D/g, ''), 10);
+        // The total entries count is shown in a span outside .glass-card,
+        // e.g. "Скіл: ... · Cron: ... · Всього записів: 5"
+        const headerText = await I.grabTextFrom(
+            '//span[contains(text(), "записів") or contains(text(), "entries")]',
+        );
+        const match = headerText.match(/(\d+)\s*$/);
+        const total = match ? parseInt(match[1], 10) : 0;
 
         if (total > 50) {
             I.seeElement('//a[contains(@href, "page=2")]');

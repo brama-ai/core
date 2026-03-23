@@ -226,8 +226,9 @@ Scenario(
     },
 ).tag('@admin').tag('@scheduler').tag('@visual-cron');
 
-Scenario(
+// Skipped: Requires add-scheduler-delivery implementation
+xScenario(
     'create job with delivery channel selected (requires add-scheduler-delivery)',
     async ({ I, schedulerPage }) => {
     },
-).tag('@admin').tag('@scheduler').tag('@delivery').skip('Requires add-scheduler-delivery implementation');
+).tag('@admin').tag('@scheduler').tag('@delivery');

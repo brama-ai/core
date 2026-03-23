@@ -17,8 +17,8 @@ Scenario(
     'hello-agent is present and healthy after discovery',
     async ({ I, agentsPage }) => {
         await agentsPage.open();
-        agentsPage.seeAgent('hello-agent');
-        agentsPage.seeAgentHealthy('hello-agent');
+        agentsPage.seeAgentLike('hello-agent');
+        agentsPage.seeAgentHealthyLike('hello-agent');
     },
 ).tag('@admin').tag('@hello');
 

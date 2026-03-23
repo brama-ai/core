@@ -3,7 +3,7 @@ const { I } = inject();
 module.exports = {
     url: '/admin/dashboard',
 
-    switcherButton: '#localeSwitcher button',
+    switcherButton: '#localeSwitcher > button',
     localeDropdown: '#localeDropdown',
 
     async open() {
@@ -22,8 +22,8 @@ module.exports = {
 
     async switchToLocale(locale) {
         await this.openSwitcher();
-        I.click(locate('button').withAttr({ value: locale }).inside(this.localeDropdown));
-        await I.waitForElement('.sidebar-nav', 5);
+        I.click(locate('button').withAttr({ name: 'locale', value: locale }).inside(this.localeDropdown));
+        await I.waitForElement('.sidebar-nav', 10);
     },
 
     seeCurrentLocale(locale) {

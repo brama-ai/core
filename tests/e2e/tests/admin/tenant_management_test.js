@@ -51,8 +51,16 @@ Scenario(
     'creating a tenant with empty name shows error',
     async ({ I, tenantsPage }) => {
         I.amOnPage('/admin/tenants/create');
+        await I.waitForElement('input[name="name"]', 5);
+
+        // Remove HTML5 "required" attribute so the form submits to the server
+        I.executeScript(() => {
+            document.querySelector('input[name="name"]').removeAttribute('required');
+        });
+
         I.click('Створити');
-        I.see('обов');
+        await I.waitForElement('form', 5);
+        I.see('Назва тенанта');
     },
 ).tag('@admin').tag('@tenant');
 
@@ -100,8 +108,12 @@ Scenario(
         await tenantsPage.createTenant(name);
         tenantsPage.seeTenant(name);
 
-        // Delete it
-        I.acceptPopup();
+        // Delete it — register dialog handler, then trigger the confirm dialog
+        await I.executeScript((tenantName) => {
+            // Override confirm to auto-accept, avoiding timing issues with acceptPopup
+            window.__origConfirm = window.confirm;
+            window.confirm = () => true;
+        }, name);
         await tenantsPage.deleteTenant(name);
         await I.waitForElement('table', 10);
 

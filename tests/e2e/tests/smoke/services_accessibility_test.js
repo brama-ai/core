@@ -11,7 +11,6 @@ const TRAEFIK_DASHBOARD_URL = process.env.TRAEFIK_DASHBOARD_URL || 'http://traef
 const LITELLM_URL = process.env.LITELLM_URL || 'http://litellm.localhost';
 const LANGFUSE_URL = process.env.LANGFUSE_URL || 'http://langfuse.localhost';
 const OPENCLAW_URL = process.env.OPENCLAW_URL || 'http://openclaw.localhost';
-const SLIDES_URL = process.env.SLIDES_URL || 'http://slides.localhost';
 
 // Infrastructure direct ports
 const TRAEFIK_API = process.env.TRAEFIK_API || 'http://localhost:8080';

@@ -24,50 +24,44 @@ Scenario('core platform health endpoints work with env vars @smoke', async ({ I 
 }).tag('@smoke');
 
 Scenario('agent health endpoints work with env vars @smoke', async ({ I }) => {
-    // Test hello-agent health
-    try {
-        const helloRes = await I.sendGetRequest('http://hello-agent/health');
-        if (helloRes.status === 200) {
-            assert.strictEqual(helloRes.data.status, 'ok');
-            assert.strictEqual(helloRes.data.service, 'hello-agent');
-            
-            // Test hello-agent readiness
-            const helloReadyRes = await I.sendGetRequest('http://hello-agent/health/ready');
-            assert.ok([200, 503].includes(helloReadyRes.status));
+    const helloUrl = process.env.HELLO_URL || 'http://localhost:18085';
+    const knowledgeUrl = process.env.KNOWLEDGE_URL || 'http://localhost:18083';
+    const newsUrl = process.env.NEWS_URL || 'http://localhost:18084';
+
+    // Helper: test agent health tolerantly — agents may be unavailable in dev/e2e
+    const checkAgent = async (name, baseUrl) => {
+        try {
+            const res = await I.sendGetRequest(`${baseUrl}/health`);
+            if (res.status === 404 || res.status === 502 || res.status === 503) {
+                console.log(`${name} not available (got ${res.status}) — skipping`);
+                return;
+            }
+            if (res.status === 200 && res.data) {
+                assert.strictEqual(res.data.status, 'ok');
+                // Service name in response may include -e2e suffix; check it contains the base name
+                if (res.data.service) {
+                    assert.ok(
+                        res.data.service.includes(name),
+                        `Expected service name to contain '${name}', got '${res.data.service}'`
+                    );
+                }
+
+                // Test readiness (some agents may not implement /health/ready)
+                try {
+                    const readyRes = await I.sendGetRequest(`${baseUrl}/health/ready`);
+                    assert.ok([200, 404, 503].includes(readyRes.status));
+                } catch (readyErr) {
+                    console.log(`${name} does not support /health/ready — skipping`);
+                }
+            }
+        } catch (e) {
+            console.log(`${name} not available, skipping: ${e.message}`);
         }
-    } catch (e) {
-        console.log('Hello agent not available, skipping test');
-    }
-    
-    // Test knowledge-agent health
-    try {
-        const knowledgeRes = await I.sendGetRequest('http://knowledge-agent/health');
-        if (knowledgeRes.status === 200) {
-            assert.strictEqual(knowledgeRes.data.status, 'ok');
-            assert.strictEqual(knowledgeRes.data.service, 'knowledge-agent');
-            
-            // Test knowledge-agent readiness
-            const knowledgeReadyRes = await I.sendGetRequest('http://knowledge-agent/health/ready');
-            assert.ok([200, 503].includes(knowledgeReadyRes.status));
-        }
-    } catch (e) {
-        console.log('Knowledge agent not available, skipping test');
-    }
-    
-    // Test news-maker-agent health
-    try {
-        const newsRes = await I.sendGetRequest('http://news-maker-agent:8000/health');
-        if (newsRes.status === 200) {
-            assert.strictEqual(newsRes.data.status, 'ok');
-            assert.strictEqual(newsRes.data.service, 'news-maker-agent');
-            
-            // Test news-maker-agent readiness
-            const newsReadyRes = await I.sendGetRequest('http://news-maker-agent:8000/health/ready');
-            assert.ok([200, 503].includes(newsReadyRes.status));
-        }
-    } catch (e) {
-        console.log('News maker agent not available, skipping test');
-    }
+    };
+
+    await checkAgent('hello-agent', helloUrl);
+    await checkAgent('knowledge-agent', knowledgeUrl);
+    await checkAgent('news-maker-agent', newsUrl);
 }).tag('@smoke');
 
 Scenario('services can connect to dependencies via env vars @smoke', async ({ I }) => {

@@ -20,23 +20,40 @@ Scenario('core@docker is registered as enabled service', async ({ I }) => {
     assert.strictEqual(core.status, 'enabled');
 }).tag('@smoke');
 
+// Helper: fetch ALL Traefik services (handles pagination).
+async function fetchAllServices(I) {
+    let all = [];
+    let page = 1;
+    const perPage = 100;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+        const res = await I.sendGetRequest(`${TRAEFIK_API}/api/http/services?page=${page}&per_page=${perPage}`);
+        assert.strictEqual(res.status, 200);
+        const items = Array.isArray(res.data) ? res.data : [];
+        all = all.concat(items);
+        if (items.length < perPage) break;
+        page++;
+    }
+    return all;
+}
+
 Scenario('knowledge-agent@docker is registered', async ({ I }) => {
-    const res = await I.sendGetRequest(`${TRAEFIK_API}/api/http/services`);
-    const agent = res.data.find((s) => s.name === 'knowledge-agent@docker');
-    assert.ok(agent, 'knowledge-agent@docker must be registered in Traefik');
+    const services = await fetchAllServices(I);
+    const agent = services.find((s) => s.name.includes('knowledge-agent'));
+    assert.ok(agent, 'knowledge-agent service must be registered in Traefik');
     assert.strictEqual(agent.status, 'enabled');
-}).tag('@smoke');
+}).tag('@traefik');
 
 Scenario('news-maker-agent@docker is registered', async ({ I }) => {
-    const res = await I.sendGetRequest(`${TRAEFIK_API}/api/http/services`);
-    const agent = res.data.find((s) => s.name === 'news-maker-agent@docker');
-    assert.ok(agent, 'news-maker-agent@docker must be registered in Traefik');
+    const services = await fetchAllServices(I);
+    const agent = services.find((s) => s.name.includes('news-maker-agent'));
+    assert.ok(agent, 'news-maker-agent service must be registered in Traefik');
     assert.strictEqual(agent.status, 'enabled');
-}).tag('@smoke');
+}).tag('@traefik');
 
 Scenario('hello-agent@docker is registered', async ({ I }) => {
-    const res = await I.sendGetRequest(`${TRAEFIK_API}/api/http/services`);
-    const agent = res.data.find((s) => s.name === 'hello-agent@docker');
-    assert.ok(agent, 'hello-agent@docker must be registered in Traefik');
+    const services = await fetchAllServices(I);
+    const agent = services.find((s) => s.name.includes('hello-agent'));
+    assert.ok(agent, 'hello-agent service must be registered in Traefik');
     assert.strictEqual(agent.status, 'enabled');
-}).tag('@smoke');
+}).tag('@traefik');

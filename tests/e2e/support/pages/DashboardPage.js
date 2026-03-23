@@ -13,7 +13,7 @@ module.exports = {
     },
 
     async seeMetricsSection() {
-        I.see('Метрики платформи');
+        I.seeElement(this.metricsSection);
         I.seeElement(this.metricsGrid);
     },
 

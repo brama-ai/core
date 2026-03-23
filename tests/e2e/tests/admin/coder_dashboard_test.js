@@ -22,11 +22,11 @@ Scenario(
         await coderPage.open();
         coderPage.seeStats();
 
-        I.see('Завдання');
-        I.see('У черзі');
+        I.see('Всього');
+        I.see('Черга');
         I.see('В роботі');
         I.see('Готово');
-        I.see('Помилки');
+        I.see('Збої');
     },
 ).tag('@admin').tag('@coder');
 
@@ -62,7 +62,7 @@ Scenario(
     'coder dashboard has create task button',
     async ({ I, coderPage }) => {
         await coderPage.open();
-        I.see('Створити завдання');
+        I.see('Створити задачу');
         I.seeElement('a[href*="/admin/coder/create"]');
     },
 ).tag('@admin').tag('@coder');

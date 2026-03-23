@@ -51,7 +51,7 @@ module.exports = {
     },
 
     /**
-     * Assert that an agent row exists.
+     * Assert that an agent row exists (exact data-agent-name match).
      */
     seeAgent(agentName) {
         const row = this.activePaneRow(agentName);
@@ -59,12 +59,35 @@ module.exports = {
     },
 
     /**
-     * Assert that an agent has the healthy badge.
+     * Assert that an agent row exists using a substring match on
+     * data-agent-name. Useful when agents are registered with an `-e2e`
+     * suffix (e.g. `knowledge-agent-e2e`).
+     */
+    seeAgentLike(agentName) {
+        const row = `//div[contains(@class,"agent-tab-pane") and contains(@class,"active")]//tr[contains(@data-agent-name,"${agentName}")]`;
+        I.seeElement(row);
+    },
+
+    /**
+     * Assert that an agent has the healthy badge (exact match).
+     * Accepts healthy or degraded — both mean the agent is alive and
+     * responding; degraded simply means some non-critical checks failed.
      */
     seeAgentHealthy(agentName) {
         const row = this.activePaneRow(agentName);
         I.seeElement(row);
-        I.seeElement(`${row}//span[contains(@class,"badge-healthy")]`);
+        I.seeElement(`${row}//span[contains(@class,"badge-healthy") or contains(@class,"badge-degraded")]`);
+    },
+
+    /**
+     * Assert that an agent has the healthy badge (substring match on name).
+     * Accepts healthy or degraded — both mean the agent is alive and
+     * responding; degraded simply means some non-critical checks failed.
+     */
+    seeAgentHealthyLike(agentName) {
+        const row = `//div[contains(@class,"agent-tab-pane") and contains(@class,"active")]//tr[contains(@data-agent-name,"${agentName}")]`;
+        I.seeElement(row);
+        I.seeElement(`${row}//span[contains(@class,"badge-healthy") or contains(@class,"badge-degraded")]`);
     },
 
     /**

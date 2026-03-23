@@ -13,23 +13,30 @@ function readGatewayToken() {
         return process.env.OPENCLAW_GATEWAY_TOKEN.trim();
     }
 
-    const envPath = path.resolve(process.cwd(), '../../docker/openclaw/.env');
-    if (!fs.existsSync(envPath)) {
-        throw new Error(`Gateway token not found: ${envPath} does not exist`);
+    // Try multiple possible locations for the .env file containing the token.
+    // The repo root is four levels up from tests/e2e/tests/openclaw/.
+    const candidates = [
+        path.resolve(__dirname, '../../../../apps/core/.env'),
+        path.resolve(__dirname, '../../../../docker/openclaw/.env'),
+        path.resolve(process.cwd(), '../../docker/openclaw/.env'),
+        path.resolve(process.cwd(), 'apps/core/.env'),
+    ];
+
+    for (const envPath of candidates) {
+        if (!fs.existsSync(envPath)) continue;
+
+        const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+        const tokenLine = lines.find((line) => line.startsWith('OPENCLAW_GATEWAY_TOKEN='));
+        if (!tokenLine) continue;
+
+        const token = tokenLine.slice('OPENCLAW_GATEWAY_TOKEN='.length).trim();
+        if (token) return token;
     }
 
-    const lines = fs.readFileSync(envPath, 'utf8').split('\n');
-    const tokenLine = lines.find((line) => line.startsWith('OPENCLAW_GATEWAY_TOKEN='));
-    if (!tokenLine) {
-        throw new Error('OPENCLAW_GATEWAY_TOKEN is missing in docker/openclaw/.env');
-    }
-
-    const token = tokenLine.slice('OPENCLAW_GATEWAY_TOKEN='.length).trim();
-    if (!token) {
-        throw new Error('OPENCLAW_GATEWAY_TOKEN is empty');
-    }
-
-    return token;
+    throw new Error(
+        'OPENCLAW_GATEWAY_TOKEN not found. Set the env var or ensure apps/core/.env exists. Searched: ' +
+            candidates.join(', '),
+    );
 }
 
 Feature('OpenClaw: A2A Bridge Contract');

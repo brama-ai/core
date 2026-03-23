@@ -7,7 +7,7 @@ module.exports = {
     logLevelSelect: '#log_level',
     retentionInput: '#retention_days',
     maxSizeInput: '#max_size_gb',
-    saveButton: 'button[type="submit"]',
+    saveButton: '.btn.btn-primary',
     savedMessage: '.glass-card p',
 
     async open() {
@@ -37,10 +37,10 @@ module.exports = {
 
     async save() {
         I.click(this.saveButton);
-        await I.waitForElement('.glass-card', 5);
+        await I.waitForText('Налаштування збережено', 10);
     },
 
     seeSavedMessage() {
-        I.see('Збережено');
+        I.see('Налаштування збережено');
     },
 };
