@@ -56,7 +56,7 @@ The host uses the internal Docker network address, not the external Traefik-rout
 **What appears in Langfuse:** Trace and span events for orchestration flow.
 
 **Files:**
-- `apps/core/src/Observability/LangfuseIngestionClient.php`
+- `apps/brama-core/src/Observability/LangfuseIngestionClient.php`
 - `apps/hello-agent/src/Observability/LangfuseIngestionClient.php`
 
 ### Correlation

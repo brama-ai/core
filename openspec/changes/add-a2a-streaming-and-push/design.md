@@ -50,7 +50,7 @@ Official A2A guidance supports three complementary interaction modes: polling, S
 
 ### Persistence (Minimum)
 
-- Add `a2a_tasks` table in `apps/core/migrations` for current task snapshot.
+- Add `a2a_tasks` table in `apps/brama-core/migrations` for current task snapshot.
 - Optional in R1: keep event history in logs only (no separate `a2a_task_events` table yet).
 - Enforce idempotent resume by `request_id` when present (reuse existing task instead of creating duplicates).
 

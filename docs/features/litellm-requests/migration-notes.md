@@ -66,9 +66,9 @@ The `metadata` dict in LLM request bodies was restructured from a flat custom fo
 
 ## Affected Files
 
-- `apps/core/src/LLM/LlmRequestContext.php` — New metadata format, added `sessionId` param
-- `apps/core/src/LLM/LiteLlmClient.php` — Uses `userTag()` method
-- `apps/core/src/Command/AgentChatCommand.php` — Passes `sessionId`
+- `apps/brama-core/src/LLM/LlmRequestContext.php` — New metadata format, added `sessionId` param
+- `apps/brama-core/src/LLM/LiteLlmClient.php` — Uses `userTag()` method
+- `apps/brama-core/src/Command/AgentChatCommand.php` — Passes `sessionId`
 - `apps/hello-agent/src/A2A/HelloA2AHandler.php` — Restructured inline metadata
 - `apps/knowledge-agent/src/Llm/TracingHttpClient.php` — Restructured metadata in decorator
 - `apps/knowledge-agent/src/Service/EmbeddingService.php` — Restructured metadata

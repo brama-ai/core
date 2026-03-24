@@ -2,7 +2,7 @@
 
 ## 1. Core: Namespace & Class Renames
 
-- [x] 1.1 Rename directory `apps/core/src/AgentDiscovery/` → `apps/core/src/A2AGateway/`
+- [x] 1.1 Rename directory `apps/brama-core/src/AgentDiscovery/` → `apps/brama-core/src/A2AGateway/`
 - [x] 1.2 Update namespace in all files: `App\AgentDiscovery` → `App\A2AGateway`
 - [x] 1.3 Rename `AgentInvokeBridge` → `A2AClient`
 - [x] 1.4 Rename `AgentManifestFetcher` → `AgentCardFetcher`

@@ -4,7 +4,7 @@ The Neuron AI framework is open-source and hosted on GitHub.
 
 ## Repositories
 
-- **Core Framework**: [neuron-core/neuron-ai](https://github.com/neuron-core/neuron-ai)
+- **Core Framework**: [neuron-brama-core/neuron-ai](https://github.com/neuron-brama-core/neuron-ai)
 - **Official Organization**: [Neuron AI GitHub Organization](https://github.com/neuron-core)
 
 ## Community & Support

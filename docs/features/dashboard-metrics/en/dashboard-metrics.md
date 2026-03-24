@@ -43,10 +43,10 @@ Three glass-card panels on the `/admin/dashboard` page:
 
 | File | Description |
 |------|-------------|
-| `apps/core/src/Dashboard/DashboardMetricsService.php` | Metrics collection service |
-| `apps/core/src/Controller/Admin/DashboardController.php` | Dashboard controller |
-| `apps/core/templates/admin/dashboard.html.twig` | Twig template |
-| `apps/core/public/css/admin.css` | Metrics styles (glass-card grid) |
+| `apps/brama-core/src/Dashboard/DashboardMetricsService.php` | Metrics collection service |
+| `apps/brama-core/src/Controller/Admin/DashboardController.php` | Dashboard controller |
+| `apps/brama-core/templates/admin/dashboard.html.twig` | Twig template |
+| `apps/brama-core/public/css/admin.css` | Metrics styles (glass-card grid) |
 
 ## Limitations
 

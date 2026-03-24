@@ -30,9 +30,9 @@ The platform currently has no way to proactively push messages to end-users. All
 
 - Affected specs: new capability `delivery-channels`; modifies `admin-tools-navigation` (new sidebar link); modifies `observability-integration` (delivery trace events)
 - Affected code:
-  - `apps/core/src/Delivery/` (new namespace — all services, adapters, VOs)
-  - `apps/core/src/Controller/Admin/DeliveryChannelsController.php` (new)
-  - `apps/core/src/Controller/Api/Internal/DeliveryChannelTestController.php` (new)
-  - `apps/core/migrations/Version20260313000001.php` (new)
-  - `apps/core/templates/admin/delivery-channels/` (new)
-  - `apps/core/config/services.yaml` (adapter wiring)
+  - `apps/brama-core/src/Delivery/` (new namespace — all services, adapters, VOs)
+  - `apps/brama-core/src/Controller/Admin/DeliveryChannelsController.php` (new)
+  - `apps/brama-core/src/Controller/Api/Internal/DeliveryChannelTestController.php` (new)
+  - `apps/brama-core/migrations/Version20260313000001.php` (new)
+  - `apps/brama-core/templates/admin/delivery-channels/` (new)
+  - `apps/brama-core/config/services.yaml` (adapter wiring)

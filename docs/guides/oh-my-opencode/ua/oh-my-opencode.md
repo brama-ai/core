@@ -9,6 +9,11 @@ OmO надає Sisyphus — оркестратор, який делегує су
 1. **Послідовний pipeline** (`/pipeline`) — ручне переключення агентів, людина контролює кожну фазу
 2. **Sisyphus pipeline** (`/auto`, `ultrawork`) — повністю автоматичний, паралельне виконання
 
+Обидва workflow тепер тримаються одного уніфікованого контракту ролей:
+- `planner` і `summarizer` за замовчуванням єдині ролі, яким дозволено читати `handoff.md`
+- всі інші ролі мають споживати `CONTEXT`, який передає caller або orchestrator, як primary source of truth
+- Builder і Ultraworks можуть ще використовувати різні runtime-імена агентів, але їхня поведінка має відповідати однаковій семантиці unified `u-*` ролей
+
 ## Архітектура
 
 ```
@@ -35,7 +40,7 @@ OmO надає Sisyphus — оркестратор, який делегує су
 │   ├── summarizer.md             #   Pipeline: фінальний summary
 │   ├── s-architect.md            #   Sisyphus: специфікації (делегований)
 │   ├── s-coder.md                #   Sisyphus: код (делегований)
-│   ├── s-reviewer.md             #   Sisyphus: safe code-improvement pass
+│   ├── s-reviewer.md             #   Legacy/optional improvement pass, не default happy path
 │   ├── s-validator.md            #   Sisyphus: лінт (паралельно)
 │   ├── s-tester.md               #   Sisyphus: тести (паралельно)
 │   ├── s-auditor.md              #   Sisyphus: аудит (read-only)
@@ -46,7 +51,7 @@ OmO надає Sisyphus — оркестратор, який делегує су
 │   ├── auto.md                   #   /auto — повний Sisyphus pipeline
 │   ├── implement.md              #   /implement — пропустити architect
 │   ├── validate.md               #   /validate — тільки quality gate
-│   ├── audit.md                  #   /audit — тільки audit loop
+│   ├── audit.md                  #   /audit — тільки audit + remediation context
 │   ├── finish.md                 #   /finish — resume з поточного стану
 │   └── pipeline.md               #   /pipeline — ручний послідовний
 │
@@ -111,21 +116,22 @@ opencode auth list
 flowchart LR
     A[Task] --> B[s-architect]
     B --> C[s-coder]
-    C --> D[s-reviewer]
+    C --> D[s-auditor]
     D --> E[s-validator]
     D --> F[s-tester]
-    E --> G[s-auditor]
+    E --> G{s-coder follow-up needed?}
     F --> G
-    G --> H[s-documenter]
-    G --> I[s-summarizer]
+    G -- yes --> C
+    G -- no --> H[s-documenter]
+    G -- no --> I[s-summarizer]
 ```
 
 **Фази:**
 1. **Spec** — s-architect створює OpenSpec пропозицію (пропускається якщо tasks.md є)
 2. **Implement** — s-coder пише код за специфікаціями
-3. **Improvement** — s-reviewer робить safe refactor/improvement pass
-4. **Quality** — s-validator + s-tester працюють паралельно
-5. **Audit loop** — s-auditor знаходить проблеми → s-coder/s-reviewer виправляють → re-audit (макс 3x)
+3. **Audit and remediation** — s-auditor виконує post-coder quality pass, вносить safe in-scope fixes там, де це доречно, і передає remediation context
+4. **Quality** — s-validator + s-tester паралельно перевіряють сумарний результат coder + auditor
+5. **Loopback якщо треба** — якщо validator/tester знаходять ширші implementation gaps, remediation context повертається в s-coder для ще одного фокусного проходу
 6. **Finalize** — s-documenter + s-summarizer працюють паралельно; summarizer завжди пише `builder/tasks/summary/*.md`
 
 **Скорочення:**
@@ -134,8 +140,44 @@ flowchart LR
 | `ultrawork` / `ulw` | Повний pipeline (фази 1-6) |
 | `/implement <change-id>` | Фази 2-6 (tasks.md існує) |
 | `/validate` | Тільки фаза 4 (quality gate) |
-| `/audit` | Тільки фаза 5 (audit loop) |
+| `/audit` | Тільки фаза 3 (audit + remediation context) |
 | `/finish` | Resume з handoff.md стану |
+
+### Типові сценарії
+
+#### Сценарій: пофіксити баг через Ultraworks
+
+Використовуйте це, коли хочете, щоб оркестратор сам локалізував баг, зробив патч, прогнав guardrails і залишив фінальний summary:
+
+```text
+ultrawork fix the duplicate webhook retry bug in the billing worker. reproduce it, patch only the billing worker path, run the relevant tests, and summarize any remaining follow-up.
+```
+
+Очікуваний flow:
+- `s-architect` пропускається, якщо зміна не вимагає spec-change
+- `s-coder` реалізує bug fix
+- `s-auditor` додає safe in-scope remediation, якщо бачить очевидні прогалини
+- `s-validator` і `s-tester` перевіряють фінальний результат
+- `s-summarizer` записує outcome і незакриті follow-up-и
+
+#### Сценарій: прогнати E2E з обмеженим budget на баги в Ultraworks
+
+Використовуйте це, коли головна мета це validation, але ви дозволяєте workflow виправити лише обмежену кількість простих проблем перед зупинкою:
+
+```text
+ultrawork run the checkout E2E flow for the marketplace app. you may fix at most 2 small bugs that block the scenario, then stop and summarize any remaining failures.
+```
+
+Рекомендується явно задати в prompt:
+- точний flow або CUJ, який треба прогнати
+- межу app або service
+- максимальну кількість дозволених виправлень, наприклад `1` або `2`
+- чи входять у scope schema, API contract або cross-service changes
+
+Очікувана поведінка:
+- `s-tester` концентрується на відтворенні E2E шляху
+- `s-auditor` може внести safe local fixes в межах дозволеного bug budget
+- якщо для виправлення потрібен більший redesign або spec-change, workflow має зупинитися і оформити follow-up, а не крутитися безкінечно
 
 ### Стабільність Ultraworks
 
@@ -167,10 +209,9 @@ Headless запуск:
 |-------|----------|---------|------------|------------|------------|
 | `sisyphus` | `Ultraworks only` | `opencode-go/glm-5` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `minimax/MiniMax-M2.7` |
 | `s-architect` | `Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
-| `s-coder` | `Ultraworks` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.3-codex` | `opencode-go/glm-5` |
-| `s-reviewer` | `Ultraworks only` | `minimax/MiniMax-M2.7` | `openai/gpt-5.4` | `opencode-go/glm-5` | `opencode/big-pickle` |
-| `s-validator` | `Ultraworks` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.2` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` |
-| `s-tester` | `Ultraworks` | `opencode-go/kimi-k2.5` | `openai/gpt-5.3-codex` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` |
+| `s-coder` | `Ultraworks` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.4` | `opencode-go/glm-5` |
+| `s-validator` | `Ultraworks` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.4` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` |
+| `s-tester` | `Ultraworks` | `opencode-go/kimi-k2.5` | `openai/gpt-5.4` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` |
 | `s-auditor` | `Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
 | `s-documenter` | `Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-sonnet-4-6` | `google/gemini-3-flash-preview` | `minimax/MiniMax-M2.5` |
 | `s-summarizer` | `Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-opus-4-6` | `google/gemini-3.1-pro-preview` | `minimax/MiniMax-M2.7` |
@@ -194,10 +235,10 @@ Headless запуск:
 | Sisyphus | `opencode-go/glm-5` | оркестрація довгих задач |
 | Architect | `anthropic/claude-opus-4-6` | OpenSpec, архітектура, планування |
 | Coder | `anthropic/claude-sonnet-4-6` | основна реалізація коду |
-| Reviewer | `minimax/MiniMax-M2.7` | safe refactor, SOLID/DRY/KISS |
 | Validator | `minimax/MiniMax-M2.5-highspeed` | швидкий static analysis loop |
 | Tester | `opencode-go/kimi-k2.5` | тести, CUJ/E2E мислення |
-| Auditor | `anthropic/claude-opus-4-6` | read-only audit |
+| Auditor | `anthropic/claude-opus-4-6` | post-coder remediation, quality gate, safe in-scope fixes |
+| Security Review | `anthropic/claude-opus-4-6` | read-only security assessment, follow-up proposal/task generation |
 | Documenter | `openai/gpt-5.4` | documentation writing |
 | Summarizer | `openai/gpt-5.4` | final analysis + summary |
 

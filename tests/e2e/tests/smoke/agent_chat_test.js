@@ -13,7 +13,7 @@ const PROJECT_ROOT = path.resolve(__dirname, '../../../..');
  */
 function runAgentChat(input, timeoutMs = 60_000) {
     return execSync(
-        `echo "${input}" | docker compose --profile e2e exec -T core-e2e php bin/console agent:chat --username=e2e --language=uk`,
+        `echo "${input}" | docker exec -i brama-core-e2e-1 php bin/console agent:chat --username=e2e --language=uk`,
         { cwd: PROJECT_ROOT, timeout: timeoutMs, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
     );
 }

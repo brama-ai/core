@@ -4,7 +4,7 @@
 - [x] 1.3 Protect tools entrypoints via Traefik forward-auth middleware
 
 ## 2. Core Observability
-- [x] 2.1 Add a Langfuse ingestion client in `apps/core`
+- [x] 2.1 Add a Langfuse ingestion client in `apps/brama-core`
 - [x] 2.2 Emit OpenClaw invocation trace/span events in `/api/v1/agents/invoke`
 - [x] 2.3 Emit outbound A2A call spans and propagate trace/correlation headers to downstream agents
 

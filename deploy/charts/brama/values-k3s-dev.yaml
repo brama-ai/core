@@ -23,7 +23,7 @@ global:
 core:
   enabled: true
   image:
-    repository: brama/core
+    repository: brama/brama-core
     tag: "dev"
     pullPolicy: IfNotPresent
   replicaCount: 1
@@ -45,7 +45,7 @@ core:
 coreScheduler:
   enabled: true
   image:
-    repository: brama/core
+    repository: brama/brama-core
     tag: "dev"
     pullPolicy: IfNotPresent
   resources:
@@ -122,7 +122,7 @@ ingress:
 migrations:
   enabled: true
   image:
-    repository: brama/core
+    repository: brama/brama-core
     tag: "dev"
     pullPolicy: IfNotPresent
 

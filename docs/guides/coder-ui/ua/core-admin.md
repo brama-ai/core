@@ -28,7 +28,7 @@
 ## Операційні команди
 
 ```bash
-cd apps/core
+cd apps/brama-core
 php bin/console coder:worker:start --id=worker-1
 php bin/console coder:worker:status
 php bin/console coder:worker:stop worker-1

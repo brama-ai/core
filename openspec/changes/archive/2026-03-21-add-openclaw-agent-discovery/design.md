@@ -35,7 +35,7 @@ OpenClaw (core-agent runtime)
     │  2. On invoke:  POST /api/v1/agents/invoke
     │
     ▼
-[Platform A2A Bridge]  ← apps/core
+[Platform A2A Bridge]  ← apps/brama-core
     │
     ├── validates caller token (OpenClaw gateway token)
     ├── checks agent is enabled in registry

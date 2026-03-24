@@ -33,14 +33,14 @@ spec:
             - http.server
             - "{{ .Values.website.containerPort }}"
             - --directory
-            - /srv/website
+            - /srv/brama-website
           ports:
             - name: http
               containerPort: {{ .Values.website.containerPort }}
               protocol: TCP
           volumeMounts:
             - name: website-content
-              mountPath: /srv/website/index.html
+              mountPath: /srv/brama-website/index.html
               subPath: index.html
           readinessProbe:
             httpGet:

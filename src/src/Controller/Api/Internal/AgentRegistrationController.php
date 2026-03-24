@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Api\Internal;
 
+use App\AgentRegistry\AgentHealthChecker;
 use App\AgentRegistry\AgentRegistryAuditLogger;
 use App\AgentRegistry\AgentRegistryRepository;
 use App\AgentRegistry\ManifestValidator;
@@ -23,6 +24,7 @@ final class AgentRegistrationController extends AbstractController
         private readonly AgentRegistryAuditLogger $audit,
         private readonly TenantContext $tenantContext,
         private readonly TenantRepositoryInterface $tenantRepository,
+        private readonly AgentHealthChecker $healthChecker,
     ) {
     }
 
@@ -65,6 +67,17 @@ final class AgentRegistrationController extends AbstractController
         $this->registry->register($manifest);
         $this->audit->log((string) $manifest['name'], 'registered', null, ['version' => $manifest['version']]);
 
-        return $this->json(['status' => 'registered', 'name' => $manifest['name']], Response::HTTP_OK);
+        // Perform inline health probe if manifest includes health_url
+        $healthStatus = 'unknown';
+        $healthUrl = $manifest['health_url'] ?? null;
+        if (is_string($healthUrl) && '' !== $healthUrl) {
+            $isHealthy = $this->healthChecker->checkInline($healthUrl);
+            if ($isHealthy) {
+                $healthStatus = 'healthy';
+                $this->registry->updateHealthStatus((string) $manifest['name'], 'healthy');
+            }
+        }
+
+        return $this->json(['status' => 'registered', 'name' => $manifest['name'], 'health_status' => $healthStatus], Response::HTTP_OK);
     }
 }

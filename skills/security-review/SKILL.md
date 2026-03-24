@@ -264,8 +264,8 @@ include/require with user-controlled path
 
 | Resource | Path |
 |----------|------|
-| Security config | `apps/core/config/packages/security.yaml` |
-| Framework config | `apps/core/config/packages/framework.yaml` |
+| Security config | `apps/brama-core/config/packages/security.yaml` |
+| Framework config | `apps/brama-core/config/packages/framework.yaml` |
 | Controllers | `apps/*/src/Controller/` |
 | Forms | `apps/*/src/Form/` |
 | Voters | `apps/*/src/Security/Voter/` |

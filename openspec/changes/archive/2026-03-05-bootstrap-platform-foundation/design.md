@@ -7,9 +7,9 @@ concrete deliverable is a Symfony 7 application running on PHP 8.5 that can be v
 end-to-end via Playwright.
 
 Current state:
-- `apps/core/public/index.php` is a plain text stub
+- `apps/brama-core/public/index.php` is a plain text stub
 - `composer.json` pins `^8.3` but `openspec/project.md` mandates PHP 8.5
-- `docker/core/Dockerfile` uses `php:8.3-apache`
+- `docker/brama-core/Dockerfile` uses `php:8.3-apache`
 - No framework, no tooling, no tests
 - Traefik is already running and routes all requests to `core` on `http://localhost/` via the
   `web` entrypoint (port 80, `PathPrefix(/)` rule) — established in `add-local-dev-compose-topology`
@@ -18,7 +18,7 @@ Current state:
 
 Goals:
 - Fix PHP version to 8.5 everywhere (Dockerfile, composer.json)
-- Initialize Symfony 7 with Flex in `apps/core/`
+- Initialize Symfony 7 with Flex in `apps/brama-core/`
 - Configure Codeception, PHPStan (level 8), PHP CS Fixer
 - Establish Postgres connection — no migrations or schema, connection-only
 - Add `LiteLLM` as the local proxy for LLM traffic inspection and future provider abstraction

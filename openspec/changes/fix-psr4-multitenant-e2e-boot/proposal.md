@@ -13,10 +13,10 @@ After the A2A terminology refactoring (`refactor-a2a-terminology`) and multi-ten
 ## Impact
 - Affected specs: `local-dev-runtime`, `agent-registry`, `e2e-testing`
 - Affected code:
-  - `apps/core/src/A2AGateway/` (4 file renames)
-  - `apps/core/tests/Unit/A2AGateway/` (2 file renames)
-  - `apps/core/src/Controller/Api/Internal/AgentRegistrationController.php`
-  - `apps/core/config/packages/security.yaml` (no change — reverted)
+  - `apps/brama-core/src/A2AGateway/` (4 file renames)
+  - `apps/brama-core/tests/Unit/A2AGateway/` (2 file renames)
+  - `apps/brama-core/src/Controller/Api/Internal/AgentRegistrationController.php`
+  - `apps/brama-core/config/packages/security.yaml` (no change — reverted)
   - `compose.yaml` (postgres image)
   - `docker/postgres/init/04_create_extensions.sql` (new)
   - `Makefile` (tenant-aware SQL)

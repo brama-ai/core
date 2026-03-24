@@ -37,8 +37,8 @@ One process, zero extra containers, zero queue infrastructure. 50 concurrent A2A
 
 ## Impact
 
-- `apps/core/composer.json` — 2 new dependencies (`react/http`, `react/async`)
-- `apps/core/src/Scheduler/AsyncA2ADispatcher.php` — new class (~80 lines)
-- `apps/core/src/Scheduler/SchedulerService.php` — `tick()` refactored to use async dispatch
-- `apps/core/src/Command/SchedulerRunCommand.php` — minor: pass loop to service
+- `apps/brama-core/composer.json` — 2 new dependencies (`react/http`, `react/async`)
+- `apps/brama-core/src/Scheduler/AsyncA2ADispatcher.php` — new class (~80 lines)
+- `apps/brama-core/src/Scheduler/SchedulerService.php` — `tick()` refactored to use async dispatch
+- `apps/brama-core/src/Command/SchedulerRunCommand.php` — minor: pass loop to service
 - Existing unit tests updated to mock `AsyncA2ADispatcher` instead of `A2AClient`

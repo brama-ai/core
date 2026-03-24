@@ -94,7 +94,7 @@ psql -h postgres -U postgres -d <dbname> -c "CREATE EXTENSION IF NOT EXISTS uuid
 
 ```bash
 # Doctrine (PHP/Symfony — Core)
-php apps/core/bin/console doctrine:migrations:migrate --no-interaction
+php apps/brama-core/bin/console doctrine:migrations:migrate --no-interaction
 
 # Doctrine (PHP/Symfony — Knowledge Agent)
 php apps/knowledge-agent/bin/console doctrine:migrations:migrate --no-interaction
@@ -248,7 +248,7 @@ docker compose up -d postgres redis opensearch rabbitmq
 until pg_isready -h postgres -U app -q 2>/dev/null; do sleep 1; done
 
 # 3. Run migrations
-php apps/core/bin/console doctrine:migrations:migrate --no-interaction 2>/dev/null || true
+php apps/brama-core/bin/console doctrine:migrations:migrate --no-interaction 2>/dev/null || true
 php apps/knowledge-agent/bin/console doctrine:migrations:migrate --no-interaction 2>/dev/null || true
 ```
 

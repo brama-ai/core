@@ -8,7 +8,7 @@ const INTERNAL_TOKEN = process.env.APP_INTERNAL_TOKEN || 'dev-internal-token';
 const FAKE_AGENT = 'e2e-fake-marketplace-agent';
 const PROJECT_ROOT = process.cwd().replace(/\/tests\/e2e$/, '');
 const CORE_DB_NAME = process.env.CORE_DB_NAME || 'ai_community_platform_test';
-const PSQL = `docker compose exec -T postgres psql -U app -d ${CORE_DB_NAME} -c`;
+const PSQL = `docker exec brama-postgres-1 psql -U app -d ${CORE_DB_NAME} -c`;
 
 Feature('Admin: Agent Delete');
 

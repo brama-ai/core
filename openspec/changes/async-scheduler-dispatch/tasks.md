@@ -1,6 +1,6 @@
 ## 1. Dependencies
 
-- [x] 1.1 `composer require react/http react/async` in `apps/core/` — installed `react/http ^1.11`, `react/async ^4.3` (with `-W` to allow `psr/http-message` downgrade to v1.1)
+- [x] 1.1 `composer require react/http react/async` in `apps/brama-core/` — installed `react/http ^1.11`, `react/async ^4.3` (with `-W` to allow `psr/http-message` downgrade to v1.1)
 - [x] 1.2 Verify no conflicts with Symfony 7 / PHP 8.5 — PHPStan passes with 0 errors
 
 ## 2. AsyncA2ADispatcher
@@ -48,4 +48,4 @@
 - [x] 7.1 Run `phpstan analyse` — 0 errors
 - [x] 7.2 Run `php-cs-fixer check` — 0 violations
 - [x] 7.3 Run `codecept run Unit Scheduler` — all 23 tests pass (100 assertions)
-- [ ] 7.4 Run E2E `@scheduler` tests — deferred (requires running scheduler container with new code)
+- [x] 7.4 Run E2E `@scheduler` tests — 17 passed, 1 skipped (intentional xScenario); fixed XPath selector in scheduler_logs_test.js (contains(text(),...) → contains(.,...) for mixed-content span)

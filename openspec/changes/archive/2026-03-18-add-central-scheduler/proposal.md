@@ -34,19 +34,19 @@ Currently only news-maker-agent has scheduling via its embedded APScheduler, whi
 
 - Affected specs: new capability `job-scheduling`; modifies `hello-world-agent` spec (manifest schema extension)
 - Affected code:
-  - `apps/core/src/Scheduler/` (new namespace)
-  - `apps/core/src/Controller/Api/Internal/AgentInstallController.php`
-  - `apps/core/src/Controller/Api/Internal/AgentDeleteController.php`
-  - `apps/core/src/Controller/Api/Internal/AgentEnableController.php`
-  - `apps/core/src/Controller/Api/Internal/AgentDisableController.php`
-  - `apps/core/src/Controller/Admin/SchedulerController.php` (new)
-  - `apps/core/migrations/Version20260310000001.php` (new)
+  - `apps/brama-core/src/Scheduler/` (new namespace)
+  - `apps/brama-core/src/Controller/Api/Internal/AgentInstallController.php`
+  - `apps/brama-core/src/Controller/Api/Internal/AgentDeleteController.php`
+  - `apps/brama-core/src/Controller/Api/Internal/AgentEnableController.php`
+  - `apps/brama-core/src/Controller/Api/Internal/AgentDisableController.php`
+  - `apps/brama-core/src/Controller/Admin/SchedulerController.php` (new)
+  - `apps/brama-core/migrations/Version20260310000001.php` (new)
   - `compose.core.yaml`
 - Affected code (new):
-  - `apps/core/src/Scheduler/SchedulerJobLogRepository.php` (new)
-  - `apps/core/src/Controller/Admin/SchedulerJobLogsController.php` (new)
-  - `apps/core/src/Controller/Api/Internal/SchedulerJobLogsApiController.php` (new)
-  - `apps/core/templates/admin/scheduler/logs.html.twig` (new)
-  - `apps/core/templates/admin/scheduler/index.html.twig` (modified — cron builder, log links)
-  - `apps/core/src/Scheduler/SchedulerService.php` (modified — log writes)
+  - `apps/brama-core/src/Scheduler/SchedulerJobLogRepository.php` (new)
+  - `apps/brama-core/src/Controller/Admin/SchedulerJobLogsController.php` (new)
+  - `apps/brama-core/src/Controller/Api/Internal/SchedulerJobLogsApiController.php` (new)
+  - `apps/brama-core/templates/admin/scheduler/logs.html.twig` (new)
+  - `apps/brama-core/templates/admin/scheduler/index.html.twig` (modified — cron builder, log links)
+  - `apps/brama-core/src/Scheduler/SchedulerService.php` (modified — log writes)
 - Does NOT remove APScheduler from news-maker-agent (separate future migration)

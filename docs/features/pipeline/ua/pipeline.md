@@ -8,6 +8,11 @@
 Задача → Planner → Architect → Coder → [Auditor] → Validator → Tester → [Documenter] → Summarizer
 ```
 
+Контракт ролей тепер уніфікований між Builder і Ultraworks:
+- primary source of truth це `CONTEXT`, переданий у prompt
+- лише `planner` і `summarizer` мають за замовчуванням читати `.opencode/pipeline/handoff.md`
+- `auditor` це remediation-capable етап після `coder`, а не read-only reviewer наприкінці
+
 Пайплайн автоматично визначає складність задачі та підбирає потрібний набір агентів.
 
 ```mermaid
@@ -101,9 +106,9 @@ make pipeline-batch FILE=tasks.txt
 |-------|----------|---------|------------|------------|------------|
 | `planner` | `Builder only` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
 | `architect` | `Builder + Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
-| `coder` | `Builder + Ultraworks` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.3-codex` | `opencode-go/glm-5` |
-| `validator` | `Builder + Ultraworks` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.2` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` |
-| `tester` | `Builder + Ultraworks` | `opencode-go/kimi-k2.5` | `openai/gpt-5.3-codex` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` |
+| `coder` | `Builder + Ultraworks` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.4` | `opencode-go/glm-5` |
+| `validator` | `Builder + Ultraworks` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.4` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` |
+| `tester` | `Builder + Ultraworks` | `opencode-go/kimi-k2.5` | `openai/gpt-5.4` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` |
 | `auditor` | `Builder + Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
 | `documenter` | `Builder + Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-sonnet-4-6` | `google/gemini-3-flash-preview` | `minimax/MiniMax-M2.5` |
 | `summarizer` | `Builder + Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-opus-4-6` | `google/gemini-3.1-pro-preview` | `minimax/MiniMax-M2.7` |
@@ -122,25 +127,33 @@ make pipeline-batch FILE=tasks.txt
 ### Coder (60 хв)
 - **Модель**: Sonnet 4.6
 - **Роль**: пише код, міграції, конфіги
-- **Вхід**: spec з OpenSpec або handoff.md
+- **Вхід**: prompt `CONTEXT`, за потреби підсилений spec/task артефактами
 - **Stage gate**: перевіряє, що coder реально змінив файли
+
+### Auditor (20 хв)
+- **Модель**: Opus 4.6
+- **Роль**: post-coder quality та platform standards pass
+- **Може виправляти**: safe in-scope проблеми напряму, якщо remediation однозначна
+- **Мусить передати**: remediation context з тим, що виправив, що лишилось, і які тести ще мають пройти
+- **Повертає в coder**: якщо проблема вимагає ширшої реалізації, а не малого remediation patch
 
 ### Validator (20 хв)
 - **Модель**: MiniMax M2.5 Highspeed
 - **Роль**: PHPStan level 8 + CS Fixer, виправляє всі помилки
+- **Очікування по входу**: перевіряє сумарний результат coder + auditor
 - **Цикл**: cs-fix → cs-check → analyse → повторити до нуля помилок
 
 ### Tester (30 хв)
 - **Модель**: Kimi K2.5
 - **Роль**: запускає тести, пише відсутні, виправляє помилки
+- **Очікування по входу**: тестує сумарний результат coder + auditor
 - **Цілі**: Codeception (PHP), pytest (Python), convention-test
 
-### Auditor (20 хв)
+### Security Review (20 хв, опційно)
 - **Модель**: Opus 4.6
-- **Роль**: перевірка якості та відповідності стандартам платформи
-- **Чекліст**: Structure, Testing, Config, Security, Observability, Docs
-- **Вихід**: звіт з вердиктами PASS/WARN/FAIL
-- **Активація**: `--audit`, профіль `complex`, або автоматично для задач з агентами
+- **Роль**: read-only security assessment
+- **Не править код**: замість цього створює follow-up remediation guidance
+- **Правило OpenSpec**: якщо remediation змінює поведінку, security posture, контракти або архітектуру, треба створити або запросити OpenSpec proposal/task
 
 ### Documenter (15 хв)
 - **Модель**: GPT-5.4
@@ -177,17 +190,54 @@ standard + agent task:
 ./scripts/pipeline.sh --audit "Any task description"
 ```
 
+## Типові сценарії
+
+### Сценарій: пофіксити баг у Builder
+
+Використовуйте це, коли scope дефекту вже зрозумілий і треба, щоб pipeline зробив patch, перевірив його і залишив фінальний summary:
+
+```bash
+./scripts/pipeline.sh --audit "Fix duplicate webhook retries in the billing worker. Limit changes to the billing worker and related tests."
+```
+
+Очікувана поведінка:
+- `coder` робить bug fix
+- `auditor` додає safe cleanup, якщо це потрібно для production-ready результату
+- `validator` і `tester` перевіряють сумарний результат
+- `summarizer` залишає фінальний статус і follow-up notes
+
+### Сценарій: прогнати E2E з обмеженим bug-fix budget у Builder
+
+Використовуйте це, коли головна ціль це validation, але дозволено лише кілька локальних виправлень перед зупинкою:
+
+```bash
+./scripts/pipeline.sh --audit --task-file builder/tasks/todo/checkout-e2e-budget.md
+```
+
+Рекомендоване формулювання задачі:
+- вкажіть точний E2E/CUJ flow
+- вкажіть межу app або service
+- зафіксуйте дозволений bug budget, наприклад `Fix at most 2 small blocking bugs`
+- зафіксуйте out-of-scope зміни: міграції, публічний API, cross-service redesign
+
+Очікувана поведінка:
+- `tester` веде E2E execution
+- `auditor` може внести лише safe, local, in-scope fixes в межах дозволеного budget
+- якщо budget вичерпано або виправлення вимагає spec/architecture change, pipeline зупиняється і звітує про залишкові дефекти
+
 ## Handoff — передача контексту між агентами
 
-Файл `.opencode/pipeline/handoff.md` — спільний документ, який кожен агент оновлює:
+Файл `.opencode/pipeline/handoff.md` тепер є continuity artifact, а не типовим primary context source для кожної ролі. Більшість агентів мають спиратися спершу на prompt `CONTEXT`. `planner` і `summarizer` це основні винятки, які за замовчуванням можуть читати handoff напряму.
+
+Коли handoff використовується, він зберігає:
 
 | Агент | Що записує |
 |-------|-----------|
 | Architect | change-id, apps affected, DB/API changes |
 | Coder | files modified, migrations created, deviations |
+| Auditor | remediation applied, unresolved issues, next-pass instructions |
 | Validator | PHPStan/CS results |
 | Tester | test results, new tests |
-| Auditor | audit verdict, recommendations |
 | Documenter | docs created, final status |
 | Summarizer | summary file path, підсумок по агентах, next-task recommendation |
 
@@ -363,8 +413,8 @@ Task summary: tasks/summary/<timestamp>-<task-slug>.md
 Налаштування через змінні середовища:
 
 ```bash
-PIPELINE_FALLBACK_ARCHITECT="claude-sonnet,gpt-5.3-codex,free,cheap"
-PIPELINE_FALLBACK_CODER="gpt-5.3-codex,claude-opus,free,cheap"
+PIPELINE_FALLBACK_ARCHITECT="claude-sonnet,gpt-5.4,free,cheap"
+PIPELINE_FALLBACK_CODER="gpt-5.4,claude-opus,free,cheap"
 ```
 
 ## Таймаути

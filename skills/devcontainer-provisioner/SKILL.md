@@ -392,7 +392,7 @@ psql -h postgres -U postgres -d <dbname> -c "CREATE EXTENSION IF NOT EXISTS vect
 
 ```bash
 # PHP (Doctrine — Core)
-php apps/core/bin/console doctrine:migrations:migrate --no-interaction
+php apps/brama-core/bin/console doctrine:migrations:migrate --no-interaction
 
 # PHP (Doctrine — Knowledge Agent)
 php apps/knowledge-agent/bin/console doctrine:migrations:migrate --no-interaction

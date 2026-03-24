@@ -22,11 +22,11 @@ foundation for future admin tooling.
 
 - Affected specs: `admin-auth` (new capability)
 - Affected code:
-  - `apps/core/composer.json` — new runtime + dev deps
-  - `apps/core/config/packages/security.yaml` — new (security config)
-  - `apps/core/config/packages/twig.yaml` — new (twig config)
-  - `apps/core/src/Controller/Admin/` — new controllers
-  - `apps/core/src/Security/` — new User + UserProvider classes
-  - `apps/core/migrations/` — new migration file
-  - `apps/core/templates/admin/` — new Twig templates
+  - `apps/brama-core/composer.json` — new runtime + dev deps
+  - `apps/brama-core/config/packages/security.yaml` — new (security config)
+  - `apps/brama-core/config/packages/twig.yaml` — new (twig config)
+  - `apps/brama-core/src/Controller/Admin/` — new controllers
+  - `apps/brama-core/src/Security/` — new User + UserProvider classes
+  - `apps/brama-core/migrations/` — new migration file
+  - `apps/brama-core/templates/admin/` — new Twig templates
   - `Makefile` — `migrate` target

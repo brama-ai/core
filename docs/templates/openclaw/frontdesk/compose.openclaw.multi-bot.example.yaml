@@ -4,9 +4,9 @@ services:
     env_file:
       - ./docker/openclaw/main/.env
     environment:
-      PLATFORM_CORE_URL: http://core
-      PLATFORM_DISCOVERY_URL: http://core/api/v1/a2a/discovery
-      PLATFORM_INVOKE_URL: http://core/api/v1/a2a/send-message
+      PLATFORM_CORE_URL: http://brama-core
+      PLATFORM_DISCOVERY_URL: http://brama-core/api/v1/a2a/discovery
+      PLATFORM_INVOKE_URL: http://brama-core/api/v1/a2a/send-message
       PLATFORM_BOT_ID: main
       OPENCLAW_END_USER_ID: openclaw-main
       OPENSEARCH_URL: http://opensearch:9200
@@ -27,9 +27,9 @@ services:
     env_file:
       - ./docker/openclaw/support/.env
     environment:
-      PLATFORM_CORE_URL: http://core
-      PLATFORM_DISCOVERY_URL: http://core/api/v1/a2a/discovery
-      PLATFORM_INVOKE_URL: http://core/api/v1/a2a/send-message
+      PLATFORM_CORE_URL: http://brama-core
+      PLATFORM_DISCOVERY_URL: http://brama-core/api/v1/a2a/discovery
+      PLATFORM_INVOKE_URL: http://brama-core/api/v1/a2a/send-message
       PLATFORM_BOT_ID: support
       OPENCLAW_END_USER_ID: openclaw-support
       OPENSEARCH_URL: http://opensearch:9200

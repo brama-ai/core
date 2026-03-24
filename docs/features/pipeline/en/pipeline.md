@@ -8,6 +8,11 @@ The pipeline is an automated task execution system that runs a sequence of AI ag
 Task → Planner → Architect → Coder → [Auditor] → Validator → Tester → [Documenter] → Summarizer
 ```
 
+The role contract is now unified across Builder and Ultraworks:
+- `CONTEXT` passed in the prompt is the primary source of truth
+- only `planner` and `summarizer` should read `.opencode/pipeline/handoff.md` by default
+- `auditor` is a remediation-capable stage after `coder`, not a read-only reviewer at the end
+
 The pipeline automatically determines task complexity and selects the appropriate set of agents.
 
 ```mermaid
@@ -101,9 +106,9 @@ For shared roles, Builder intentionally mirrors the same `primary` models and ba
 |-------|----------|---------|------------|------------|------------|
 | `planner` | `Builder only` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
 | `architect` | `Builder + Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
-| `coder` | `Builder + Ultraworks` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.3-codex` | `opencode-go/glm-5` |
-| `validator` | `Builder + Ultraworks` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.2` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` |
-| `tester` | `Builder + Ultraworks` | `opencode-go/kimi-k2.5` | `openai/gpt-5.3-codex` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` |
+| `coder` | `Builder + Ultraworks` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.4` | `opencode-go/glm-5` |
+| `validator` | `Builder + Ultraworks` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.4` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` |
+| `tester` | `Builder + Ultraworks` | `opencode-go/kimi-k2.5` | `openai/gpt-5.4` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` |
 | `auditor` | `Builder + Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
 | `documenter` | `Builder + Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-sonnet-4-6` | `google/gemini-3-flash-preview` | `minimax/MiniMax-M2.5` |
 | `summarizer` | `Builder + Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-opus-4-6` | `google/gemini-3.1-pro-preview` | `minimax/MiniMax-M2.7` |
@@ -122,25 +127,33 @@ For shared roles, Builder intentionally mirrors the same `primary` models and ba
 ### Coder (60 min)
 - **Model**: Sonnet 4.6
 - **Role**: writes code, migrations, configs
-- **Input**: spec from OpenSpec or handoff.md
+- **Input**: prompt `CONTEXT`, optionally backed by spec/task artifacts
 - **Stage gate**: verifies that coder actually modified files
+
+### Auditor (20 min)
+- **Model**: Opus 4.6
+- **Role**: post-coder quality and platform standards pass
+- **Can fix**: safe in-scope issues directly when the intended remediation is clear
+- **Must emit**: remediation context describing what was fixed, what remains, and what tests must still pass
+- **Escalates back to coder**: when the issue requires broader implementation work instead of a small remediation patch
 
 ### Validator (20 min)
 - **Model**: MiniMax M2.5 Highspeed
 - **Role**: PHPStan level 8 + CS Fixer, fixes all issues
+- **Input expectation**: validates the combined result of coder + auditor
 - **Loop**: cs-fix → cs-check → analyse → repeat until zero errors
 
 ### Tester (30 min)
 - **Model**: Kimi K2.5
 - **Role**: runs tests, writes missing ones, fixes failures
+- **Input expectation**: tests the combined result of coder + auditor
 - **Targets**: Codeception (PHP), pytest (Python), convention-test
 
-### Auditor (20 min)
+### Security Review (20 min, optional)
 - **Model**: Opus 4.6
-- **Role**: quality and platform standards compliance check
-- **Checklist**: Structure, Testing, Config, Security, Observability, Docs
-- **Output**: report with PASS/WARN/FAIL verdicts
-- **Activation**: `--audit` flag, `complex` profile, or automatically for agent tasks
+- **Role**: read-only security assessment
+- **Cannot fix code**: creates follow-up remediation guidance instead
+- **OpenSpec rule**: if the remediation changes behavior, security posture, contracts, or architecture, create or request an OpenSpec proposal/task
 
 ### Documenter (15 min)
 - **Model**: GPT-5.4
@@ -177,17 +190,54 @@ To force audit for any task:
 ./scripts/pipeline.sh --audit "Any task description"
 ```
 
+## Common Scenarios
+
+### Scenario: Fix a bug in Builder
+
+Use this when you already know the defect scope and want the pipeline to patch it, verify it, and summarize the result:
+
+```bash
+./scripts/pipeline.sh --audit "Fix duplicate webhook retries in the billing worker. Limit changes to the billing worker and related tests."
+```
+
+Expected behavior:
+- `coder` patches the bug
+- `auditor` applies any safe cleanup needed to make the change production-ready
+- `validator` and `tester` verify the combined result
+- `summarizer` leaves the final status and follow-up notes
+
+### Scenario: Run E2E with a limited bug-fix budget in Builder
+
+Use this when the main goal is validation, but you allow only a small number of local fixes before the run stops:
+
+```bash
+./scripts/pipeline.sh --audit --task-file builder/tasks/todo/checkout-e2e-budget.md
+```
+
+Recommended task wording:
+- specify the exact E2E/CUJ flow
+- specify the app or service boundary
+- state the allowed bug budget, for example `Fix at most 2 small blocking bugs`
+- state any out-of-scope changes such as migrations, public API changes, or cross-service redesign
+
+Expected behavior:
+- `tester` drives the E2E execution
+- `auditor` may apply only safe, local, in-scope fixes within the allowed budget
+- if the budget is exhausted or a fix requires a spec/architecture change, the pipeline stops and reports the remaining defects
+
 ## Handoff — Context Passing Between Agents
 
-The file `.opencode/pipeline/handoff.md` is a shared document updated by each agent:
+The file `.opencode/pipeline/handoff.md` is now a continuity artifact, not the default primary context source for every role. Most agents should rely on prompt `CONTEXT` first. `planner` and `summarizer` are the main exceptions that may read handoff directly by default.
+
+When handoff is used, it records:
 
 | Agent | What It Records |
 |-------|----------------|
 | Architect | change-id, apps affected, DB/API changes |
 | Coder | files modified, migrations created, deviations |
+| Auditor | remediation applied, unresolved issues, next-pass instructions |
 | Validator | PHPStan/CS results |
 | Tester | test results, new tests |
-| Auditor | audit verdict, recommendations |
 | Documenter | docs created, final status |
 | Summarizer | summary file path, per-agent summary, next-task recommendation |
 
@@ -363,8 +413,8 @@ Paid per-token (cheap tier)        ← last resort, minimal cost
 Configuration via environment variables:
 
 ```bash
-PIPELINE_FALLBACK_ARCHITECT="claude-sonnet,gpt-5.3-codex,free,cheap"
-PIPELINE_FALLBACK_CODER="gpt-5.3-codex,claude-opus,free,cheap"
+PIPELINE_FALLBACK_ARCHITECT="claude-sonnet,gpt-5.4,free,cheap"
+PIPELINE_FALLBACK_CODER="gpt-5.4,claude-opus,free,cheap"
 ```
 
 ## Timeouts

@@ -16,5 +16,5 @@ The admin panel has a "Chats" stub page (`/admin/chats`) that shows "В розр
 
 ## Impact
 - Affected specs: new `admin-chats` capability
-- Affected code: `apps/core/src/Controller/Admin/ChatsController.php`, `apps/core/templates/admin/chats.html.twig`, new `ChatRepository`, new `chat_detail.html.twig`, `docker/openclaw/plugins/platform-tools/index.js`, `LogIndexManager`
+- Affected code: `apps/brama-core/src/Controller/Admin/ChatsController.php`, `apps/brama-core/templates/admin/chats.html.twig`, new `ChatRepository`, new `chat_detail.html.twig`, `docker/openclaw/plugins/platform-tools/index.js`, `LogIndexManager`
 - No database schema changes — all data from OpenSearch

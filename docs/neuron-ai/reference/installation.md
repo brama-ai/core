@@ -9,7 +9,7 @@
 Run the composer command below to install the latest version:
 
 ```bash
-composer require neuron-core/neuron-ai
+composer require neuron-brama-core/neuron-ai
 ```
 
 ## Create an Agent

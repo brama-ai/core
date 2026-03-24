@@ -69,7 +69,7 @@ the platform workspace and adds its compose fragment to the deployment.
 
 - Platform repository owns:
   - shared infra compose files
-  - admin/core services
+  - admin/brama-core services
   - discovery and lifecycle logic
   - platform documentation and compatibility checks
 - External agent repository owns:

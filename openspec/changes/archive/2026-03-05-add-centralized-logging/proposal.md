@@ -17,7 +17,7 @@ The platform has four applications (core, knowledge-agent, hello-agent, news-mak
 - Add E2E tests for the log viewer
 
 ## Impact
-- Affected code: All four apps (`apps/core/`, `apps/knowledge-agent/`, `apps/hello-agent/`, `apps/news-maker-agent/`), `docker/openclaw/plugins/platform-tools/index.js`, `compose.yaml`, `Makefile`
+- Affected code: All four apps (`apps/brama-core/`, `apps/knowledge-agent/`, `apps/hello-agent/`, `apps/news-maker-agent/`), `docker/openclaw/plugins/platform-tools/index.js`, `compose.yaml`, `Makefile`
 - New admin pages: `/admin/logs`, `/admin/logs/trace/{traceId}`, `/admin/settings` (replaces stub)
 - New commands: `logs:index:setup`, `logs:cleanup`
 - New Makefile targets: `logs-setup`, `logs-cleanup`

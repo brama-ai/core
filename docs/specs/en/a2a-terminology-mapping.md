@@ -52,4 +52,4 @@ Agents (A2A Servers)
 3. **Structured skills**: Skills are now `AgentSkill` objects `{ id, name, description, tags }`. Legacy string skills accepted and auto-normalized
 4. **`capabilities` is A2A AgentCapabilities**: Not to be confused with the old `capabilities` field (which was renamed to `skills` in the terminology refactoring)
 5. **`intent` kept in payload**: The A2A request body uses `intent` alongside `tool` for backward compatibility
-6. **Agent Card schema**: Defined in `apps/core/config/agent-card.schema.json`
+6. **Agent Card schema**: Defined in `apps/brama-core/config/agent-card.schema.json`

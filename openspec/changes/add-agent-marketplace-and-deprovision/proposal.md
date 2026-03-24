@@ -36,12 +36,12 @@ When an agent is still discoverable in Docker after deletion, it should remain v
 
 - Affected specs: `agent-registry`, `admin-agent-management`
 - Affected code:
-  - `apps/core/src/Controller/Api/Internal/*Agent*Controller.php`
-  - `apps/core/src/AgentInstaller/*`
-  - `apps/core/src/AgentRegistry/*`
-  - `apps/core/templates/admin/agents.html.twig`
-  - `apps/core/public/css/admin.css`
-  - tests in `apps/core/tests/` and `tests/e2e/`
+  - `apps/brama-core/src/Controller/Api/Internal/*Agent*Controller.php`
+  - `apps/brama-core/src/AgentInstaller/*`
+  - `apps/brama-core/src/AgentRegistry/*`
+  - `apps/brama-core/templates/admin/agents.html.twig`
+  - `apps/brama-core/public/css/admin.css`
+  - tests in `apps/brama-core/tests/` and `tests/e2e/`
 - Breaking behavior:
   - enable no longer auto-provisions
   - delete no longer removes registry row; it transitions the agent back to marketplace state

@@ -15,4 +15,4 @@ Agents currently share a single Postgres database, a single Redis instance, and 
 
 ## Impact
 - Affected specs: `agent-manifest` (storage section), `agent-registry` (installed_at column), `admin-agent-management` (enable flow)
-- Affected code: `apps/core/src/AgentInstaller/` (new), `apps/core/src/AgentRegistry/`, `apps/core/src/Controller/Api/Internal/AgentEnableController.php`, `apps/core/config/`, `apps/knowledge-agent/`, `compose.yaml`
+- Affected code: `apps/brama-core/src/AgentInstaller/` (new), `apps/brama-core/src/AgentRegistry/`, `apps/brama-core/src/Controller/Api/Internal/AgentEnableController.php`, `apps/brama-core/config/`, `apps/knowledge-agent/`, `compose.yaml`

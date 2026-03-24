@@ -61,7 +61,7 @@ via DBAL and is registered in `security.yaml`. This keeps the ORM-free approach 
 
 ## Migration Plan
 
-Migration file created at `apps/core/migrations/Version<timestamp>.php`:
+Migration file created at `apps/brama-core/migrations/Version<timestamp>.php`:
 1. `CREATE TABLE admin_users (id SERIAL PRIMARY KEY, username VARCHAR(180) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL, roles JSONB NOT NULL DEFAULT '["ROLE_ADMIN"]')`
 2. `INSERT INTO admin_users (username, password, roles) VALUES ('admin', '<bcrypt-hash>', '["ROLE_ADMIN"]')`
 

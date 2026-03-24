@@ -5,7 +5,7 @@
 The platform supports a multilingual admin interface through cookie-based locale detection. User language preferences are stored in the `locale` cookie and automatically applied to all admin panel pages. The system also forwards the user's locale to agents via the `Accept-Language` HTTP header during A2A calls.
 
 **Supported Languages:**
-- `ua` — Ukrainian (default)
+- `uk` — Ukrainian (default)
 - `en` — English
 
 ## Features
@@ -13,10 +13,10 @@ The platform supports a multilingual admin interface through cookie-based locale
 ### Cookie-based Locale
 
 - Cookie `locale` stores user's choice
-- Values: `ua` or `en`
-- Default value: `ua`
+- Values: `uk` or `en`
+- Default value: `uk`
 - Cookie validated against whitelist of allowed locales
-- Invalid values automatically replaced with `ua`
+- Invalid values automatically replaced with `uk`
 
 ### Language Switcher
 
@@ -55,15 +55,15 @@ framework:
 Automatically detects locale from cookie:
 
 ```php
-// apps/core/src/EventSubscriber/LocaleSubscriber.php
+// brama-core/src/src/Locale/LocaleSubscriber.php
 class LocaleSubscriber implements EventSubscriberInterface
 {
     public function onKernelRequest(RequestEvent $event): void
     {
         $request = $event->getRequest();
-        $locale = $request->cookies->get('locale', ' ua');// Validate against whitelist
-        if (!in_array($locale, ['ua', 'en'], true)) {
-            $locale = 'ua';
+        $locale = $request->cookies->get('locale', 'uk');
+        if (!in_array($locale, ['uk', 'en'], true)) {
+            $locale = 'uk';
         }
         $request->setLocale($locale);
     }
@@ -75,14 +75,15 @@ class LocaleSubscriber implements EventSubscriberInterface
 Endpoint for language switching:
 
 ```php
-// apps/core/src/Controller/Admin/LocaleController.php
-#[Route('/admin/locale', name: 'admin_locale_switch', methods: ['POST'])]
-public function switchLocale(Request $request): Response
+// brama-core/src/src/Controller/Admin/LocaleController.php
+#[Route('/admin/locale/switch', name: 'admin_locale_switch', methods: ['POST'])]
+public function switch(Request $request): Response
 {
-    $locale = $request->request->get('locale', 'ua');
+    $locale = $request->request->getString('locale', 'uk');
     // Validate and set cookie
-    $response = new RedirectResponse($request->headers->get('referer'));
-    $response->headers->setCookie(Cookie::create('locale', $locale)
+    $response = new RedirectResponse($request->headers->get('referer', '/admin'));
+    $response->headers->setCookie(Cookie::create('locale')
+        ->withValue($locale)
         ->withSameSite('lax')
         ->withPath('/'));
     return $response;
@@ -92,8 +93,9 @@ public function switchLocale(Request $request): Response
 ### A2AClient Header Forwarding
 
 ```php
-// apps/core/src/A2AGateway/A2AClient.php
-$headers['Accept-Language'] = $this->requestStack->getCurrentRequest()?->getLocale() ?? 'uk';
+// brama-core/src/src/A2AGateway/A2AClient.php
+$locale = $currentRequest?->getLocale() ?? LocaleSubscriber::DEFAULT_LOCALE;
+$headers['Accept-Language'] = $locale;
 ```
 
 ## Usage
@@ -102,8 +104,8 @@ $headers['Accept-Language'] = $this->requestStack->getCurrentRequest()?->getLoca
 
 User selects language from dropdown in header:
 
-1. POST request to `/admin/locale`
-2. Cookie set to `ua` or `en`
+1. POST request to `/admin/locale/switch`
+2. Cookie set to `uk` or `en`
 3. Page reloads with new language
 
 ### In Templates
@@ -117,14 +119,14 @@ Use `|trans` filter for localized strings:
 
 ### Adding New Translations
 
-1. Add key to `apps/core/translations/messages.uk.yaml`:
+1. Add key to `brama-core/src/translations/messages.uk.yaml`:
 ```yaml
 page:
   dashboard:
     title: 'Панель управління'
 ```
 
-2. Add translation to `apps/core/translations/messages.en.yaml`:
+2. Add translation to `brama-core/src/translations/messages.en.yaml`:
 ```yaml
 page:
   dashboard:
@@ -143,13 +145,13 @@ $locale = $request->headers->get('Accept-Language', 'uk');
 
 ## API
 
-### POST /admin/locale
+### POST /admin/locale/switch
 
-Switch interface language.
+Switch interface language. This endpoint is publicly accessible (no authentication required).
 
 **Request:**
 ```http
-POST /admin/locale
+POST /admin/locale/switch
 Content-Type: application/x-www-form-urlencoded
 
 locale=en
@@ -164,11 +166,12 @@ locale=en
 | Attribute | Value |
 |-----------|-------|
 | Name | `locale` |
-| Values | `ua`, `en` |
-| Default | `ua` |
+| Values | `uk`, `en` |
+| Default | `uk` |
 | Path | `/` |
 | SameSite | `lax` |
 | HttpOnly | `false` (accessible via JS) |
+| Expires | 1 year |
 
 ## Development
 
@@ -184,7 +187,7 @@ Unit tests cover:
 ./vendor/bin/codecept run Unit Locale/LocaleSubscriberTest
 ```
 
-### LocaleControllerTest
+### LocaleControllerTest (Unit)
 
 Unit tests cover:
 - Switch endpoint
@@ -196,12 +199,23 @@ Unit tests cover:
 ./vendor/bin/codecept run Unit Controller/Admin/LocaleControllerTest
 ```
 
-### A2AClient Accept-Language Test
+### LocaleControllerCest (Functional)
 
-Integration tests verify header forwarding:
+Functional tests cover:
+- Cookie is set correctly for valid locales
+- Invalid locale falls back to default
+- Redirect to referer works
 
 ```bash
-./vendor/bin/codecept run Unit A2AGateway/A2AClientTest --filter "Accept-Language"
+./vendor/bin/codecept run Functional Admin/LocaleControllerCest
+```
+
+### A2AClient Accept-Language Test
+
+Unit tests verify header forwarding:
+
+```bash
+./vendor/bin/codecept run Unit A2AGateway/A2AClientTest
 ```
 
 ### Auditor Checklist
@@ -217,9 +231,10 @@ Level: WARN
 
 | File | Purpose |
 |------|---------|
-| `apps/core/src/EventSubscriber/LocaleSubscriber.php` | Subscriber for locale detection |
-| `apps/core/src/Controller/Admin/LocaleController.php` | Controller for language switching |
-| `apps/core/translations/messages.uk.yaml` | Ukrainian translations |
-| `apps/core/translations/messages.en.yaml` | English translations |
-| `apps/core/config/packages/framework.yaml` | Translator configuration |
-| `apps/core/templates/admin/layout.html.twig` | Language switcher UI |
+| `brama-core/src/src/Locale/LocaleSubscriber.php` | Subscriber for locale detection |
+| `brama-core/src/src/Controller/Admin/LocaleController.php` | Controller for language switching |
+| `brama-core/src/translations/messages.uk.yaml` | Ukrainian translations |
+| `brama-core/src/translations/messages.en.yaml` | English translations |
+| `brama-core/src/config/packages/framework.yaml` | Translator configuration |
+| `brama-core/src/templates/admin/layout.html.twig` | Language switcher UI |
+| `brama-core/src/config/packages/security.yaml` | Locale switch endpoint is PUBLIC_ACCESS |

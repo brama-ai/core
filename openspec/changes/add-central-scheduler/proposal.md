@@ -26,12 +26,12 @@ Currently only news-maker-agent has scheduling via its embedded APScheduler, whi
 
 - Affected specs: new capability `job-scheduling`; modifies `hello-world-agent` spec (manifest schema extension)
 - Affected code:
-  - `apps/core/src/Scheduler/` (new namespace)
-  - `apps/core/src/Controller/Api/Internal/AgentInstallController.php`
-  - `apps/core/src/Controller/Api/Internal/AgentDeleteController.php`
-  - `apps/core/src/Controller/Api/Internal/AgentEnableController.php`
-  - `apps/core/src/Controller/Api/Internal/AgentDisableController.php`
-  - `apps/core/src/Controller/Admin/SchedulerController.php` (new)
-  - `apps/core/migrations/Version20260310000001.php` (new)
+  - `apps/brama-core/src/Scheduler/` (new namespace)
+  - `apps/brama-core/src/Controller/Api/Internal/AgentInstallController.php`
+  - `apps/brama-core/src/Controller/Api/Internal/AgentDeleteController.php`
+  - `apps/brama-core/src/Controller/Api/Internal/AgentEnableController.php`
+  - `apps/brama-core/src/Controller/Api/Internal/AgentDisableController.php`
+  - `apps/brama-core/src/Controller/Admin/SchedulerController.php` (new)
+  - `apps/brama-core/migrations/Version20260310000001.php` (new)
   - `compose.core.yaml`
 - Does NOT remove APScheduler from news-maker-agent (separate future migration)

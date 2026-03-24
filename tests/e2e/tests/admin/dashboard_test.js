@@ -7,7 +7,7 @@ const assert = require('assert');
 
 const PROJECT_ROOT = process.cwd().replace(/\/tests\/e2e$/, '');
 const CORE_DB_NAME = process.env.CORE_DB_NAME || 'ai_community_platform_test';
-const PSQL = `docker compose exec -T postgres psql -U app -d ${CORE_DB_NAME} -c`;
+const PSQL = `docker exec brama-postgres-1 psql -U app -d ${CORE_DB_NAME} -c`;
 const TEST_TRACE_ID = 'e2e-test-dashboard-metrics-001';
 const TEST_AGENT = 'test-metrics-agent';
 const TEST_SKILL = 'test.metrics.skill';

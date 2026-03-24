@@ -110,7 +110,7 @@ Build all platform Dockerfiles on the VPS and push to the local registry.
 **Verification:**
 ```bash
 curl http://registry.localhost:5000/v2/_catalog
-# Expected: {"repositories":["acp/core","acp/knowledge-agent","acp/hello-agent","acp/wiki-agent","acp/news-maker-agent","acp/dev-reporter-agent","acp/dev-agent"]}
+# Expected: {"repositories":["acp/brama-core","acp/knowledge-agent","acp/hello-agent","acp/wiki-agent","acp/news-maker-agent","acp/dev-reporter-agent","acp/dev-agent"]}
 # Verify each image has the expected tag:
 for img in core knowledge-agent hello-agent wiki-agent news-maker-agent dev-reporter-agent dev-agent; do
   curl -s http://registry.localhost:5000/v2/acp/$img/tags/list

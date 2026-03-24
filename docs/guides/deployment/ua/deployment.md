@@ -178,7 +178,7 @@ docker compose -f compose.yaml -f compose.core.yaml \
 
 | Файл | Що змінити для продакшн |
 |------|------------------------|
-| `apps/core/.env` | `APP_SECRET`, `EDGE_AUTH_JWT_SECRET` |
+| `apps/brama-core/.env` | `APP_SECRET`, `EDGE_AUTH_JWT_SECRET` |
 | `apps/*/env` | `APP_SECRET` для кожного агента |
 | `docker/litellm/config.yaml` | Визначення моделей (використовує `OPENROUTER_API_KEY` з env) |
 
@@ -244,8 +244,8 @@ curl -s 'http://localhost:9200/platform_logs_*/_search?size=5&sort=@timestamp:de
 
 Для продакшн змініть ці dev значення:
 
-- [ ] `APP_SECRET` в `apps/core/.env` та кожному агенті `.env`
-- [ ] `EDGE_AUTH_JWT_SECRET` в `apps/core/.env`
+- [ ] `APP_SECRET` в `apps/brama-core/.env` та кожному агенті `.env`
+- [ ] `EDGE_AUTH_JWT_SECRET` в `apps/brama-core/.env`
 - [ ] `EDGE_AUTH_COOKIE_DOMAIN` — встановити `.brama.dev` для cross-subdomain cookies
 - [ ] Пароль адміна — змінити через `docker compose exec core php bin/console security:hash-password`
 - [ ] Пароль Langfuse — змінити в налаштуваннях акаунту Langfuse UI

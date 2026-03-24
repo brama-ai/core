@@ -8,29 +8,29 @@
     "repositories": [
         {
             "type": "git",
-            "url": "https://github.com/neuron-core/laravel-travel-agent"
+            "url": "https://github.com/neuron-brama-core/laravel-travel-agent"
         },
         {
             "type": "git",
-            "url": "https://github.com/neuron-core/youtube-ai-agent"
+            "url": "https://github.com/neuron-brama-core/youtube-ai-agent"
         },
         {
             "type": "git",
-            "url": "https://github.com/neuron-core/travel-planner-agent"
+            "url": "https://github.com/neuron-brama-core/travel-planner-agent"
         },
         {
             "type": "git",
-            "url": "https://github.com/neuron-core/deep-research-agent"
+            "url": "https://github.com/neuron-brama-core/deep-research-agent"
         }
     ],
     "require": {
         "php": "^8.1",
-        "neuron-core/neuron-ai": "^2.0",
-        "neuron-core/a2a": "dev-main",
-        "neuron-core/laravel-travel-agent": "dev-main",
-        "neuron-core/youtube-ai-agent": "dev-main",
-        "neuron-core/travel-planner-agent": "dev-main",
-        "neuron-core/deep-research-agent": "dev-main"
+        "neuron-brama-core/neuron-ai": "^2.0",
+        "neuron-brama-core/a2a": "dev-main",
+        "neuron-brama-core/laravel-travel-agent": "dev-main",
+        "neuron-brama-core/youtube-ai-agent": "dev-main",
+        "neuron-brama-core/travel-planner-agent": "dev-main",
+        "neuron-brama-core/deep-research-agent": "dev-main"
     },
     "config": {
         "sort-packages": true,

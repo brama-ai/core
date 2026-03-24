@@ -2,7 +2,7 @@
 
 ## 0. Foundation
 
-- [ ] 0.1 Create `apps/core/src/CoderAgent/` namespace with base service classes
+- [ ] 0.1 Create `apps/brama-core/src/CoderAgent/` namespace with base service classes
 - [ ] 0.2 Add database migrations for `coder_tasks`, `coder_task_logs`, `coder_workers` tables
 - [ ] 0.3 Register CoderAgent services in Symfony DI container
 - [ ] 0.4 Add Redis queue configuration for task priority queue

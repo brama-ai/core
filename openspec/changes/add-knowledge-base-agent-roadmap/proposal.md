@@ -41,6 +41,6 @@ These items are deliberately out of scope for the initial implementation to keep
 ## Impact
 
 - Affected specs: knowledge-ingestion, knowledge-search, knowledge-web, knowledge-admin, knowledge-worker, knowledge-storage (all modified in subsequent proposals)
-- Affected code: `apps/knowledge-agent/`, `apps/core/` (event subscription), `compose.yaml` (Redis for cache)
+- Affected code: `apps/knowledge-agent/`, `apps/brama-core/` (event subscription), `compose.yaml` (Redis for cache)
 - No breaking changes — all items are additive extensions
 - Dependencies: some items require Redis, updated LLM prompt versions, or additional Telegram Bot API capabilities

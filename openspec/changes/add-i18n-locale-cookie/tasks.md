@@ -1,15 +1,15 @@
 ## 1. Translation Infrastructure
-- [x] 1.1 Add `framework.default_locale` and `framework.translator` config to `apps/core/config/packages/framework.yaml`
-- [x] 1.2 Create `apps/core/translations/messages.uk.yaml` with all admin UI strings (Ukrainian canonical)
-- [x] 1.3 Create `apps/core/translations/messages.en.yaml` with English translations
+- [x] 1.1 Add `framework.default_locale` and `framework.translator` config to `apps/brama-core/config/packages/framework.yaml`
+- [x] 1.2 Create `apps/brama-core/translations/messages.uk.yaml` with all admin UI strings (Ukrainian canonical)
+- [x] 1.3 Create `apps/brama-core/translations/messages.en.yaml` with English translations
 
 ## 2. Locale Subscriber
-- [x] 2.1 Create `apps/core/src/Locale/LocaleSubscriber.php` — reads `locale` cookie, validates against [uk, en], sets request locale
-- [x] 2.2 Create `apps/core/src/Controller/Admin/LocaleController.php` — POST endpoint to switch locale (sets cookie, redirects back)
+- [x] 2.1 Create `apps/brama-core/src/Locale/LocaleSubscriber.php` — reads `locale` cookie, validates against [uk, en], sets request locale
+- [x] 2.2 Create `apps/brama-core/src/Controller/Admin/LocaleController.php` — POST endpoint to switch locale (sets cookie, redirects back)
 - [x] 2.3 Register route for locale switch in controller
 
 ## 3. Admin Layout Language Switcher
-- [x] 3.1 Add language switcher dropdown to `apps/core/templates/admin/layout.html.twig` header
+- [x] 3.1 Add language switcher dropdown to `apps/brama-core/templates/admin/layout.html.twig` header
 - [x] 3.2 Set `<html lang>` attribute dynamically based on current locale
 
 ## 4. Apply Translations to Admin Templates
@@ -34,16 +34,16 @@
 - [x] 6.2 Sync skills to agent directories: `make sync-skills` or `./scripts/sync-skills.sh claude`
 
 ## 7. Tests
-- [ ] 7.1 Unit test for `LocaleSubscriber` — cookie reading, default fallback, invalid value handling
-- [ ] 7.2 Unit test for `A2AClient` — verify Accept-Language header is included in outbound calls
-- [ ] 7.3 Functional test for locale switch controller — POST sets cookie and redirects
+- [x] 7.1 Unit test for `LocaleSubscriber` — cookie reading, default fallback, invalid value handling
+- [x] 7.2 Unit test for `A2AClient` — verify Accept-Language header is included in outbound calls
+- [x] 7.3 Functional test for locale switch controller — POST sets cookie and redirects
 
 ## 8. Documentation
-- [ ] 8.1 Create `docs/features/i18n-locale/en/i18n-locale.md` (English, developer-facing)
-- [ ] 8.2 Create `docs/features/i18n-locale/ua/i18n-locale.md` (Ukrainian mirror)
-- [ ] 8.3 Update `docs/agent-requirements/conventions.md` — document Accept-Language header convention
+- [x] 8.1 Create `docs/features/i18n-locale/en/i18n-locale.md` (English, developer-facing)
+- [x] 8.2 Create `docs/features/i18n-locale/ua/i18n-locale.md` (Ukrainian mirror)
+- [x] 8.3 Update `docs/agent-requirements/conventions.md` — document Accept-Language header convention
 
 ## 9. Quality Checks
-- [ ] 9.1 `make analyse` — PHPStan level 8, zero errors
-- [ ] 9.2 `make cs-fix` — PHP CS Fixer, zero violations
-- [ ] 9.3 `make test` — all unit + functional suites pass
+- [x] 9.1 `make analyse` — PHPStan level 8, zero errors
+- [x] 9.2 `make cs-fix` — PHP CS Fixer, zero violations
+- [x] 9.3 `make test` — all unit + functional suites pass

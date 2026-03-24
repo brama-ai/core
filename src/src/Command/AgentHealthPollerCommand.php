@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\AgentRegistry\AgentHealthChecker;
 use App\AgentRegistry\AgentRegistryInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -20,6 +21,7 @@ final class AgentHealthPollerCommand extends Command
     public function __construct(
         private readonly AgentRegistryInterface $registry,
         private readonly LoggerInterface $logger,
+        private readonly AgentHealthChecker $healthChecker,
     ) {
         parent::__construct();
     }
@@ -41,7 +43,7 @@ final class AgentHealthPollerCommand extends Command
             }
 
             $name = (string) $agent['name'];
-            $isHealthy = $this->checkHealth($healthUrl);
+            $isHealthy = $this->healthChecker->check($healthUrl);
 
             if ($isHealthy) {
                 $currentStatus = (string) ($agent['health_status'] ?? 'unknown');
@@ -79,39 +81,5 @@ final class AgentHealthPollerCommand extends Command
         }
 
         return Command::SUCCESS;
-    }
-
-    private function checkHealth(string $url): bool
-    {
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'GET',
-                'timeout' => 5,
-                'ignore_errors' => true,
-            ],
-        ]);
-
-        set_error_handler(static fn (): bool => true);
-
-        try {
-            $result = file_get_contents($url, false, $context);
-            $responseHeaders = $http_response_header;
-        } finally {
-            restore_error_handler();
-        }
-
-        if (false === $result) {
-            return false;
-        }
-
-        foreach ($responseHeaders as $header) {
-            if (preg_match('#^HTTP/\S+ (\d+)#', $header, $m)) {
-                $code = (int) $m[1];
-
-                return $code >= 200 && $code < 300;
-            }
-        }
-
-        return true;
     }
 }

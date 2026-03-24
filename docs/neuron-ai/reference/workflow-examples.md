@@ -14,4 +14,4 @@ A practical demo of buildling a multi-agent system in Laravel, coordinating betw
 
 Demonstrates how to use interruptions and persistence to manage tasks that require human oversight, such as financial transactions or system modifications.
 
-Find the full source code for these examples on [GitHub](https://github.com/neuron-core/neuron-ai/tree/main/examples).
+Find the full source code for these examples on [GitHub](https://github.com/neuron-brama-core/neuron-ai/tree/main/examples).

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The platform provides a centralized, persistent job scheduler in `apps/core`. Any agent can declare scheduled jobs in its `manifest.json`, and the platform will execute them reliably via the A2A protocol with retry, dead-letter, and admin visibility.
+The platform provides a centralized, persistent job scheduler in `apps/brama-core`. Any agent can declare scheduled jobs in its `manifest.json`, and the platform will execute them reliably via the A2A protocol with retry, dead-letter, and admin visibility.
 
 ## Architecture
 

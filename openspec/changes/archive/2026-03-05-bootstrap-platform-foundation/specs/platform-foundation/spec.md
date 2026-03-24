@@ -12,12 +12,12 @@ SHALL target PHP 8.5 exclusively.
 
 #### Scenario: Composer enforces PHP 8.5
 
-- **WHEN** `composer install` runs inside `apps/core/`
+- **WHEN** `composer install` runs inside `apps/brama-core/`
 - **THEN** the `^8.5` PHP constraint is satisfied and installation succeeds without version errors
 
 ### Requirement: Symfony 7 Application
 
-The platform core SHALL run a Symfony 7 application initialized via Composer Flex in `apps/core/`.
+The platform core SHALL run a Symfony 7 application initialized via Composer Flex in `apps/brama-core/`.
 
 #### Scenario: Symfony kernel boots on HTTP request
 
@@ -26,26 +26,26 @@ The platform core SHALL run a Symfony 7 application initialized via Composer Fle
 
 #### Scenario: Symfony front controller replaces stub
 
-- **WHEN** `apps/core/public/index.php` is read
+- **WHEN** `apps/brama-core/public/index.php` is read
 - **THEN** it is the Symfony front controller (not the old plain-text stub)
 
 ### Requirement: PHPStan Static Analysis
 
-The platform core MUST include PHPStan configured at level 8, enforced on `apps/core/src/`.
+The platform core MUST include PHPStan configured at level 8, enforced on `apps/brama-core/src/`.
 
 #### Scenario: Clean code produces no errors
 
-- **WHEN** `phpstan analyse` runs on `apps/core/src/`
+- **WHEN** `phpstan analyse` runs on `apps/brama-core/src/`
 - **THEN** zero errors are reported at level 8
 
 ### Requirement: PHP CS Fixer Code Style
 
 The platform core MUST include PHP CS Fixer with a project-defined ruleset applied to
-`apps/core/src/`.
+`apps/brama-core/src/`.
 
 #### Scenario: Formatted code passes style check
 
-- **WHEN** `php-cs-fixer check apps/core/src/` runs
+- **WHEN** `php-cs-fixer check apps/brama-core/src/` runs
 - **THEN** no violations are reported
 
 ### Requirement: Codeception Test Suite
@@ -54,7 +54,7 @@ The platform core MUST include Codeception with unit and functional suites confi
 
 #### Scenario: Both suites are discovered and run
 
-- **WHEN** `codecept run` executes from `apps/core/`
+- **WHEN** `codecept run` executes from `apps/brama-core/`
 - **THEN** both unit and functional suites are discovered, executed, and report results without
   configuration errors
 

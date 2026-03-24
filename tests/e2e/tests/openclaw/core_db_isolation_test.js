@@ -13,7 +13,7 @@ function runSql(dbName, sql) {
     const escapedSql = sql.replace(/"/g, '\\"');
 
     return execSync(
-        `docker compose --profile e2e exec -T postgres psql -U app -d ${dbName} -t -A -c "${escapedSql}"`,
+        `docker exec brama-postgres-1 psql -U app -d ${dbName} -t -A -c "${escapedSql}"`,
         { encoding: 'utf8' },
     ).trim();
 }

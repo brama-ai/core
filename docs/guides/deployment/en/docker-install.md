@@ -185,8 +185,8 @@ TLS is not configured by default. Options:
 
 Before going live, change these development defaults:
 
-- [ ] `APP_SECRET` in `apps/core/.env` and each agent `.env`
-- [ ] `EDGE_AUTH_JWT_SECRET` in `apps/core/.env`
+- [ ] `APP_SECRET` in `apps/brama-core/.env` and each agent `.env`
+- [ ] `EDGE_AUTH_JWT_SECRET` in `apps/brama-core/.env`
 - [ ] `EDGE_AUTH_COOKIE_DOMAIN` — set to `.yourdomain.org`
 - [ ] Admin password: `docker compose exec core php bin/console security:hash-password`
 - [ ] Langfuse password — change in Langfuse UI account settings

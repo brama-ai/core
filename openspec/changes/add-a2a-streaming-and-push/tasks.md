@@ -11,7 +11,7 @@
 ## 2. Phase R1 — Agent Contract + Observability
 
 - [ ] 2.1 Extend Agent Card capability schema for `capabilities.streaming`
-- [ ] 2.2 Update core/agent observability mapping for stream lifecycle + task correlation
+- [ ] 2.2 Update brama-core/agent observability mapping for stream lifecycle + task correlation
 - [ ] 2.3 Ensure idempotent handling by `request_id` when present (resume existing task snapshot)
 - [ ] 2.4 Add functional tests: stream opens, emits final event, and client can recover via `GetTask`
 

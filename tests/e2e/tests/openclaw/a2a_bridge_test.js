@@ -84,7 +84,7 @@ function runKnowledgeSql(sql) {
     const escapedSql = sql.replace(/"/g, '\\"');
 
     return execSync(
-        `docker compose --profile e2e exec -T postgres psql -U app -d ${KNOWLEDGE_DB_NAME} -t -A -c "${escapedSql}"`,
+        `docker exec brama-postgres-1 psql -U app -d ${KNOWLEDGE_DB_NAME} -t -A -c "${escapedSql}"`,
         { encoding: 'utf8' },
     ).trim();
 }
@@ -93,7 +93,7 @@ function runCoreSql(sql) {
     const escapedSql = sql.replace(/"/g, '\\"');
 
     return execSync(
-        `docker compose --profile e2e exec -T postgres psql -U app -d ${CORE_DB_NAME} -t -A -c "${escapedSql}"`,
+        `docker exec brama-postgres-1 psql -U app -d ${CORE_DB_NAME} -t -A -c "${escapedSql}"`,
         { encoding: 'utf8' },
     ).trim();
 }

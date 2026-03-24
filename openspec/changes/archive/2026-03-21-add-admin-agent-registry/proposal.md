@@ -24,7 +24,7 @@ The platform architecture defines an Agent Registry that stores available agents
 ## Impact
 
 - Affected specs: agent-manifest (new), agent-registry (new), admin-agent-management (new)
-- Affected code: `apps/core/` (registry service, lifecycle orchestrator, event bus, command router), `apps/knowledge-agent/` (manifest file), admin UI routes, Postgres migration, root migration scripts/Make targets
+- Affected code: `apps/brama-core/` (registry service, lifecycle orchestrator, event bus, command router), `apps/knowledge-agent/` (manifest file), admin UI routes, Postgres migration, root migration scripts/Make targets
 - Depends on: `add-admin-web-login` (admin auth must exist), `bootstrap-platform-foundation` (Symfony + Doctrine in place)
 - Extends: `add-knowledge-base-agent` (knowledge-base agent registers itself via this registry)
 - No breaking changes to existing platform contracts

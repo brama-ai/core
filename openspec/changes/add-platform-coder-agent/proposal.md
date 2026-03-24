@@ -18,6 +18,6 @@ A built-in Platform Coder Agent will wrap the existing pipeline logic in a PHP/S
 ## Impact
 
 - Affected specs: coder-agent-pipeline (new), coder-agent-admin (new), coder-agent-worker (new), coder-agent-worktree (new), admin-tools-navigation (modified)
-- Affected code: new `apps/core/src/CoderAgent/` namespace, new admin controllers and templates, new Symfony commands for workers, new database tables, modifications to admin navigation
+- Affected code: new `apps/brama-core/src/CoderAgent/` namespace, new admin controllers and templates, new Symfony commands for workers, new database tables, modifications to admin navigation
 - **New external dependencies**: none beyond existing stack (PHP 8.5, Symfony 7, Postgres, Redis for queue); existing LiteLLM gateway for model selection
 - **No breaking changes** to existing agents or platform APIs

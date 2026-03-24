@@ -87,8 +87,9 @@ Scenario(
 
         // The total entries count is shown in a span outside .glass-card,
         // e.g. "Скіл: ... · Cron: ... · Всього записів: 5"
+        // Use contains(., ...) to match full element text (not just first text node)
         const headerText = await I.grabTextFrom(
-            '//span[contains(text(), "записів") or contains(text(), "entries")]',
+            '//span[contains(., "записів") or contains(., "entries")]',
         );
         const match = headerText.match(/(\d+)\s*$/);
         const total = match ? parseInt(match[1], 10) : 0;

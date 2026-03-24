@@ -7,7 +7,7 @@
 - [x] 0.3 Create `apps/knowledge-agent/` as new Symfony 7 application scaffold
 - [x] 0.4 Add `neuron-ai/neuron-ai` and `neuron-ai/workflow` to `apps/knowledge-agent/composer.json`
 - [ ] 0.5 Add deep-research-agent and travel-planner-agent as dev-reference entries in composer:
-      `"repositories"` block pointing to `https://github.com/neuron-core/deep-research-agent` and `https://github.com/neuron-core/travel-planner-agent`
+      `"repositories"` block pointing to `https://github.com/neuron-brama-core/deep-research-agent` and `https://github.com/neuron-brama-core/travel-planner-agent`
 - [ ] 0.6 Update `index.md` with neuron-ai section: links to deep-research-agent and travel-planner-agent, key source files, and usage patterns
 - [ ] 0.7 Add `LOCAL_DEV.md` entries for OpenSearch (port 9200) and RabbitMQ (port 5672, management 15672)
 

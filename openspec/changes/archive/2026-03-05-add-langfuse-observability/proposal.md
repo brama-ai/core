@@ -16,4 +16,4 @@ The platform currently has partial invocation audit logs in `core`, but there is
 
 ## Impact
 - Affected specs: `observability-integration`, `admin-tools-navigation`
-- Affected code: `compose.yaml`, `docker/traefik/traefik.yml`, `apps/core/`, `apps/hello-agent/`, `docs/local-dev.md`
+- Affected code: `compose.yaml`, `docker/traefik/traefik.yml`, `apps/brama-core/`, `apps/hello-agent/`, `docs/local-dev.md`

@@ -129,7 +129,7 @@ If the migration job fails:
 Check the key workloads:
 
 ```bash
-kubectl rollout status deploy/core -n acp
+kubectl rollout status deploy/brama-core -n acp
 kubectl rollout status deploy/openclaw-gateway -n acp
 kubectl rollout status deploy/litellm -n acp
 ```
@@ -158,7 +158,7 @@ Useful commands:
 ```bash
 kubectl get ingress -n acp
 kubectl get pods -n acp
-kubectl logs deploy/core -n acp --tail=100
+kubectl logs deploy/brama-core -n acp --tail=100
 ```
 
 If there is a smoke test job or external synthetic check, run it here as part of the standard
@@ -187,7 +187,7 @@ helm rollback ai-community-platform <revision> -n acp --wait --timeout 15m
 
 ```bash
 kubectl get pods -n acp
-kubectl rollout status deploy/core -n acp
+kubectl rollout status deploy/brama-core -n acp
 ```
 
 ### 4. Restore data if rollback is not schema-compatible

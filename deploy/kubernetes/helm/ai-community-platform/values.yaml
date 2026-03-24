@@ -10,7 +10,7 @@ global:
 # Core platform configuration
 core:
   image:
-    repository: ai-community-platform/core
+    repository: ai-community-platform/brama-core
     tag: "0.1.0"
     pullPolicy: IfNotPresent
   
@@ -58,7 +58,7 @@ core:
 scheduler:
   enabled: true
   image:
-    repository: ai-community-platform/core
+    repository: ai-community-platform/brama-core
     tag: "0.1.0"
     pullPolicy: IfNotPresent
   

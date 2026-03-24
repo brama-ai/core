@@ -1,5 +1,5 @@
 ## 1. Foundation
-- [ ] 1.1 Define the `Agent Project` data model and admin/domain boundaries in `apps/core`
+- [ ] 1.1 Define the `Agent Project` data model and admin/domain boundaries in `apps/brama-core`
 - [ ] 1.2 Define repository metadata fields for private GitHub, GitLab.com, and self-hosted GitLab-like remotes
 - [ ] 1.3 Define secret/credential reference handling for clone, fetch, push, tag, and deploy flows
 - [ ] 1.4 Define checkout/update contract into `projects/<project-slug>/`

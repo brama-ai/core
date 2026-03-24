@@ -20,6 +20,7 @@ Before(async ({ I, loginPage }) => {
             version: '1.0.0',
             description: 'Knowledge base management and semantic search',
             url: 'http://knowledge-agent-e2e/api/v1/knowledge/a2a',
+            health_url: 'http://knowledge-agent-e2e/health',
             admin_url: KNOWLEDGE_ADMIN_URL,
             skills: [
                 { id: 'knowledge.search', name: 'Knowledge Search', description: 'Search the knowledge base' },

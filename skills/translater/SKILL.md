@@ -123,8 +123,8 @@ When encountering a new domain term not in this glossary:
 
 | Resource | Path |
 |----------|------|
-| Core EN translations | `apps/core/translations/messages.en.yaml` |
-| Core UK translations | `apps/core/translations/messages.uk.yaml` |
+| Core EN translations | `apps/brama-core/translations/messages.en.yaml` |
+| Core UK translations | `apps/brama-core/translations/messages.uk.yaml` |
 | Agent translations | `apps/<agent>/translations/messages.*.yaml` |
 | Twig templates | `apps/*/templates/` |
 | Documentation | `docs/` |
@@ -146,7 +146,7 @@ After completing translation work, report:
 ## Translation Summary
 
 ### Files Modified
-- `apps/core/translations/messages.uk.yaml` — added 5 keys
+- `apps/brama-core/translations/messages.uk.yaml` — added 5 keys
 - `docs/features/en/scheduler.md` — created EN mirror
 
 ### Missing Translations Found

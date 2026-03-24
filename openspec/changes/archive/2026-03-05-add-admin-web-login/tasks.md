@@ -1,23 +1,23 @@
 ## 1. Dependencies
 
-- [x] 1.1 Add `symfony/security-bundle` to `apps/core/composer.json` require
-- [x] 1.2 Add `symfony/twig-bundle` + `twig/twig` to `apps/core/composer.json` require
-- [x] 1.3 Add `doctrine/migrations` to `apps/core/composer.json` require
+- [x] 1.1 Add `symfony/security-bundle` to `apps/brama-core/composer.json` require
+- [x] 1.2 Add `symfony/twig-bundle` + `twig/twig` to `apps/brama-core/composer.json` require
+- [x] 1.3 Add `doctrine/migrations` to `apps/brama-core/composer.json` require
 - [x] 1.4 Run `composer update` inside the core container (`make install`)
 
 ## 2. Database Migration
 
-- [x] 2.1 Configure `doctrine/migrations` in `apps/core/config/packages/doctrine_migrations.yaml`
+- [x] 2.1 Configure `doctrine/migrations` in `apps/brama-core/config/packages/doctrine_migrations.yaml`
 - [x] 2.2 Add `make migrate` target: `$(COMPOSE) exec core ./vendor/bin/doctrine-migrations migrate --no-interaction`
-- [x] 2.3 Generate migration file under `apps/core/migrations/` that:
+- [x] 2.3 Generate migration file under `apps/brama-core/migrations/` that:
   - Creates `admin_users` table: `id SERIAL PK`, `username VARCHAR(180) UNIQUE NOT NULL`, `password VARCHAR(255) NOT NULL`, `roles JSONB NOT NULL DEFAULT '["ROLE_ADMIN"]'`
   - Inserts seed row: `username=admin`, `password=<bcrypt hash of test-password>`, `roles=["ROLE_ADMIN"]`
 
 ## 3. Security Layer
 
-- [x] 3.1 Create `apps/core/src/Security/AdminUser.php` implementing `UserInterface` + `PasswordAuthenticatedUserInterface`
-- [x] 3.2 Create `apps/core/src/Security/AdminUserProvider.php` implementing `UserProviderInterface` — loads user from DBAL by username
-- [x] 3.3 Create `apps/core/config/packages/security.yaml`:
+- [x] 3.1 Create `apps/brama-core/src/Security/AdminUser.php` implementing `UserInterface` + `PasswordAuthenticatedUserInterface`
+- [x] 3.2 Create `apps/brama-core/src/Security/AdminUserProvider.php` implementing `UserProviderInterface` — loads user from DBAL by username
+- [x] 3.3 Create `apps/brama-core/config/packages/security.yaml`:
   - password hasher: `bcrypt`
   - provider: custom `AdminUserProvider`
   - firewall `admin`: pattern `^/admin`, form-login, logout at `/admin/logout`
@@ -25,14 +25,14 @@
 
 ## 4. Controllers
 
-- [x] 4.1 Create `apps/core/src/Controller/Admin/LoginController.php` — `GET /admin/login` (renders login template; Symfony Security handles POST internally)
-- [x] 4.2 Create `apps/core/src/Controller/Admin/DashboardController.php` — `GET /admin/dashboard` (renders dashboard template)
+- [x] 4.1 Create `apps/brama-core/src/Controller/Admin/LoginController.php` — `GET /admin/login` (renders login template; Symfony Security handles POST internally)
+- [x] 4.2 Create `apps/brama-core/src/Controller/Admin/DashboardController.php` — `GET /admin/dashboard` (renders dashboard template)
 
 ## 5. Templates
 
-- [x] 5.1 Configure `apps/core/config/packages/twig.yaml` (template path `%kernel.project_dir%/templates`)
-- [x] 5.2 Create `apps/core/templates/admin/login.html.twig` — HTML form POSTing to `/admin/login` with CSRF token, username + password fields, error message block
-- [x] 5.3 Create `apps/core/templates/admin/dashboard.html.twig` — welcome message showing logged-in username and logout link
+- [x] 5.1 Configure `apps/brama-core/config/packages/twig.yaml` (template path `%kernel.project_dir%/templates`)
+- [x] 5.2 Create `apps/brama-core/templates/admin/login.html.twig` — HTML form POSTing to `/admin/login` with CSRF token, username + password fields, error message block
+- [x] 5.3 Create `apps/brama-core/templates/admin/dashboard.html.twig` — welcome message showing logged-in username and logout link
 
 ## 6. Tests
 

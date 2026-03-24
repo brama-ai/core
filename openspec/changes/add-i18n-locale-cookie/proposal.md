@@ -13,7 +13,7 @@ The admin UI currently has all labels and text hardcoded in Ukrainian. To suppor
 
 ## Impact
 - Affected specs: `i18n-locale` (new), `a2a-server` (modified)
-- Affected code: `apps/core/` (config, src, templates), `skills/agent-auditor/`
+- Affected code: `apps/brama-core/` (config, src, templates), `skills/agent-auditor/`
 - New files: translation config, message catalogs, LocaleSubscriber, locale controller
 - Modified files: admin layout, all admin templates, A2AClient, auditor checklist
 - No database changes required

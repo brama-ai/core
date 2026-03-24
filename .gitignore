@@ -8,7 +8,7 @@ builder/tasks/in-progress/
 builder/tasks/failed/
 builder/tasks/suspended/
 
-# Environment - only root-level .env; apps/core/.env is committed as Symfony dev defaults
+# Environment - only root-level .env; apps/brama-core/.env is committed as Symfony dev defaults
 /.env
 .env.local
 .env.*.local

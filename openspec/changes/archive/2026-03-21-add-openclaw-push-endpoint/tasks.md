@@ -46,7 +46,7 @@
 - [ ] 5.1 Add `OPENCLAW_PUSH_TOKEN` to `docker/openclaw/.env` (generate unique token, different from gateway token)
 - [ ] 5.2 Pass `OPENCLAW_PUSH_TOKEN` in `compose.openclaw.yaml` environment section
 - [ ] 5.3 Pass `OPENCLAW_PUSH_TOKEN` in `compose.openclaw.multi-bot.yaml` environment section
-- [ ] 5.4 Add `OPENCLAW_PUSH_TOKEN` to `apps/core/.env` (Core needs it for `OpenClawAdapter` config)
+- [ ] 5.4 Add `OPENCLAW_PUSH_TOKEN` to `apps/brama-core/.env` (Core needs it for `OpenClawAdapter` config)
 
 ## 6. Documentation
 

@@ -5,7 +5,7 @@
 Платформа підтримує багатомовний інтерфейс адміністратора через cookie-based визначення мови. Мовні преференції користувача зберігаються в cookie `locale` та автоматично застосовуються до всіх сторінок адмін-панелі. Система також передає мову користувача агентам через HTTP header `Accept-Language` під час A2A викликів.
 
 **Підтримувані мови:**
-- `ua` — Українська (за замовчуванням)
+- `uk` — Українська (за замовчуванням)
 - `en` — English
 
 ## Функціонал
@@ -13,10 +13,10 @@
 ### Cookie-based Locale
 
 - Cookie `locale` зберігає вибір користувача
-- Значення: `ua` або `en`
-- Значення за замовчуванням: `ua`
+- Значення: `uk` або `en`
+- Значення за замовчуванням: `uk`
 - Cookie валідується проти whitelist дозволених мов
-- Невалідні значення автоматично замінюються на `ua`
+- Невалідні значення автоматично замінюються на `uk`
 
 ### Language Switcher
 
@@ -55,15 +55,15 @@ framework:
 Автоматично визначає locale з cookie:
 
 ```php
-// apps/core/src/EventSubscriber/LocaleSubscriber.php
+// brama-core/src/src/Locale/LocaleSubscriber.php
 class LocaleSubscriber implements EventSubscriberInterface
 {
     public function onKernelRequest(RequestEvent $event): void
     {
         $request = $event->getRequest();
-        $locale = $request->cookies->get('locale', 'ua');// Validate against whitelist
-        if (!in_array($locale, ['ua', 'en'], true)) {
-            $locale = 'ua';
+        $locale = $request->cookies->get('locale', 'uk');
+        if (!in_array($locale, ['uk', 'en'], true)) {
+            $locale = 'uk';
         }
         $request->setLocale($locale);
     }
@@ -75,14 +75,15 @@ class LocaleSubscriber implements EventSubscriberInterface
 Endpoint для перемикання мови:
 
 ```php
-// apps/core/src/Controller/Admin/LocaleController.php
-#[Route('/admin/locale', name: 'admin_locale_switch', methods: ['POST'])]
-public function switchLocale(Request $request): Response
+// brama-core/src/src/Controller/Admin/LocaleController.php
+#[Route('/admin/locale/switch', name: 'admin_locale_switch', methods: ['POST'])]
+public function switch(Request $request): Response
 {
-    $locale = $request->request->get('locale', 'ua');
+    $locale = $request->request->getString('locale', 'uk');
     // Validate and set cookie
-    $response = new RedirectResponse($request->headers->get('referer'));
-    $response->headers->setCookie(Cookie::create('locale', $locale)
+    $response = new RedirectResponse($request->headers->get('referer', '/admin'));
+    $response->headers->setCookie(Cookie::create('locale')
+        ->withValue($locale)
         ->withSameSite('lax')
         ->withPath('/'));
     return $response;
@@ -92,8 +93,9 @@ public function switchLocale(Request $request): Response
 ### A2AClient Header Forwarding
 
 ```php
-// apps/core/src/A2AGateway/A2AClient.php
-$headers['Accept-Language'] = $this->requestStack->getCurrentRequest()?->getLocale() ?? 'uk';
+// brama-core/src/src/A2AGateway/A2AClient.php
+$locale = $currentRequest?->getLocale() ?? LocaleSubscriber::DEFAULT_LOCALE;
+$headers['Accept-Language'] = $locale;
 ```
 
 ## Використання
@@ -102,8 +104,8 @@ $headers['Accept-Language'] = $this->requestStack->getCurrentRequest()?->getLoca
 
 Користувач обирає мову з випадаючого списку в header:
 
-1. POST запит до `/admin/locale`
-2. Cookie встановлюється на `ua` або `en`
+1. POST запит до `/admin/locale/switch`
+2. Cookie встановлюється на `uk` або `en`
 3. Сторінка перезавантажується з новою мовою
 
 ### В Templates
@@ -117,14 +119,14 @@ $headers['Accept-Language'] = $this->requestStack->getCurrentRequest()?->getLoca
 
 ### Додавання нових перекладів
 
-1. Додайте ключ до `apps/core/translations/messages.uk.yaml`:
+1. Додайте ключ до `brama-core/src/translations/messages.uk.yaml`:
 ```yaml
 page:
   dashboard:
     title: 'Панель управління'
 ```
 
-2. Додайте переклад до `apps/core/translations/messages.en.yaml`:
+2. Додайте переклад до `brama-core/src/translations/messages.en.yaml`:
 ```yaml
 page:
   dashboard:
@@ -143,20 +145,20 @@ $locale = $request->headers->get('Accept-Language', 'uk');
 
 ## API
 
-### POST /admin/locale
+### POST /admin/locale/switch
 
-Перемикання мови інтерфейсу.
+Перемикання мови інтерфейсу. Endpoint публічний (автентифікація не потрібна).
 
 **Request:**
 ```http
-POST /admin/locale
+POST /admin/locale/switch
 Content-Type: application/x-www-form-urlencoded
 
 locale=en
 ```
 
 **Response:**
-- HTTP 302 Redirect назад доreferer
+- HTTP 302 Redirect назад до referer
 - Cookie `locale` встановлено
 
 ### Cookie Specification
@@ -164,11 +166,12 @@ locale=en
 | Attribute | Value |
 |-----------|-------|
 | Name | `locale` |
-| Values | `ua`, `en` |
-| Default | `ua` |
-| Path| `/` |
+| Values | `uk`, `en` |
+| Default | `uk` |
+| Path | `/` |
 | SameSite | `lax` |
 | HttpOnly | `false` (доступний через JS) |
+| Expires | 1 рік |
 
 ## Розробка
 
@@ -184,7 +187,7 @@ Unit тести покривають:
 ./vendor/bin/codecept run Unit Locale/LocaleSubscriberTest
 ```
 
-### LocaleControllerTest
+### LocaleControllerTest (Unit)
 
 Unit тести покривають:
 - Endpoint перемикання
@@ -196,12 +199,23 @@ Unit тести покривають:
 ./vendor/bin/codecept run Unit Controller/Admin/LocaleControllerTest
 ```
 
-### A2AClient Accept-Language Test
+### LocaleControllerCest (Functional)
 
-Integration тести перевіряють forwarding header:
+Functional тести покривають:
+- Cookie встановлюється правильно для валідних locale
+- Невалідний locale повертається до default
+- Redirect до referer працює
 
 ```bash
-./vendor/bin/codecept run Unit A2AGateway/A2AClientTest --filter "Accept-Language"
+./vendor/bin/codecept run Functional Admin/LocaleControllerCest
+```
+
+### A2AClient Accept-Language Test
+
+Unit тести перевіряють forwarding header:
+
+```bash
+./vendor/bin/codecept run Unit A2AGateway/A2AClientTest
 ```
 
 ### Auditor Checklist
@@ -217,9 +231,10 @@ Level: WARN
 
 | Файл | Призначення |
 |------|-------------|
-| `apps/core/src/EventSubscriber/LocaleSubscriber.php` | Subscriberдля визначення locale |
-| `apps/core/src/Controller/Admin/LocaleController.php` | Controller для перемикання мови |
-| `apps/core/translations/messages.uk.yaml` | Українські переклади |
-| `apps/core/translations/messages.en.yaml` | Англійські переклади |
-| `apps/core/config/packages/framework.yaml` | Конфігурація translator |
-| `apps/core/templates/admin/layout.html.twig` | Language switcher UI |
+| `brama-core/src/src/Locale/LocaleSubscriber.php` | Subscriber для визначення locale |
+| `brama-core/src/src/Controller/Admin/LocaleController.php` | Controller для перемикання мови |
+| `brama-core/src/translations/messages.uk.yaml` | Українські переклади |
+| `brama-core/src/translations/messages.en.yaml` | Англійські переклади |
+| `brama-core/src/config/packages/framework.yaml` | Конфігурація translator |
+| `brama-core/src/templates/admin/layout.html.twig` | Language switcher UI |
+| `brama-core/src/config/packages/security.yaml` | Locale switch endpoint є PUBLIC_ACCESS |

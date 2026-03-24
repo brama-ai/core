@@ -11,6 +11,16 @@ Helm-чарту, розташованого в `deploy/charts/brama/`.
 
 Англійська версія: [`docs/guides/deployment/en/kubernetes-install.md`](../en/kubernetes-install.md)
 
+Структура цього гайду розбита на чотири практичні частини:
+
+- швидкий локальний старт
+- production-style встановлення через values
+- day-2 операції
+- troubleshooting
+
+Це ближче до operator-facing стилю документації на кшталт LangChain/LangSmith та Apache Airflow:
+спочатку короткий шлях до працюючого середовища, потім стабільний сценарій для реального кластера.
+
 ## Режими деплою
 
 Платформа підтримує два офіційних режими деплою:
@@ -31,6 +41,105 @@ Helm-чарту, розташованого в `deploy/charts/brama/`.
 - Ingress-контролер (рекомендується nginx-ingress)
 - cert-manager (опціонально, для автоматизації TLS)
 - Доступ до container registry з образами платформи
+
+### Для локального K3s/dev профілю з workspace helper-ами
+
+Якщо ви підіймаєте Brama локально через workspace Make targets, додатково потрібні:
+
+- Docker для локального build образів
+- Rancher Desktop або сумісний K3s setup з `rdctl`
+- локальний chart path `brama-core/deploy/charts/brama`
+
+> `make k8s-load` зараз імпортує образи через `rdctl shell sudo k3s ctr images import -`.
+> Тобто цей helper flow орієнтований саме на локальний K3s у Rancher Desktop.
+> Для `kind`, `minikube` або віддаленого кластера краще використовувати прямий `helm upgrade --install`
+> і свій спосіб доставки образів (наприклад, через ssh piping у k3s containerd).
+
+### Для віддаленого K3s кластера (без власного registry)
+Якщо образів немає в публічному registry (наразі вони збираються локально), для деплою на віддалений сервер (наприклад, VPS з K3s) потрібно перенести локально зібрані образи на віддалену машину перед інсталяцією через Helm:
+
+```bash
+# Зібрати образи локально
+make k8s-build
+
+# Передати та імпортувати у віддалений K3s без registry
+docker save brama-core:dev | ssh root@YOUR_SERVER_IP "k3s ctr images import -"
+docker save agent-hello:dev | ssh root@YOUR_SERVER_IP "k3s ctr images import -"
+```
+
+## Швидкий старт: локальний K3s/dev
+
+Це найкоротший шлях, якщо треба швидко підняти платформу локально.
+
+### Що деплоїться в dev профілі
+
+Поточний локальний профіль розгортає:
+
+- `core`
+- `core-scheduler`
+- `hello-agent`
+- PostgreSQL
+- Redis
+- RabbitMQ
+
+### 1. Перевірте контекст кластера
+
+```bash
+make k8s-ctx
+```
+
+### 2. Виконайте повний bootstrap
+
+```bash
+make k8s-setup
+```
+
+Ця команда послідовно виконує:
+
+1. `make k8s-build`
+2. `make k8s-load`
+3. `make k8s-secrets`
+4. `make k8s-deploy`
+
+### 3. Перевірте стан
+
+```bash
+make k8s-status
+```
+
+### 4. Відкрийте сервіс локально
+
+```bash
+make k8s-port-forward svc=core port=8080:80
+curl -sf http://localhost:8080/health
+```
+
+### 5. Подивіться логи при проблемах
+
+```bash
+make k8s-logs svc=core
+make k8s-logs svc=core-scheduler
+make k8s-logs-all
+```
+
+### 6. Видаліть реліз
+
+```bash
+make k8s-destroy
+```
+
+### Команди quickstart, які варто знати
+
+| Команда | Що робить |
+|--------|-----------|
+| `make k8s-ctx` | Показує поточний cluster context |
+| `make k8s-build` | Будує локальні Docker images |
+| `make k8s-load` | Імпортує образи в локальний K3s containerd |
+| `make k8s-secrets` | Створює базовий secret для core |
+| `make k8s-deploy` | Виконує `helm upgrade --install` |
+| `make k8s-status` | Показує pods, services, ingress і Helm release |
+| `make k8s-shell svc=core` | Відкриває shell у pod |
+| `make k8s-port-forward svc=core port=8080:80` | Дає локальний доступ до сервісу |
 
 ## Топологія сервісів
 
@@ -90,6 +199,23 @@ kubectl create secret generic litellm-secrets \
 > **Примітка безпеки**: У продакшн рекомендується використовувати зовнішній оператор секретів
 > (External Secrets Operator, Sealed Secrets, Vault Agent Injector) замість `kubectl create secret`.
 
+### Секрети для локального helper flow
+
+`make k8s-secrets` створює secret `brama-core-secrets` у namespace `brama` з такими ключами:
+
+- `APP_SECRET`
+- `EDGE_AUTH_JWT_SECRET`
+- `DATABASE_URL`
+- `REDIS_URL`
+- `RABBITMQ_URL`
+- `POSTGRES_PROVISIONER_URL`
+
+Для локального dev цього достатньо. Для production краще:
+
+- рознести секрети по сервісах
+- не генерувати їх через shell history
+- керувати ними через External Secrets / Vault / Sealed Secrets
+
 ## Крок 2: Підготовка values
 
 Скопіюйте приклад values-файлу та налаштуйте його:
@@ -117,6 +243,19 @@ cp deploy/charts/brama/values-prod.example.yaml values-prod.yaml
       external: true
       host: your-redis-host
   ```
+
+### Який values-файл брати за основу
+
+| Сценарій | Стартовий файл |
+|----------|----------------|
+| Локальний K3s / demo | `deploy/charts/brama/values-k3s-dev.yaml` |
+| Production-like кластер | `deploy/charts/brama/values-prod.example.yaml` |
+
+Практичне правило:
+
+- `values-k3s-dev.yaml` для швидкого локального підйому
+- `values-prod.example.yaml` як шаблон для реального rollout
+- не варто "дорощувати" dev values до production без ревізії секретів, ingress та persistence
 
 ## Крок 3: Встановлення чарту
 
@@ -177,6 +316,12 @@ kubectl port-forward -n brama svc/brama-core 8080:80
 curl -sf http://localhost:8080/health
 ```
 
+### Перевірка Helm release
+
+```bash
+helm status brama -n brama
+```
+
 ## Крок 5: Перевірка після встановлення
 
 Мінімальні перевірки після свіжого встановлення:
@@ -186,6 +331,70 @@ curl -sf http://localhost:8080/health
 - [ ] Хоча б один health endpoint агента відповідає
 - [ ] UI LiteLLM доступний (якщо увімкнено)
 - [ ] Завдання міграції завершилося без помилок
+
+## Щоденна експлуатація
+
+### Оновити залежності чарту
+
+```bash
+cd deploy/charts/brama
+helm dependency update
+```
+
+Або через workspace helper:
+
+```bash
+make k8s-deps
+```
+
+### Подивитися diff перед оновленням
+
+```bash
+make k8s-diff
+```
+
+### Оновити реліз
+
+```bash
+make k8s-upgrade
+```
+
+### Подивитися стан workload-ів
+
+```bash
+make k8s-status
+kubectl get pods -n brama -o wide
+```
+
+### Подивитися логи сервісу
+
+```bash
+make k8s-logs svc=core
+make k8s-logs svc=core-scheduler
+make k8s-logs svc=agent-hello
+```
+
+### Зайти всередину pod
+
+```bash
+make k8s-shell svc=core
+```
+
+### Пробросити порт
+
+```bash
+make k8s-port-forward svc=core port=8080:80
+```
+
+## Операторський checklist перед production rollout
+
+- [ ] Образи опубліковані в registry, доступному кластеру
+- [ ] Namespace та ingress policy погоджені
+- [ ] Secrets винесені у зовнішню систему керування
+- [ ] Визначено persistence policy для stateful компонентів
+- [ ] `postgresql.enabled` та `redis.enabled` вимкнені, якщо використовуються зовнішні managed сервіси
+- [ ] Перевірено rollback сценарій через `helm rollback`
+- [ ] Є post-deploy smoke checks для `/health`, login і scheduler
 
 ## Поведінка міграцій
 
@@ -227,6 +436,28 @@ kubectl logs deploy/brama-core -n brama --previous
 ```
 
 Типові причини: відсутнє посилання на секрет, неправильний DATABASE_URL, невдала міграція.
+
+### `make k8s-load` не працює
+
+Найчастіша причина: у локальному середовищі немає `rdctl`, або кластер не Rancher Desktop K3s.
+
+Що робити:
+
+- перевірити `rdctl version`
+- або пропустити helper `k8s-load` і використовувати image з registry
+- або адаптувати flow під свій runtime (`kind load docker-image`, `minikube image load` тощо)
+- для розгортання на віддалений K3s використовуйте SSH-pipe: `docker save my-image | ssh user@host "k3s ctr images import -"`
+
+### Helm реліз є, але сервіс недоступний
+
+Перевірте послідовно:
+
+1. `kubectl get ingress -n brama`
+2. `kubectl get svc -n brama`
+3. `kubectl describe ingress <name> -n brama`
+4. `kubectl port-forward -n brama svc/brama-core 8080:80`
+
+Якщо через port-forward `/health` працює, проблема майже напевно в ingress, DNS або TLS шарі.
 
 ## Наступні кроки
 

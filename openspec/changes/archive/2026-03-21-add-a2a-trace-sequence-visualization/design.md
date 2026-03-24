@@ -8,7 +8,7 @@ The platform already has:
 - a trace details page with waterfall + grouped logs
 
 However, trace reconstruction is still message-based and inconsistent. The main missing pieces are:
-- canonical step semantics across OpenClaw/core/agents
+- canonical step semantics across OpenClaw/brama-core/agents
 - reliable discovery snapshot visibility
 - drill-down input/output context for each step
 - sequence-graph rendering for who-called-whom analysis
@@ -17,7 +17,7 @@ However, trace reconstruction is still message-based and inconsistent. The main 
 
 ### Goals
 
-- Standardize trace-step logging across OpenClaw/core/agents.
+- Standardize trace-step logging across OpenClaw/brama-core/agents.
 - Make discovery state debuggable by logging catalog snapshots.
 - Provide safe but detailed input/output drill-down context.
 - Render trace execution as a sequence diagram in admin UI.

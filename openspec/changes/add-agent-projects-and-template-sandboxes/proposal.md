@@ -62,7 +62,7 @@ These repositories also give us concrete stack baselines for the first sandbox t
   - related existing capability `external-agent-workspace`
   - related existing capability `external-agent-onboarding`
 - Affected code:
-  - `apps/core` admin/domain model for agent projects
+  - `apps/brama-core` admin/domain model for agent projects
   - external-agent checkout and compose tooling
   - release/deploy orchestration hooks
   - docs and templates under `docs/guides/external-agents/`

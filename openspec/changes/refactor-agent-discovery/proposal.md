@@ -31,7 +31,7 @@ monitoring agents — with no cooperation required from the agent beyond exposin
 
 - Affected specs: `agent-registry`, `agent-conventions` (new capability)
 - Affected code:
-  - `apps/core/` — new services, updated commands, updated admin UI and templates
+  - `apps/brama-core/` — new services, updated commands, updated admin UI and templates
   - `apps/knowledge-agent/` — remove `KnowledgeRegisterCommand`
   - `compose.yaml` — add Docker labels to agent services
   - `Makefile` — add `conventions-test` target

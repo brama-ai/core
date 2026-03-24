@@ -18,7 +18,7 @@ This is Phase 2 in the agent connectivity story: Phase 1 (`add-admin-agent-regis
 ## Impact
 
 - Affected specs: agent-discovery-api (new), openclaw-tool-registration (new)
-- Affected code: `apps/core/` (discovery controller, A2A bridge, OpenClaw sync service), admin UI (`/admin/agents`), `docker/openclaw/` (openclaw config for discovery endpoint)
+- Affected code: `apps/brama-core/` (discovery controller, A2A bridge, OpenClaw sync service), admin UI (`/admin/agents`), `docker/openclaw/` (openclaw config for discovery endpoint)
 - Depends on: `add-admin-agent-registry` (registry must exist with enabled/disabled state), `add-knowledge-base-agent` (first concrete agent to appear in OpenClaw), `docs/specs/a2a-protocol.md`
 - Depends on: OpenClaw being configured and running (see `docker/openclaw/README.md`)
 - No breaking changes to existing agent services; OpenClaw remains an optional runtime

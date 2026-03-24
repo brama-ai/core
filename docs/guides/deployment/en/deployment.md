@@ -178,7 +178,7 @@ docker compose -f compose.yaml -f compose.core.yaml \
 
 | File | What to change for production |
 |------|-------------------------------|
-| `apps/core/.env` | `APP_SECRET`, `EDGE_AUTH_JWT_SECRET` |
+| `apps/brama-core/.env` | `APP_SECRET`, `EDGE_AUTH_JWT_SECRET` |
 | `apps/*/env` | `APP_SECRET` per agent |
 | `docker/litellm/config.yaml` | Model definitions (uses `OPENROUTER_API_KEY` from env) |
 
@@ -244,8 +244,8 @@ curl -s 'http://localhost:9200/platform_logs_*/_search?size=5&sort=@timestamp:de
 
 For production, change these dev defaults:
 
-- [ ] `APP_SECRET` in `apps/core/.env` and each agent `.env`
-- [ ] `EDGE_AUTH_JWT_SECRET` in `apps/core/.env`
+- [ ] `APP_SECRET` in `apps/brama-core/.env` and each agent `.env`
+- [ ] `EDGE_AUTH_JWT_SECRET` in `apps/brama-core/.env`
 - [ ] `EDGE_AUTH_COOKIE_DOMAIN` — set to `.brama.dev` for cross-subdomain cookies
 - [ ] Admin password — change via `docker compose exec core php bin/console security:hash-password`
 - [ ] Langfuse password — change in Langfuse UI account settings

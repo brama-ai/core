@@ -53,12 +53,12 @@ Core plays a **gateway/proxy** role: it is an A2A Server for OpenClaw (accepts r
 
 - Affected specs: `a2a-server` (new capability), `agent-registry` (modified — rename fields)
 - Affected code:
-  - `apps/core/src/AgentDiscovery/` → `apps/core/src/A2AGateway/`
-  - `apps/core/src/Controller/Api/OpenClaw/` → `Controller/Api/A2AGateway/`
-  - `apps/core/config/agent-manifest.schema.json` → `agent-card.schema.json`
-  - `apps/core/templates/admin/agents.html.twig` — updated labels + A2A Server section
-  - `apps/core/config/services.yaml` — updated references
-  - `apps/core/tests/` — updated test names and references
+  - `apps/brama-core/src/AgentDiscovery/` → `apps/brama-core/src/A2AGateway/`
+  - `apps/brama-core/src/Controller/Api/OpenClaw/` → `Controller/Api/A2AGateway/`
+  - `apps/brama-core/config/agent-manifest.schema.json` → `agent-card.schema.json`
+  - `apps/brama-core/templates/admin/agents.html.twig` — updated labels + A2A Server section
+  - `apps/brama-core/config/services.yaml` — updated references
+  - `apps/brama-core/tests/` — updated test names and references
   - `apps/hello-agent/manifest.json` + `apps/knowledge-agent/manifest.json` — `capabilities` → `skills`
   - DB migration for audit table rename
 - **BREAKING**: API route paths change, Agent Card field names change

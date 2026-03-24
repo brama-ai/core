@@ -28,6 +28,7 @@ Before(async ({ I, loginPage }) => {
             version: '0.1.0',
             description: 'AI-powered news curation and publishing',
             url: 'http://news-maker-agent-e2e:8000/api/v1/a2a',
+            health_url: 'http://news-maker-agent-e2e:8000/health',
             admin_url: `${NEWS_MAKER_URL}/admin/sources`,
             skills: [
                 { id: 'news.publish', name: 'News Publish', description: 'Publish curated news content' },

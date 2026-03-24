@@ -9,6 +9,11 @@ OmO provides Sisyphus — an orchestrator that delegates to subagents in paralle
 1. **Sequential pipeline** (`/pipeline`) — manual agent switching, human controls each phase
 2. **Sisyphus pipeline** (`/auto`, `ultrawork`) — fully automatic, parallel execution
 
+Both workflows now follow the same unified role contract:
+- `planner` and `summarizer` are the only roles that may read `handoff.md` by default
+- all other roles consume `CONTEXT` passed from the caller/orchestrator as the primary source of truth
+- Builder and Ultraworks may still use different runtime agent names today, but they should implement the same unified `u-*` role semantics
+
 ## Architecture
 
 ```
@@ -35,7 +40,7 @@ OmO provides Sisyphus — an orchestrator that delegates to subagents in paralle
 │   ├── summarizer.md             #   Pipeline: final summary
 │   ├── s-architect.md            #   Sisyphus: specs (delegated)
 │   ├── s-coder.md                #   Sisyphus: code (delegated)
-│   ├── s-reviewer.md             #   Sisyphus: safe code-improvement pass
+│   ├── s-reviewer.md             #   Legacy/optional improvement pass, not the default happy path
 │   ├── s-validator.md            #   Sisyphus: lint (parallel)
 │   ├── s-tester.md               #   Sisyphus: tests (parallel)
 │   ├── s-auditor.md              #   Sisyphus: audit (read-only)
@@ -46,7 +51,7 @@ OmO provides Sisyphus — an orchestrator that delegates to subagents in paralle
 │   ├── auto.md                   #   /auto — full Sisyphus pipeline
 │   ├── implement.md              #   /implement — skip architect
 │   ├── validate.md               #   /validate — quality gate only
-│   ├── audit.md                  #   /audit — audit loop only
+│   ├── audit.md                  #   /audit — audit + remediation context only
 │   ├── finish.md                 #   /finish — resume from state
 │   └── pipeline.md               #   /pipeline — manual sequential
 │
@@ -111,21 +116,22 @@ or simply: `ultrawork`
 flowchart LR
     A[Task] --> B[s-architect]
     B --> C[s-coder]
-    C --> D[s-reviewer]
+    C --> D[s-auditor]
     D --> E[s-validator]
     D --> F[s-tester]
-    E --> G[s-auditor]
+    E --> G{s-coder follow-up needed?}
     F --> G
-    G --> H[s-documenter]
-    G --> I[s-summarizer]
+    G -- yes --> C
+    G -- no --> H[s-documenter]
+    G -- no --> I[s-summarizer]
 ```
 
 **Phases:**
 1. **Spec** — s-architect creates OpenSpec proposal (skipped if tasks.md exists)
 2. **Implement** — s-coder writes code from specs
-3. **Improvement** — s-reviewer performs a safe refactor/improvement pass
-4. **Quality** — s-validator + s-tester run in parallel
-5. **Audit loop** — s-auditor finds issues → s-coder/s-reviewer fix → re-audit (max 3x)
+3. **Audit and remediation** — s-auditor performs a post-coder quality pass, applies safe in-scope fixes when possible, and emits remediation context
+4. **Quality** — s-validator + s-tester run in parallel against the combined result of coder + auditor
+5. **Loopback if needed** — if validator/tester expose broader implementation gaps, the remediation context is returned to s-coder for one more focused pass
 6. **Finalize** — s-documenter + s-summarizer run in parallel; summarizer always writes `builder/tasks/summary/*.md`
 
 **Shortcuts:**
@@ -134,8 +140,44 @@ flowchart LR
 | `ultrawork` / `ulw` | Full pipeline (phases 1-6) |
 | `/implement <change-id>` | Phases 2-6 (tasks.md exists) |
 | `/validate` | Phase 4 only (quality gate) |
-| `/audit` | Phase 5 only (audit loop) |
+| `/audit` | Phase 3 only (audit + remediation context) |
 | `/finish` | Resume from handoff.md state |
+
+### Common Scenarios
+
+#### Scenario: Fix a bug with Ultraworks
+
+Use this when you want the orchestrator to localize the bug, patch it, run the guardrails, and leave a final summary:
+
+```text
+ultrawork fix the duplicate webhook retry bug in the billing worker. reproduce it, patch only the billing worker path, run the relevant tests, and summarize any remaining follow-up.
+```
+
+Expected flow:
+- `s-architect` is skipped if no spec change is needed
+- `s-coder` implements the bug fix
+- `s-auditor` applies safe in-scope remediation if it finds obvious gaps
+- `s-validator` and `s-tester` verify the final result
+- `s-summarizer` writes the task outcome and unresolved follow-ups
+
+#### Scenario: Run E2E with a limited bug-fix budget in Ultraworks
+
+Use this when the goal is primarily validation, but you allow the workflow to fix only a bounded number of straightforward issues before stopping:
+
+```text
+ultrawork run the checkout E2E flow for the marketplace app. you may fix at most 2 small bugs that block the scenario, then stop and summarize any remaining failures.
+```
+
+Recommended constraints to state in the prompt:
+- the exact flow or CUJ to exercise
+- the app or service boundary
+- the maximum number of allowed fixes, for example `1` or `2`
+- whether schema, API contract, or cross-service changes are out of scope
+
+Behavior expectation:
+- `s-tester` focuses on reproducing the E2E path
+- `s-auditor` may apply safe local fixes inside the allowed bug budget
+- if the failures require a larger redesign or spec change, the run should stop and report follow-up work instead of continuing indefinitely
 
 ### Ultraworks Stability
 
@@ -167,10 +209,9 @@ Headless example:
 |-------|----------|---------|------------|------------|------------|
 | `sisyphus` | `Ultraworks only` | `opencode-go/glm-5` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `minimax/MiniMax-M2.7` |
 | `s-architect` | `Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
-| `s-coder` | `Ultraworks` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.3-codex` | `opencode-go/glm-5` |
-| `s-reviewer` | `Ultraworks only` | `minimax/MiniMax-M2.7` | `openai/gpt-5.4` | `opencode-go/glm-5` | `opencode/big-pickle` |
-| `s-validator` | `Ultraworks` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.2` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` |
-| `s-tester` | `Ultraworks` | `opencode-go/kimi-k2.5` | `openai/gpt-5.3-codex` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` |
+| `s-coder` | `Ultraworks` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.4` | `opencode-go/glm-5` |
+| `s-validator` | `Ultraworks` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.4` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` |
+| `s-tester` | `Ultraworks` | `opencode-go/kimi-k2.5` | `openai/gpt-5.4` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` |
 | `s-auditor` | `Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` |
 | `s-documenter` | `Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-sonnet-4-6` | `google/gemini-3-flash-preview` | `minimax/MiniMax-M2.5` |
 | `s-summarizer` | `Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-opus-4-6` | `google/gemini-3.1-pro-preview` | `minimax/MiniMax-M2.7` |
@@ -194,10 +235,10 @@ Each agent uses the optimal model for its role, with automatic fallback:
 | Sisyphus | `opencode-go/glm-5` | long-horizon orchestration |
 | Architect | `anthropic/claude-opus-4-6` | OpenSpec, architecture, planning |
 | Coder | `anthropic/claude-sonnet-4-6` | primary code implementation |
-| Reviewer | `minimax/MiniMax-M2.7` | safe refactor, SOLID/DRY/KISS improvements |
 | Validator | `minimax/MiniMax-M2.5-highspeed` | fast static-analysis loop |
 | Tester | `opencode-go/kimi-k2.5` | tests, CUJ/E2E reasoning |
-| Auditor | `anthropic/claude-opus-4-6` | read-only audit |
+| Auditor | `anthropic/claude-opus-4-6` | post-coder remediation, quality gate, safe in-scope fixes |
+| Security Review | `anthropic/claude-opus-4-6` | read-only security assessment, follow-up proposal/task generation |
 | Documenter | `openai/gpt-5.4` | documentation writing |
 | Summarizer | `openai/gpt-5.4` | final analysis + summary |
 

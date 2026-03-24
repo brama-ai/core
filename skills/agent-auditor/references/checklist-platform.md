@@ -14,7 +14,7 @@ Cross-cutting checks that span all agents.
 | P-06 | E2E test suite exists | Glob `tests/e2e/` | Exists with tests | — | Missing |
 | P-07 | `sync-skills.sh` exists and is executable | Glob `scripts/sync-skills.sh` | Exists + executable | Exists, not executable | Missing |
 | P-08 | `docs/agent-requirements/conventions.md` exists | Glob | Exists | — | Missing |
-| P-09 | Agent Card schema exists | Glob `apps/core/config/agent-card.schema.json` | Exists | — | Missing |
+| P-09 | Agent Card schema exists | Glob `apps/brama-core/config/agent-card.schema.json` | Exists | — | Missing |
 | P-10 | All agents listed in index.md | Cross-ref apps/ dirs with index.md | All listed | Some missing | Most missing |
 | P-11 | Langfuse service in compose | Grep compose.yaml for langfuse | Present | — | Missing |
 | P-12 | Launch instructions exist | Glob `docs/local-dev.md` or `LOCAL_DEV.md` | Exists | — | Missing |

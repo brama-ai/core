@@ -43,10 +43,10 @@ DashboardMetricsService          (DBAL-запити + PSR-6 кеш)
 
 | Файл | Опис |
 |------|------|
-| `apps/core/src/Dashboard/DashboardMetricsService.php` | Сервіс збору метрик |
-| `apps/core/src/Controller/Admin/DashboardController.php` | Контролер дашборда |
-| `apps/core/templates/admin/dashboard.html.twig` | Twig-шаблон |
-| `apps/core/public/css/admin.css` | Стилі метрик (glass-card grid) |
+| `apps/brama-core/src/Dashboard/DashboardMetricsService.php` | Сервіс збору метрик |
+| `apps/brama-core/src/Controller/Admin/DashboardController.php` | Контролер дашборда |
+| `apps/brama-core/templates/admin/dashboard.html.twig` | Twig-шаблон |
+| `apps/brama-core/public/css/admin.css` | Стилі метрик (glass-card grid) |
 
 ## Обмеження
 

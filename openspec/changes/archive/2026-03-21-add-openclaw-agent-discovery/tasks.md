@@ -45,7 +45,7 @@
 ## 6. Network Isolation
 
 - [ ] 6.1 Ensure agent service containers in `compose.yaml` are on an internal-only network not accessible from the OpenClaw container
-- [ ] 6.2 Verify OpenClaw container can only reach `apps/core` platform API (not knowledge-agent, etc.) via network policy
+- [ ] 6.2 Verify OpenClaw container can only reach `apps/brama-core` platform API (not knowledge-agent, etc.) via network policy
 
 ## 7. Quality
 

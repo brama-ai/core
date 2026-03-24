@@ -19,6 +19,6 @@ Community chats accumulate valuable knowledge that disappears in long message st
 ## Impact
 
 - Affected specs: knowledge-ingestion, knowledge-storage, knowledge-search, knowledge-tree, knowledge-api, knowledge-web, knowledge-admin, knowledge-worker
-- Affected code: `apps/core/`, new `apps/knowledge-agent/` service, `compose.yaml` (OpenSearch, RabbitMQ services), `openspec/` (new capability specs)
+- Affected code: `apps/brama-core/`, new `apps/knowledge-agent/` service, `compose.yaml` (OpenSearch, RabbitMQ services), `openspec/` (new capability specs)
 - **New external dependencies**: OpenSearch 2.x, RabbitMQ 3.x, neuron-ai PHP framework, an embedding provider (e.g. OpenAI `text-embedding-3-small`)
 - **Breaking**: No breaking changes to existing platform contracts; extends MVP scope beyond original simple full-text search assumption

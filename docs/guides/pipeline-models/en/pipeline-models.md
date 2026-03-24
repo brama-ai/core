@@ -31,7 +31,7 @@ Agents should draw from this core provider set:
 | # | Provider | Example models |
 |---|----------|----------------|
 | 1 | **anthropic** | `claude-opus-4-6`, `claude-sonnet-4-6` |
-| 2 | **openai** | `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.2` |
+| 2 | **openai** | `gpt-5.4` |
 | 3 | **google** | `gemini-3.1-pro-preview`, `gemini-3-flash-preview`, `gemini-3.1-flash-lite-preview` |
 | 4 | **minimax** | `MiniMax-M2.7`, `MiniMax-M2.7-highspeed`, `MiniMax-M2.5-highspeed` |
 | 5 | **opencode-go** | `glm-5`, `kimi-k2.5` |
@@ -44,11 +44,11 @@ Agents should draw from this core provider set:
 |------|---------|--------------------------------------------------------------|
 | Sisyphus | `opencode-go/glm-5` | claude-opus-4-6, gpt-5.4, M2.7, big-pickle, gemini-3.1-pro-preview, openrouter/free |
 | Architect | `anthropic/claude-opus-4-6` | gpt-5.4, glm-5, M2.7, gemini-3.1-pro-preview, big-pickle, openrouter/free |
-| Coder | `anthropic/claude-sonnet-4-6` | M2.7, gpt-5.3-codex, glm-5, gemini-3.1-pro-preview, big-pickle, qwen3-coder:free |
+| Coder | `anthropic/claude-sonnet-4-6` | M2.7, gpt-5.4, glm-5, gemini-3.1-pro-preview, big-pickle, qwen3-coder:free |
 | Reviewer | `minimax/MiniMax-M2.7` | gpt-5.4, glm-5, big-pickle, gemini-3.1-pro-preview, qwen3-coder:free |
-| Tester | `opencode-go/kimi-k2.5` | gpt-5.3-codex, M2.7-highspeed, big-pickle, gemini-3.1-pro-preview, qwen3-coder:free |
+| Tester | `opencode-go/kimi-k2.5` | gpt-5.4, M2.7-highspeed, big-pickle, gemini-3.1-pro-preview, qwen3-coder:free |
 | Auditor | `anthropic/claude-opus-4-6` | gpt-5.4, glm-5, M2.7, big-pickle, gemini-3.1-pro-preview, openrouter/free |
-| Validator | `minimax/MiniMax-M2.5-highspeed` | gpt-5.2, kimi-k2.5, minimax-m2.5-free, gemini-3.1-flash-lite-preview, deepseek-r1-qwen3-8b:free |
+| Validator | `minimax/MiniMax-M2.5-highspeed` | gpt-5.4, kimi-k2.5, minimax-m2.5-free, gemini-3.1-flash-lite-preview, deepseek-r1-qwen3-8b:free |
 | Documenter | `openai/gpt-5.4` | claude-sonnet-4-6, gemini-3-flash-preview, M2.5, kimi-k2.5, big-pickle, openrouter/free |
 | Summarizer | `openai/gpt-5.4` | claude-opus-4-6, gemini-3.1-pro-preview, M2.7, glm-5, big-pickle, deepseek-r1-0528:free |
 | Translater | `google/gemini-3.1-pro-preview` | gpt-5.4, claude-sonnet-4-6, M2.5, kimi-k2.5, big-pickle, openrouter/free |
@@ -60,10 +60,10 @@ Agents should draw from this core provider set:
 |------|----------|---------|------------|------------|------------|---------|
 | `sisyphus` | `Ultraworks only` | `opencode-go/glm-5` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `minimax/MiniMax-M2.7` | full automatic pipeline orchestration |
 | `s-architect` | `Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` | OpenSpec, architecture, technical planning |
-| `s-coder` | `Ultraworks` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.3-codex` | `opencode-go/glm-5` | primary code implementation |
+| `s-coder` | `Ultraworks` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.4` | `opencode-go/glm-5` | primary code implementation |
 | `s-reviewer` | `Ultraworks only` | `minimax/MiniMax-M2.7` | `openai/gpt-5.4` | `opencode-go/glm-5` | `opencode/big-pickle` | safe refactor, SOLID/DRY/KISS improvements |
-| `s-validator` | `Ultraworks` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.2` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` | static analysis, CS/PHPStan, auto-fix |
-| `s-tester` | `Ultraworks` | `opencode-go/kimi-k2.5` | `openai/gpt-5.3-codex` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` | tests, test fixes, CUJ/E2E reasoning |
+| `s-validator` | `Ultraworks` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.4` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` | static analysis, CS/PHPStan, auto-fix |
+| `s-tester` | `Ultraworks` | `opencode-go/kimi-k2.5` | `openai/gpt-5.4` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` | tests, test fixes, CUJ/E2E reasoning |
 | `s-auditor` | `Ultraworks` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` | audit, compliance, quality gate |
 | `s-documenter` | `Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-sonnet-4-6` | `google/gemini-3-flash-preview` | `minimax/MiniMax-M2.5` | documentation updates |
 | `s-summarizer` | `Ultraworks` | `openai/gpt-5.4` | `anthropic/claude-opus-4-6` | `google/gemini-3.1-pro-preview` | `minimax/MiniMax-M2.7` | final analysis and summary |
@@ -76,9 +76,9 @@ Agents should draw from this core provider set:
 |------|----------|---------|------------|------------|------------|---------|
 | `planner` | `Builder only` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` | task analysis and profile selection |
 | `architect` | `Builder` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` | OpenSpec, architecture, technical planning |
-| `coder` | `Builder` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.3-codex` | `opencode-go/glm-5` | primary code implementation |
-| `validator` | `Builder` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.2` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` | static analysis, CS/PHPStan, auto-fix |
-| `tester` | `Builder` | `opencode-go/kimi-k2.5` | `openai/gpt-5.3-codex` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` | tests, test fixes, CUJ/E2E reasoning |
+| `coder` | `Builder` | `anthropic/claude-sonnet-4-6` | `minimax/MiniMax-M2.7` | `openai/gpt-5.4` | `opencode-go/glm-5` | primary code implementation |
+| `validator` | `Builder` | `minimax/MiniMax-M2.5-highspeed` | `openai/gpt-5.4` | `opencode-go/kimi-k2.5` | `opencode/minimax-m2.5-free` | static analysis, CS/PHPStan, auto-fix |
+| `tester` | `Builder` | `opencode-go/kimi-k2.5` | `openai/gpt-5.4` | `minimax/MiniMax-M2.7-highspeed` | `opencode/big-pickle` | tests, test fixes, CUJ/E2E reasoning |
 | `auditor` | `Builder` | `anthropic/claude-opus-4-6` | `openai/gpt-5.4` | `opencode-go/glm-5` | `minimax/MiniMax-M2.7` | audit, compliance, quality gate |
 | `documenter` | `Builder` | `openai/gpt-5.4` | `anthropic/claude-sonnet-4-6` | `google/gemini-3-flash-preview` | `minimax/MiniMax-M2.5` | documentation updates |
 | `summarizer` | `Builder` | `openai/gpt-5.4` | `anthropic/claude-opus-4-6` | `google/gemini-3.1-pro-preview` | `minimax/MiniMax-M2.7` | final analysis and summary |

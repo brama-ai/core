@@ -46,7 +46,7 @@ function seedEntryViaOpenSearch(entry) {
 
     const jsonPayload = JSON.stringify(doc).replace(/'/g, "'\\''");
     const cmd =
-        `docker compose --profile e2e exec -T opensearch ` +
+        `docker exec brama-opensearch-1 ` +
         `curl -s -X POST "http://localhost:9200/${OPENSEARCH_INDEX}/_doc?refresh=true" ` +
         `-H "Content-Type: application/json" -d '${jsonPayload}'`;
 
@@ -116,7 +116,7 @@ After(async ({ I }) => {
     // Clean up test entries (best-effort) — delete from OpenSearch directly
     try {
         const deleteCmd =
-            `docker compose --profile e2e exec -T opensearch ` +
+            `docker exec brama-opensearch-1 ` +
             `curl -s -X POST "http://localhost:9200/${OPENSEARCH_INDEX}/_delete_by_query?refresh=true" ` +
             `-H "Content-Type: application/json" -d '{"query":{"term":{"created_by":"test_user"}}}'`;
         execSync(deleteCmd, { encoding: 'utf8', timeout: 10000 });

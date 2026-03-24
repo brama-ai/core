@@ -36,7 +36,7 @@ Both paths coexist. The `trace_id` field correlates them — an A2A orchestratio
 
 - `docker/litellm/config.yaml` — LiteLLM proxy config with Langfuse callbacks
 - `compose.yaml` — Langfuse credentials injected into LiteLLM container
-- `apps/core/src/LLM/LlmRequestContext.php` — Canonical PHP metadata builder
+- `apps/brama-core/src/LLM/LlmRequestContext.php` — Canonical PHP metadata builder
 - `apps/news-maker-agent/app/services/ranker.py` — Python metadata pattern
 
 ## Related Docs

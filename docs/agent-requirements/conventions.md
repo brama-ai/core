@@ -133,6 +133,20 @@ Returns the Agent Card — agent metadata used by core for registration, skill r
 HTTP 200 always (even during degraded state — the agent is responsible for its own health logic).
 Core uses this endpoint for liveness polling every 60 seconds.
 
+### Inline health probe on registration
+
+When an agent registers via `POST /api/v1/internal/agents/register` and the manifest includes a
+`health_url` field, core performs an **immediate inline health probe** (2-second timeout) before
+returning the registration response. If the probe succeeds (HTTP 2xx), `health_status` is set to
+`healthy` in the database and the response includes `"health_status": "healthy"`. If the probe
+fails or times out, `health_status` remains `unknown` and the periodic health poller will retry on
+its next cycle.
+
+This ensures that agents registering with a `health_url` get immediate health status resolution —
+no waiting for the next poller cycle. E2E registration payloads MUST include `health_url` using
+Docker DNS names (e.g., `http://hello-agent-e2e/health`) so that the core-e2e container can reach
+the agent health endpoint directly.
+
 ---
 
 ## 4. A2A Endpoint

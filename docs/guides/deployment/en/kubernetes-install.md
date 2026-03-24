@@ -9,6 +9,17 @@ Helm chart located at `deploy/charts/brama/`.
 > secrets, migrations, probes, and ingress. Image publishing and a hosted chart repository are
 > planned for a future release. For now, install from the local chart path.
 
+This guide is split into four practical sections:
+
+- local quickstart
+- production-style installation via values
+- day-2 operations
+- troubleshooting
+
+That layout is closer to operator-facing documentation used by projects like LangChain/LangSmith
+and Apache Airflow: first the shortest path to a working environment, then the stable deployment
+path for a real cluster.
+
 ## Deployment Modes
 
 The platform supports two official deployment modes:
@@ -29,6 +40,93 @@ This guide covers the Kubernetes path. For Docker, see
 - An ingress controller (nginx-ingress recommended)
 - cert-manager (optional, for TLS automation)
 - Access to a container registry where platform images are published
+
+### For the local K3s/dev helper flow
+
+If you bring up Brama locally through the workspace Make targets, you also need:
+
+- Docker for local image builds
+- Rancher Desktop or a compatible K3s setup with `rdctl`
+- the local chart path at `brama-core/deploy/charts/brama`
+
+> `make k8s-load` currently imports images via `rdctl shell sudo k3s ctr images import -`.
+> That means this helper flow is specifically designed for local K3s in Rancher Desktop.
+> For `kind`, `minikube`, or a remote cluster, prefer direct `helm upgrade --install` and your own
+> image delivery workflow.
+
+## Quickstart: local K3s/dev
+
+This is the shortest path when you want the platform running locally, not a production deployment.
+
+### What the dev profile deploys
+
+The current local profile deploys:
+
+- `core`
+- `core-scheduler`
+- `hello-agent`
+- PostgreSQL
+- Redis
+- RabbitMQ
+
+### 1. Verify cluster context
+
+```bash
+make k8s-ctx
+```
+
+### 2. Run the full bootstrap
+
+```bash
+make k8s-setup
+```
+
+This runs, in order:
+
+1. `make k8s-build`
+2. `make k8s-load`
+3. `make k8s-secrets`
+4. `make k8s-deploy`
+
+### 3. Check cluster state
+
+```bash
+make k8s-status
+```
+
+### 4. Open the service locally
+
+```bash
+make k8s-port-forward svc=core port=8080:80
+curl -sf http://localhost:8080/health
+```
+
+### 5. Inspect logs if something fails
+
+```bash
+make k8s-logs svc=core
+make k8s-logs svc=core-scheduler
+make k8s-logs-all
+```
+
+### 6. Remove the release
+
+```bash
+make k8s-destroy
+```
+
+### Quickstart commands worth memorizing
+
+| Command | Purpose |
+|---------|---------|
+| `make k8s-ctx` | Show current cluster context |
+| `make k8s-build` | Build local Docker images |
+| `make k8s-load` | Import images into local K3s containerd |
+| `make k8s-secrets` | Create the baseline core secret |
+| `make k8s-deploy` | Run `helm upgrade --install` |
+| `make k8s-status` | Show pods, services, ingress, and Helm release |
+| `make k8s-shell svc=core` | Open a shell in a pod |
+| `make k8s-port-forward svc=core port=8080:80` | Access a service locally |
 
 ## Service Topology
 
@@ -98,6 +196,23 @@ kubectl create secret generic knowledge-agent-secrets \
 > Sealed Secrets, Vault Agent Injector) over `kubectl create secret` to avoid secrets in shell
 > history.
 
+### Secrets created by the local helper flow
+
+`make k8s-secrets` creates a `brama-core-secrets` secret in the `brama` namespace with:
+
+- `APP_SECRET`
+- `EDGE_AUTH_JWT_SECRET`
+- `DATABASE_URL`
+- `REDIS_URL`
+- `RABBITMQ_URL`
+- `POSTGRES_PROVISIONER_URL`
+
+That is fine for local development. For production, prefer:
+
+- per-service secrets
+- no ad-hoc shell-generated secrets in operator history
+- managed secret delivery through External Secrets / Vault / Sealed Secrets
+
 ## Step 2: Prepare Values
 
 Copy the example values file and customize it:
@@ -125,6 +240,19 @@ Edit `values-prod.yaml` with your environment-specific settings:
       external: true
       host: your-redis-host
   ```
+
+### Which values file to start from
+
+| Scenario | Starting file |
+|----------|---------------|
+| Local K3s / demo | `deploy/charts/brama/values-k3s-dev.yaml` |
+| Production-like cluster | `deploy/charts/brama/values-prod.example.yaml` |
+
+Practical rule:
+
+- use `values-k3s-dev.yaml` for fast local bring-up
+- use `values-prod.example.yaml` as the baseline for real cluster rollout
+- do not try to grow the dev values into production without revisiting secrets, ingress, and persistence
 
 ## Step 3: Install the Chart
 
@@ -186,6 +314,12 @@ kubectl port-forward -n brama svc/brama-core 8080:80
 curl -sf http://localhost:8080/health
 ```
 
+### Check Helm release status
+
+```bash
+helm status brama -n brama
+```
+
 ## Step 5: Post-Install Verification
 
 Minimum smoke checks after a fresh install:
@@ -195,6 +329,70 @@ Minimum smoke checks after a fresh install:
 - [ ] At least one agent health endpoint responds
 - [ ] LiteLLM UI is accessible (if enabled)
 - [ ] Migration job completed without errors
+
+## Day-2 operations
+
+### Update chart dependencies
+
+```bash
+cd deploy/charts/brama
+helm dependency update
+```
+
+Or through the workspace helper:
+
+```bash
+make k8s-deps
+```
+
+### Review changes before upgrade
+
+```bash
+make k8s-diff
+```
+
+### Upgrade the release
+
+```bash
+make k8s-upgrade
+```
+
+### Inspect workloads
+
+```bash
+make k8s-status
+kubectl get pods -n brama -o wide
+```
+
+### Tail service logs
+
+```bash
+make k8s-logs svc=core
+make k8s-logs svc=core-scheduler
+make k8s-logs svc=agent-hello
+```
+
+### Open a shell in a pod
+
+```bash
+make k8s-shell svc=core
+```
+
+### Port-forward a service
+
+```bash
+make k8s-port-forward svc=core port=8080:80
+```
+
+## Operator checklist before production rollout
+
+- [ ] Images are published to a registry reachable by the cluster
+- [ ] Namespace and ingress policy are agreed
+- [ ] Secrets are managed outside the shell workflow
+- [ ] Persistence policy is defined for stateful components
+- [ ] `postgresql.enabled` and `redis.enabled` are disabled when using external managed services
+- [ ] Rollback is tested with `helm rollback`
+- [ ] Post-deploy smoke checks exist for `/health`, login, and scheduler behavior
 
 ## Configuration Reference
 
@@ -258,6 +456,38 @@ Common causes: insufficient cluster resources, missing PVC, missing secret.
 ```bash
 kubectl logs job/brama-migrate-1 -n brama
 ```
+
+Check database connectivity issues or schema conflicts.
+
+### Core pod in CrashLoopBackOff
+
+```bash
+kubectl logs deploy/brama-core -n brama --previous
+```
+
+Common causes: missing secret reference, invalid `DATABASE_URL`, failed migration.
+
+### `make k8s-load` fails
+
+Most often this means your local environment does not provide `rdctl`, or the cluster is not Rancher
+Desktop K3s.
+
+What to do:
+
+- verify `rdctl version`
+- or skip the helper load step and use registry-published images
+- or adapt the workflow for your runtime (`kind load docker-image`, `minikube image load`, etc.)
+
+### Helm release exists but the service is unreachable
+
+Check these in order:
+
+1. `kubectl get ingress -n brama`
+2. `kubectl get svc -n brama`
+3. `kubectl describe ingress <name> -n brama`
+4. `kubectl port-forward -n brama svc/brama-core 8080:80`
+
+If `/health` works through port-forward, the problem is almost certainly in ingress, DNS, or TLS.
 
 Check for database connectivity issues or schema conflicts. Fix the root cause before retrying.
 

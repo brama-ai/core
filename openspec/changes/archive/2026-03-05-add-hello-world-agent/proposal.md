@@ -16,4 +16,4 @@ The platform needs a minimal reference agent that demonstrates the full agent li
 
 ## Impact
 - Affected specs: `hello-world-agent` (new capability)
-- Affected code: `apps/hello-agent/`, `docker/hello-agent/`, `compose.yaml`, `docker/traefik/traefik.yml`, `Makefile`, `apps/core/templates/admin/agents.html.twig`, `apps/core/src/Controller/Admin/AgentsController.php`
+- Affected code: `apps/hello-agent/`, `docker/hello-agent/`, `compose.yaml`, `docker/traefik/traefik.yml`, `Makefile`, `apps/brama-core/templates/admin/agents.html.twig`, `apps/brama-core/src/Controller/Admin/AgentsController.php`

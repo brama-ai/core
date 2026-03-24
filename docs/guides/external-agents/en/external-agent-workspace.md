@@ -76,7 +76,7 @@ services:
     labels:
       - ai.platform.agent=true
     environment:
-      PLATFORM_CORE_URL: http://core
+      PLATFORM_CORE_URL: http://brama-core
       APP_INTERNAL_TOKEN: ${APP_INTERNAL_TOKEN:-dev-internal-token}
     networks:
       - dev-edge

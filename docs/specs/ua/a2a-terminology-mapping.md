@@ -52,4 +52,4 @@ Agents (A2A Servers)
 3. **Структуровані skills**: Skills тепер є об'єктами `AgentSkill` `{ id, name, description, tags }`. Застарілі рядкові skills приймаються та нормалізуються автоматично
 4. **`capabilities` — це A2A AgentCapabilities**: Не плутати зі старим полем `capabilities` (яке було перейменовано на `skills` під час рефакторингу термінології)
 5. **`intent` збережено в payload**: Тіло A2A запиту використовує `intent` поряд з `tool` для зворотної сумісності
-6. **Схема Agent Card**: Визначена в `apps/core/config/agent-card.schema.json`
+6. **Схема Agent Card**: Визначена в `apps/brama-core/config/agent-card.schema.json`

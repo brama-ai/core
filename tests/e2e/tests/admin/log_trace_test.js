@@ -74,7 +74,7 @@ function seedTestTrace() {
     const curlBulk = `curl -s -X POST '${OPENSEARCH_URL}/_bulk' -H 'Content-Type: application/x-ndjson' -d '${bulkBody.replace(/'/g, "'\\''")}'`;
     const curlRefresh = `curl -s -X POST '${OPENSEARCH_URL}/${INDEX_NAME}/_refresh'`;
 
-    const cmd = `docker compose -p brama exec -T opensearch sh -c "${curlEnsure} && ${curlBulk} && ${curlRefresh}"`;
+    const cmd = `docker exec brama-opensearch-1 sh -c "${curlEnsure} && ${curlBulk} && ${curlRefresh}"`;
 
     execSync(cmd, { cwd: PROJECT_ROOT, timeout: 15000 });
 }
@@ -87,7 +87,7 @@ function cleanupTestTrace() {
         query: { term: { trace_id: TEST_TRACE_ID } },
     });
 
-    const cmd = `docker compose -p brama exec -T opensearch curl -s -X POST '${OPENSEARCH_URL}/platform_logs_*/_delete_by_query' -H 'Content-Type: application/json' -d '${deleteBody.replace(/'/g, "'\\''")}'`;
+    const cmd = `docker exec brama-opensearch-1 curl -s -X POST '${OPENSEARCH_URL}/platform_logs_*/_delete_by_query' -H 'Content-Type: application/json' -d '${deleteBody.replace(/'/g, "'\\''")}'`;
 
     try {
         execSync(cmd, { cwd: PROJECT_ROOT, timeout: 15000 });

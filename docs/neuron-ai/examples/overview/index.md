@@ -7,12 +7,12 @@ Run `composer install` in this directory to fetch all example source code.
 
 | Project | Topics | Source |
 |---------|--------|--------|
-| [neuron-ai](https://github.com/neuron-core/neuron-ai) | Framework core, agents, tools, RAG, workflows | `vendor/neuron-core/neuron-ai` |
-| [a2a](https://github.com/neuron-core/a2a) | A2A protocol server, agent-to-agent communication | `vendor/neuron-core/a2a` |
-| [laravel-travel-agent](https://github.com/neuron-core/laravel-travel-agent) | Multi-agent orchestration, Laravel + Livewire UI | `vendor/neuron-core/laravel-travel-agent` |
-| [travel-planner-agent](https://github.com/neuron-core/travel-planner-agent) | Workflow interrupts, tool injection, CLI agent | `vendor/neuron-core/travel-planner-agent` |
-| [youtube-ai-agent](https://github.com/neuron-core/youtube-ai-agent) | Simple single-agent, custom tool, streaming | `vendor/neuron-core/youtube-ai-agent` |
-| [deep-research-agent](https://github.com/neuron-core/deep-research-agent) | Nested workflows, loop nodes, deep research | `vendor/neuron-core/deep-research-agent` |
+| [neuron-ai](https://github.com/neuron-brama-core/neuron-ai) | Framework core, agents, tools, RAG, workflows | `vendor/neuron-brama-core/neuron-ai` |
+| [a2a](https://github.com/neuron-brama-core/a2a) | A2A protocol server, agent-to-agent communication | `vendor/neuron-brama-core/a2a` |
+| [laravel-travel-agent](https://github.com/neuron-brama-core/laravel-travel-agent) | Multi-agent orchestration, Laravel + Livewire UI | `vendor/neuron-brama-core/laravel-travel-agent` |
+| [travel-planner-agent](https://github.com/neuron-brama-core/travel-planner-agent) | Workflow interrupts, tool injection, CLI agent | `vendor/neuron-brama-core/travel-planner-agent` |
+| [youtube-ai-agent](https://github.com/neuron-brama-core/youtube-ai-agent) | Simple single-agent, custom tool, streaming | `vendor/neuron-brama-core/youtube-ai-agent` |
+| [deep-research-agent](https://github.com/neuron-brama-core/deep-research-agent) | Nested workflows, loop nodes, deep research | `vendor/neuron-brama-core/deep-research-agent` |
 
 ---
 
@@ -267,4 +267,4 @@ cd docs/neuron-ai/examples
 composer install
 ```
 
-Після install — код у `vendor/neuron-core/`. Кожен проект має свій README.
+Після install — код у `vendor/neuron-brama-core/`. Кожен проект має свій README.

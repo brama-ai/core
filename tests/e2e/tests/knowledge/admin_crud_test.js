@@ -31,7 +31,7 @@ function seedEntryViaOpenSearch(entry) {
 
     const jsonPayload = JSON.stringify(doc).replace(/'/g, "'\\''");
     const cmd =
-        `docker compose --profile e2e exec -T opensearch ` +
+        `docker exec brama-opensearch-1 ` +
         `curl -s -X POST "http://localhost:9200/${OPENSEARCH_INDEX}/_doc?refresh=true" ` +
         `-H "Content-Type: application/json" -d '${jsonPayload}'`;
 

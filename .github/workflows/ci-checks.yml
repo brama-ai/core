@@ -49,7 +49,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect changed core/agent services
+      - name: Detect changed brama-core/agent services
         id: detect
         shell: bash
         run: |

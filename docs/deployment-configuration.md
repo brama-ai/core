@@ -135,7 +135,7 @@ env | grep -E "(DATABASE_URL|REDIS_URL|OPENSEARCH_URL)"
 Use the readiness endpoints to diagnose dependency issues:
 
 ```bash
-curl http://core/health/ready
+curl http://brama-core/health/ready
 curl http://knowledge-agent/health/ready
 ```
 

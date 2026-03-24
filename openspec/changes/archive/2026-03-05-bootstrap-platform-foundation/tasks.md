@@ -1,9 +1,9 @@
 ## 1. PHP & Framework Setup
 
-- [x] 1.1 Update `docker/core/Dockerfile` base image to `php:8.5-apache`
-- [x] 1.2 Update `apps/core/composer.json` PHP requirement to `^8.5`
-- [x] 1.3 Initialize Symfony 7 skeleton in `apps/core/` via Composer Flex
-- [x] 1.4 Remove `apps/core/public/index.php` stub; confirm Symfony front controller is in place
+- [x] 1.1 Update `docker/brama-core/Dockerfile` base image to `php:8.5-apache`
+- [x] 1.2 Update `apps/brama-core/composer.json` PHP requirement to `^8.5`
+- [x] 1.3 Initialize Symfony 7 skeleton in `apps/brama-core/` via Composer Flex
+- [x] 1.4 Remove `apps/brama-core/public/index.php` stub; confirm Symfony front controller is in place
 - [x] 1.5 Verify `docker compose up core` boots and responds on `http://localhost/`
 
 ## 2. Dev Tooling
@@ -15,8 +15,8 @@
 
 ## 3. Postgres Connection
 
-- [x] 3.1 Add `doctrine/dbal` to `apps/core/composer.json`
-- [x] 3.2 Configure `DATABASE_URL` in `apps/core/.env` pointing to local Postgres
+- [x] 3.1 Add `doctrine/dbal` to `apps/brama-core/composer.json`
+- [x] 3.2 Configure `DATABASE_URL` in `apps/brama-core/.env` pointing to local Postgres
 - [x] 3.3 Add `.env.test` with test database URL
 - [x] 3.4 Verify connection is established on app boot (no schema required)
 
@@ -29,7 +29,7 @@
 
 ## 5. Health Endpoint
 
-- [x] 5.1 Create `HealthController` at `apps/core/src/Controller/HealthController.php`
+- [x] 5.1 Create `HealthController` at `apps/brama-core/src/Controller/HealthController.php`
 - [x] 5.2 Map `GET /health` route returning JSON `{"status":"ok","service":"core-platform","version":"0.1.0"}`
 - [x] 5.3 Write Codeception unit test for `HealthController`
 - [x] 5.4 Write Codeception functional test: `GET /health` → `200 OK`, `application/json`

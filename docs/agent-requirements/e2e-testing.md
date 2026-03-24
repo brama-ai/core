@@ -92,6 +92,9 @@ make e2e
 # Prepare only (DBs + RabbitMQ vhost + migrations + agent registration)
 make e2e-prepare
 
+# Verify the prepared stack before running tests
+make e2e-env-check
+
 # Stop E2E containers
 make e2e-cleanup
 
@@ -106,10 +109,18 @@ HEADLESS=false make e2e
 BASE_URL=http://staging.example.com make e2e
 ```
 
-`make e2e` and `make e2e-smoke` always run `make e2e-prepare` first.
+`make e2e` and `make e2e-smoke` always run `make e2e-prepare` first, then `make e2e-env-check`.
 This provisions all test databases, RabbitMQ `test` vhost, runs migrations
 for all services, registers and enables agents in `core-e2e`, and starts
 all E2E containers.
+
+`make e2e-env-check` is a fail-fast gate. It verifies:
+- Core `/health` and `/health/ready`
+- agent `/health` endpoints for the E2E graph
+- OpenClaw `/healthz`
+- OpenClaw UI reachability
+
+If any of these checks fail, the E2E run stops before Codecept.js or Playwright start.
 
 **Important:** `make up` starts only prod services. E2E containers are started
 only via `make e2e-prepare` (using `docker compose --profile e2e`).

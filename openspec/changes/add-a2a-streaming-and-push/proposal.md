@@ -24,8 +24,8 @@ To align with official A2A async interaction patterns and improve UX/operability
 
 - Affected specs: `a2a-server`, `observability-integration`
 - Affected code:
-  - `apps/core/src/A2AGateway/` (new async endpoints + task orchestration)
-  - `apps/core/src/Controller/Api/A2AGateway/` (SSE + task APIs)
+  - `apps/brama-core/src/A2AGateway/` (new async endpoints + task orchestration)
+  - `apps/brama-core/src/Controller/Api/A2AGateway/` (SSE + task APIs)
   - agent A2A controllers/handlers in `apps/hello-agent` and `apps/knowledge-agent`
-  - task persistence/migrations in `apps/core/migrations`
+  - task persistence/migrations in `apps/brama-core/migrations`
   - docs: `docs/specs/ua/a2a-protocol.md`, `docs/specs/en/a2a-protocol.md`, `docs/agent-requirements/*`

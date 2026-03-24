@@ -40,7 +40,7 @@ WebSocket streaming is needed for real-time agent responses.
 
 ## Context
 - A2A protocol: docs/specs/en/a2a-protocol.md
-- HTTP handler: apps/core/src/A2AGateway/A2AClient.php
+- HTTP handler: apps/brama-core/src/A2AGateway/A2AClient.php
 ```
 
 First `# heading` = task name (for logs, branch). Entire file = full prompt for the agent.

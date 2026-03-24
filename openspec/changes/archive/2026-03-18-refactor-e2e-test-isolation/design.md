@@ -149,7 +149,7 @@ services:
     profiles: [e2e]
     build:
       context: .
-      dockerfile: docker/core/Dockerfile
+      dockerfile: docker/brama-core/Dockerfile
     environment:
       DATABASE_URL: postgresql://app:app@postgres:5432/ai_community_platform_test?serverVersion=16&charset=utf8
     ports:

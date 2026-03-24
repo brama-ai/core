@@ -22,10 +22,10 @@ Without a canonical step log format and drill-down payload view, operators must 
 - Affected specs: `observability-integration`
 - Affected code:
   - `docker/openclaw/plugins/platform-tools/*`
-  - `apps/core/src/AgentDiscovery/*`
-  - `apps/core/src/Controller/Admin/LogTraceController.php`
-  - `apps/core/templates/admin/log_trace.html.twig`
-  - `apps/core/src/Logging/*`
+  - `apps/brama-core/src/AgentDiscovery/*`
+  - `apps/brama-core/src/Controller/Admin/LogTraceController.php`
+  - `apps/brama-core/templates/admin/log_trace.html.twig`
+  - `apps/brama-core/src/Logging/*`
   - `apps/hello-agent/src/Controller/Api/A2AController.php`
   - `apps/hello-agent/src/A2A/HelloA2AHandler.php`
 - Backward compatibility:
