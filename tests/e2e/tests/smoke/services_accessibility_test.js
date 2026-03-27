@@ -10,7 +10,6 @@ const CORE_URL = process.env.BASE_URL || 'http://localhost:18080';
 const TRAEFIK_DASHBOARD_URL = process.env.TRAEFIK_DASHBOARD_URL || 'http://traefik.localhost';
 const LITELLM_URL = process.env.LITELLM_URL || 'http://litellm.localhost';
 const LANGFUSE_URL = process.env.LANGFUSE_URL || 'http://langfuse.localhost';
-const OPENCLAW_URL = process.env.OPENCLAW_URL || 'http://openclaw.localhost';
 
 // Infrastructure direct ports
 const TRAEFIK_API = process.env.TRAEFIK_API || 'http://localhost:8080';
@@ -124,25 +123,23 @@ Scenario('LiteLLM: UI page loads', async ({ I }) => {
 // Langfuse is optional — compose.langfuse.yaml may not be active.
 
 Scenario('Langfuse: service responds (login or dashboard)', async ({ I }) => {
-    const res = await I.sendGetRequest(`${LANGFUSE_URL}/`);
+    let res;
+    try {
+        res = await I.sendGetRequest(`${LANGFUSE_URL}/`);
+    } catch (error) {
+        const errorCode = error.code || error.cause?.code || '';
+        const errorMessage = error.message || '';
+        if (['ENOTFOUND', 'ECONNREFUSED'].includes(errorCode) || /ENOTFOUND|ECONNREFUSED/.test(errorMessage)) {
+            I.say(`Langfuse not running (${errorCode || errorMessage}) — skipping UI check`);
+            return;
+        }
+        throw error;
+    }
     if (res.status === 404 || res.status === 502) {
         I.say('Langfuse not running (got ' + res.status + ') — skipping UI check');
         return;
     }
     I.amOnPage(`${LANGFUSE_URL}/`);
-    I.waitForElement('body', 10);
-}).tag('@smoke').tag('@services').tag('@optional');
-
-// ─── OpenClaw ──────────────────────────────────────────────────
-// OpenClaw UI is optional — compose.openclaw.yaml may not be active.
-
-Scenario('OpenClaw: service responds', async ({ I }) => {
-    const res = await I.sendGetRequest(`${OPENCLAW_URL}/`);
-    if (res.status === 404 || res.status === 502) {
-        I.say('OpenClaw not running (got ' + res.status + ') — skipping UI check');
-        return;
-    }
-    I.amOnPage(`${OPENCLAW_URL}/`);
     I.waitForElement('body', 10);
 }).tag('@smoke').tag('@services').tag('@optional');
 

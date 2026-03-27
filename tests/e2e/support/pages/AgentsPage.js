@@ -4,7 +4,7 @@ module.exports = {
     url: '/admin/agents',
 
     discoverButton: '#discoverBtn',
-    syncButton: 'button:contains("Синхронізувати"), button[data-action="sync"], #syncBtn, .btn-sync',
+    syncButton: 'button[data-action="sync"], #syncBtn, .btn-sync',
     installedTabButton: '#tab-installed-btn',
     marketplaceTabButton: '#tab-marketplace-btn',
     agentsTable: 'table tbody',
@@ -34,10 +34,12 @@ module.exports = {
 
     /**
      * Click the "Виявити агентів" button and wait for reload.
+     * Discovery may take up to 25 s when fetching manifests from multiple agents
+     * (each with a 5 s timeout). Use 30 s to avoid flaky timeouts in CI.
      */
     async runDiscovery() {
         I.click(this.discoverButton);
-        await I.waitForText('Виявлено:', 10);
+        await I.waitForText('Виявлено:', 30);
         await I.waitInUrl('/admin/agents', 5);
         await I.waitForElement('table', 5);
     },

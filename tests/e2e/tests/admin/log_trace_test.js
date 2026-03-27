@@ -18,6 +18,10 @@ const INDEX_NAME = `platform_logs_${today.getFullYear()}_${String(today.getMonth
 
 /**
  * Seed test trace documents into OpenSearch via docker compose exec + curl.
+ *
+ * The NDJSON bulk body is piped via stdin (docker exec -i) to avoid shell
+ * quoting / newline issues that occur when embedding multi-line data inside
+ * a sh -c "..." command string.
  */
 function seedTestTrace() {
     const timestamp = new Date().toISOString();
@@ -69,14 +73,23 @@ function seedTestTrace() {
     }
     const bulkBody = lines.join('\n') + '\n';
 
-    // Ensure the index exists first, then bulk-insert
-    const curlEnsure = `curl -s -X PUT '${OPENSEARCH_URL}/${INDEX_NAME}' -H 'Content-Type: application/json' -d '{}' 2>/dev/null || true`;
-    const curlBulk = `curl -s -X POST '${OPENSEARCH_URL}/_bulk' -H 'Content-Type: application/x-ndjson' -d '${bulkBody.replace(/'/g, "'\\''")}'`;
-    const curlRefresh = `curl -s -X POST '${OPENSEARCH_URL}/${INDEX_NAME}/_refresh'`;
+    // Ensure the index exists first
+    execSync(
+        `docker exec brama-opensearch-1 curl -s -X PUT '${OPENSEARCH_URL}/${INDEX_NAME}' -H 'Content-Type: application/json' -d '{}' 2>/dev/null || true`,
+        { cwd: PROJECT_ROOT, timeout: 15000 },
+    );
 
-    const cmd = `docker exec brama-opensearch-1 sh -c "${curlEnsure} && ${curlBulk} && ${curlRefresh}"`;
+    // Pipe the NDJSON body via stdin to avoid shell quoting / newline issues
+    execSync(
+        `docker exec -i brama-opensearch-1 curl -s -X POST '${OPENSEARCH_URL}/_bulk' -H 'Content-Type: application/x-ndjson' --data-binary @-`,
+        { cwd: PROJECT_ROOT, timeout: 15000, input: bulkBody },
+    );
 
-    execSync(cmd, { cwd: PROJECT_ROOT, timeout: 15000 });
+    // Refresh so documents are immediately searchable
+    execSync(
+        `docker exec brama-opensearch-1 curl -s -X POST '${OPENSEARCH_URL}/${INDEX_NAME}/_refresh'`,
+        { cwd: PROJECT_ROOT, timeout: 15000 },
+    );
 }
 
 /**

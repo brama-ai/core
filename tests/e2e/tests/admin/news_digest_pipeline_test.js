@@ -168,6 +168,7 @@ Scenario(
                     const el = document.getElementById('crawlTriggerResult');
                     return el && el.style.display !== 'none' && el.textContent.trim().length > 0;
                 },
+                null,
                 { timeout: 45000 },
             );
         });
