@@ -24,20 +24,52 @@ Workspace runtime files SHALL live in predictable locations based on deployment 
 
 #### Scenario: Looking for Compose assembly files
 - **WHEN** an operator or developer needs Docker Compose topology files
-- **THEN** the required `compose*.yaml` files must live in the workspace repository
+- **THEN** the required `compose*.yaml` files must live in the workspace repository under `docker/`
 - **AND** those files must describe how projects are assembled together, not duplicate project-owned
   build definitions
+- **AND** Compose files SHALL reference project Dockerfiles via `build.context` pointing to the
+  project directory and `build.dockerfile` naming the project-owned Dockerfile
 
 #### Scenario: Looking for a project image definition
 - **WHEN** an operator or developer needs the `Dockerfile` used to build a deployable project image
-- **THEN** that `Dockerfile` must live next to the owning project codebase
-- **AND** the workspace Compose layer may reference it via `build.context` and `dockerfile`
-- **AND** the workspace repository must not be the long-term owner of per-project application
-  Dockerfiles except for workspace-only tooling images
+- **THEN** that `Dockerfile` must live at the root of the owning project directory
+- **AND** the workspace Compose layer SHALL reference it via `build.context` and `build.dockerfile`
+- **AND** the workspace `docker/` directory SHALL NOT contain application Dockerfiles for
+  deployable projects
+- **AND** workspace-only tooling images (devcontainer, slides, templates) are exempt from this rule
 
 #### Scenario: Looking for k3s deployment assets
 - **WHEN** an operator needs k3s deployment manifests or charts
 - **THEN** the required files must live under a dedicated deployment directory in the workspace repository
+
+### Requirement: Dockerfile Ownership Rule
+Each deployable project SHALL own its `Dockerfile` at the project repository root, while Docker
+Compose files remain in the workspace as the assembly layer.
+
+#### Scenario: Building a project image independently
+- **WHEN** a CI/CD pipeline or developer builds a project image
+- **THEN** the build context SHALL be the project directory (e.g., `brama-core/`, `brama-agents/hello-agent/`)
+- **AND** the `Dockerfile` SHALL be found at the root of that project directory
+- **AND** the build SHALL NOT require the full workspace tree
+
+#### Scenario: Compose references project Dockerfiles correctly
+- **WHEN** a Compose service defines a `build` section for a deployable project
+- **THEN** `build.context` SHALL point to the project directory relative to the Compose file
+- **AND** `build.dockerfile` SHALL be `Dockerfile` (the project-owned file)
+- **AND** no Compose service SHALL use a `build.dockerfile` path that points into `docker/` for
+  a deployable project image
+
+#### Scenario: Core Dockerfile lives in brama-core
+- **WHEN** the core platform image is built
+- **THEN** the Dockerfile at `brama-core/Dockerfile` SHALL be used
+- **AND** the Compose service `core` in `docker/compose.core.yaml` SHALL reference
+  `context: ../brama-core` and `dockerfile: Dockerfile`
+- **AND** no application Dockerfile for core SHALL exist under `docker/`
+
+#### Scenario: No stale Dockerfile remnants in workspace docker directory
+- **WHEN** the workspace `docker/` directory is inspected
+- **THEN** there SHALL be no empty project subdirectories left from previous Dockerfile locations
+- **AND** the only Dockerfiles under `docker/` SHALL be for workspace-level tooling (e.g., `docker/slides/Dockerfile`)
 
 ### Requirement: Each Runtime Mode Must Be Verifiable
 Each runtime mode SHALL have documented verification steps that can be executed immediately after setup.

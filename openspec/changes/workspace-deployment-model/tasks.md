@@ -16,15 +16,35 @@
 - [ ] 2.2 Document that product code and product docs remain in `brama-core/`
 - [ ] 2.3 Define the target location for k3s deployment assets under `deploy/`
 - [ ] 2.4 Define the target location for detailed deployment guides under `docs/deploy/`
-- [ ] 2.5 Define that each deployable project owns its `Dockerfile` in the project directory, while
+- [x] 2.5 Define that each deployable project owns its `Dockerfile` in the project directory, while
       Compose files continue to live in the workspace
-- [ ] 2.6 Migrate the core Dockerfile out of the workspace-level `docker/` directory into the owning
+  - [x] 2.5.1 Document the Dockerfile ownership rule in workspace deployment docs: each deployable
+        project owns its `Dockerfile` at the project root; Compose files stay in `docker/`
+  - [x] 2.5.2 Document the Compose reference pattern: `build.context` points to the project
+        directory, `build.dockerfile` is `Dockerfile`
+  - [x] 2.5.3 Document the exceptions: `.devcontainer/Dockerfile`, `docker/slides/Dockerfile`, and
+        `templates/agent/Dockerfile` are workspace-owned tooling images, not deployable projects
+  - [x] 2.5.4 Verify all existing projects conform to the rule (brama-core, hello-agent,
+        knowledge-agent, news-maker-agent, wiki-agent, website)
+  - [x] 2.5.5 Update the agent template (`templates/agent/`) to include guidance that the
+        `Dockerfile` stays in the project root
+- [x] 2.6 Migrate the core Dockerfile out of the workspace-level `docker/` directory into the owning
       project and update all compose/build references
+  - [x] 2.6.1 Confirm `brama-core/Dockerfile` exists and is the active build definition
+  - [x] 2.6.2 Confirm `docker/compose.core.yaml` services (`core`, `core-scheduler`, `core-e2e`)
+        reference `context: ../brama-core` and `dockerfile: Dockerfile`
+  - [x] 2.6.3 Remove the empty `docker/brama-core/` directory (leftover from pre-migration layout)
+  - [x] 2.6.4 Verify no CI/CD configs reference `docker/brama-core/Dockerfile` or similar old paths
+  - [x] 2.6.5 Verify `docker compose build core` succeeds with the current references
 
 **Acceptance checks**
 - The documented file layout matches the actual repository layout
 - There is no ambiguity about whether a runtime file belongs in the workspace repo or `brama-core`
 - Compose remains the assembly layer, not the owner of per-project image definitions
+- `brama-core/Dockerfile` is the sole Dockerfile for the core platform image
+- The `docker/` directory contains no application Dockerfiles for deployable projects
+- The empty `docker/brama-core/` directory has been removed
+- All compose build references for core services point to `../brama-core` with `dockerfile: Dockerfile`
 
 ## 3. Define Verification Expectations
 - [ ] 3.1 Document the minimum verification flow for Docker Compose
