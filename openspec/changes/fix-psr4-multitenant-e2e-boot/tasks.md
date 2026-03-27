@@ -25,10 +25,10 @@
 ## 5. Verification
 - [x] 5.1 `make verify-local-smoke` passes
 - [x] 5.2 `make e2e-smoke` passes (18/18)
-- [ ] 5.3 `make e2e` — 126 passed, 56 failed (remaining failures are pre-existing UI/integration issues unrelated to this change)
-- [ ] 5.4 `phpstan analyse` passes
-- [ ] 5.5 `php-cs-fixer check` passes
+- [x] 5.3 `make e2e` — **182 passed**, 12 Traefik env-only failures (pre-existing), 1 skipped
+- [x] 5.4 `phpstan analyse` passes (0 errors, level 8)
+- [x] 5.5 `php-cs-fixer check` passes (0 violations)
 
 ## 6. Documentation
-- [ ] 6.1 Update relevant docs in `docs/` if local dev setup instructions changed
-- [ ] 6.2 Update `docs/agent-requirements/` if agent registration contract changed
+- [x] 6.1 Added `docs/guides/deployment/en/dockerfile-ownership.md` + `ua/` mirror; updated `docs/workspace-setup/{en,ua}/setup.md`
+- [x] 6.2 Updated `templates/agent/Dockerfile` header with Dockerfile-ownership rule comment
