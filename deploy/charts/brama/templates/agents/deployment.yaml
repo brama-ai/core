@@ -20,6 +20,7 @@ spec:
       labels:
         {{- include "acp.selectorLabels" $ | nindent 8 }}
         app.kubernetes.io/component: agent-{{ $agentKey | lower }}
+        ai.platform.agent: "true"
     spec:
       {{- include "acp.imagePullSecrets" $ | nindent 6 }}
       serviceAccountName: {{ include "acp.serviceAccountName" $ }}

@@ -9,6 +9,8 @@ metadata:
   labels:
     {{- include "acp.labels" $ | nindent 4 }}
     app.kubernetes.io/component: agent-{{ $agentKey | lower }}
+    ai.platform.agent: "true"
+    ai.platform.agent-name: {{ $agentKey | lower }}-agent
 spec:
   type: ClusterIP
   ports:

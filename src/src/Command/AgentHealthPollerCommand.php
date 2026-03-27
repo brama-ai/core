@@ -56,6 +56,10 @@ final class AgentHealthPollerCommand extends Command
                     $this->registry->resetHealthCheckFailures($name, $restoredStatus);
                     $this->logger->info('Agent recovered', ['agent' => $name, 'status' => $restoredStatus]);
                     $output->writeln(sprintf('[%s] recovered → %s', $name, $restoredStatus));
+                } elseif ('unknown' === $currentStatus) {
+                    $this->registry->updateHealthStatus($name, 'healthy');
+                    $this->logger->info('Agent health confirmed', ['agent' => $name, 'status' => 'healthy']);
+                    $output->writeln(sprintf('[%s] unknown → healthy', $name));
                 }
             } else {
                 $failures = $this->registry->recordHealthCheckFailure($name);

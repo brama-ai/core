@@ -160,6 +160,11 @@ services:
     App\AgentProject\CredentialResolverInterface:
         alias: App\AgentProject\EnvCredentialResolver
 
+    App\A2AGateway\Discovery\AgentDiscoveryProviderInterface:
+        factory: ['@App\A2AGateway\Discovery\AgentDiscoveryProviderFactory', 'create']
+        arguments:
+            $providerMode: '%env(default::AGENT_DISCOVERY_PROVIDER)%'
+
     App\CoderAgent\CoderTaskRepositoryInterface:
         alias: App\CoderAgent\CoderTaskRepository
 

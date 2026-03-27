@@ -76,6 +76,7 @@ core:
   # Sensitive values should use secretRef entries below.
   env:
     APP_ENV: prod
+    AGENT_DISCOVERY_PROVIDER: auto
     LANGFUSE_ENABLED: "true"
     EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
     EDGE_AUTH_TOKEN_TTL: "43200"
@@ -116,15 +117,8 @@ coreScheduler:
       memory: 256Mi
 
   # Scheduler does not expose HTTP; use exec probe
-  livenessProbe:
-    exec:
-      command:
-        - php
-        - bin/console
-        - scheduler:status
-    initialDelaySeconds: 30
-    periodSeconds: 60
-    failureThreshold: 3
+  # Note: scheduler:status does not exist — use scheduler:run or disable probe
+  livenessProbe: {}
 
 # ---------------------------------------------------------------------------
 # Agents

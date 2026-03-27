@@ -1,0 +1,31 @@
+{{- if .Values.core.enabled -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "acp.fullname" . }}-core-discovery
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "acp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: core
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "acp.fullname" . }}-core-discovery
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "acp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: core
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "acp.fullname" . }}-core-discovery
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "acp.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
