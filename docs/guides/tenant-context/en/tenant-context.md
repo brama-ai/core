@@ -2,7 +2,8 @@
 
 ## Architecture
 
-Tenant isolation uses logical scoping via `tenant_id` columns. All tenant-aware tables include a `tenant_id UUID` foreign key to the `tenants` table.
+Tenant isolation uses logical scoping via `tenant_id` columns. All tenant-aware tables include a
+`tenant_id UUID` foreign key to the `tenants` table.
 
 ### Key Components
 
@@ -68,6 +69,7 @@ $this->connection->fetchAllAssociative(
 ## RBAC
 
 ### Role Hierarchy
+
 ```
 ROLE_SUPER_ADMIN > ROLE_ADMIN > ROLE_USER
 ```
@@ -82,11 +84,12 @@ ROLE_SUPER_ADMIN > ROLE_ADMIN > ROLE_USER
 | AGENT_INSTALL | AgentVoter | owner or admin |
 | AGENT_MANAGE | AgentVoter | owner or admin |
 
-ROLE_SUPER_ADMIN bypasses all voter checks.
+`ROLE_SUPER_ADMIN` bypasses all voter checks.
 
 ## Testing
 
-In functional tests, the `Helper\Functional` module automatically sets the default tenant context (`00000000-0000-4000-a000-000000000001`) before each test. No manual setup needed.
+In functional tests, the `Helper\\Functional` module automatically sets the default tenant context
+(`00000000-0000-4000-a000-000000000001`) before each test. No manual setup needed.
 
 For unit tests, create a `TenantContext` instance and call `set()`:
 
@@ -95,7 +98,7 @@ $tenantContext = new TenantContext();
 $tenantContext->set(new Tenant('test-id', 'Test', 'test', true, new \DateTimeImmutable(), new \DateTimeImmutable()));
 ```
 
-## Migration from admin_users
+## Migration from `admin_users`
 
 The `admin_users` table was renamed to `users` with these additions:
 - `uuid` column (UUID, unique) — used as the logical primary key for all new references

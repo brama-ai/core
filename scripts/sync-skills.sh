@@ -50,9 +50,20 @@ generate_claude_commands() {
     local skill_file="$skill_dir/SKILL.md"
     [ -f "$skill_file" ] || continue
 
-    # Extract description from frontmatter
+    # Extract description from YAML frontmatter (portable across BSD/GNU sed)
     local description
-    description=$(sed -n '/^---$/,/^---$/{ /^description:/,/^[a-z]/{ s/^description: *//; s/^  *//; /^[a-z]/d; p; } }' "$skill_file" | tr '\n' ' ' | sed 's/ *$//' | head -c 200)
+    description=$(awk '
+      /^---$/ { block++; next }
+      block == 1 && /^description:/ {
+        sub(/^description: *>? */, "")
+        sub(/^"/, ""); sub(/"$/, "")
+        if ($0 != "") { print; exit }
+        getline
+        sub(/^ +/, "")
+        print
+        exit
+      }
+    ' "$skill_file" | tr '\n' ' ' | sed 's/ *$//' | head -c 200)
     # Fallback if extraction failed
     [ -z "$description" ] && description="Run the $skill_name skill"
 

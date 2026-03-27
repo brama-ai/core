@@ -152,9 +152,3 @@ Storage cleanup happens on explicit uninstall (`DELETE /api/v1/internal/agents/{
 - OpenSearch: deletes managed indices
 
 Disabling an agent (`POST /api/v1/internal/agents/{name}/disable`) does not deprovision storage.
-
-## Scheduled Jobs
-
-Agents can declare periodic or one-shot tasks in the `scheduled_jobs` section of the manifest. These are registered in the platform's central scheduler on install and removed on uninstall.
-
-See [Scheduler documentation](../features/scheduler.en.md) for the full format and behavior.

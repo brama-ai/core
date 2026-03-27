@@ -15,7 +15,7 @@ Documentation for the local LiteLLM gateway in AI Community Platform.
 - URL: `http://localhost:4000`
 - Admin shortcut: `Admin -> Інструменти -> LiteLLM`
 - API auth: `Authorization: Bearer dev-key` (local default)
-- UI login: `http://localhost:4000/ui/login` (requires DB connection)
+- UI login: `http://litellm.localhost/ui/login` (requires DB connection)
 - UI credentials (local): `admin` / `dev-key`
 
 ## Credentials
@@ -65,7 +65,7 @@ Full documentation: [`docs/features/litellm-requests/`](litellm-requests/overvie
 
 ### Langfuse UI
 
-- URL: `http://localhost:8086`
+- URL: `http://langfuse.localhost/`
 - Login: `admin@local.dev` / `test-password`
 - Debug: see [langfuse-integration.md](litellm-requests/langfuse-integration.md)
 
@@ -96,7 +96,7 @@ By default, agents in this repository use `minimax/minimax-m2.5` through LiteLLM
 
 ### `Authentication Error, Not connected to DB!`
 
-Symptom: the error appears on `http://localhost:4000/ui/login`.
+Symptom: the error appears on `http://litellm.localhost/ui/login`.
 
 Cause: LiteLLM cannot access Postgres metadata DB `litellm` (commonly with an older `postgres-data` volume).
 

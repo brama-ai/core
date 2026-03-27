@@ -2,6 +2,35 @@
 
 Manage bilingual project documentation following the folder-based language convention.
 
+## Workspace vs Project Docs
+
+This skill is **project-scoped**, even when you are operating from a multi-project workspace.
+
+- Resolve `docs/` relative to the target project, not automatically relative to the workspace root.
+- For the core platform, `docs/` means `brama-core/docs/`.
+- Workspace-root docs are reserved for shared runtime/developer workflow material only: workspace setup, shared tooling, orchestration, deployment shell procedures, and cross-project operator routines.
+- Project docs should contain product behavior, feature docs, contracts, local-dev guides, deployment/run commands for that project, cron/scheduler operations, and project-specific admin/runtime procedures.
+
+If the request is about how the workspace is organized, the workspace shell, or cross-project operations, update workspace docs/instructions. If the request is about a specific product or agent, update that project's `docs/`.
+
+## Root Entry Docs
+
+Human-facing onboarding and install entrypoints MAY live in the repository root as short navigation documents.
+
+- Treat root `.md` files as entrypoints, not as the canonical long-form documentation.
+- Keep detailed guides under the target project's `docs/` tree.
+- Use stable, conventional names for onboarding/install flows.
+- Prefer links from root entry docs into canonical docs instead of duplicating long sections.
+
+Recommended root filenames:
+
+- Workspace root: `INSTALL.md` — OSS/public installation entrypoint for the whole workspace/runtime shell.
+- Project root: `QUICKSTART.md` — fastest supported path to get the product running.
+- Project root: `DEVELOPMENT.md` — local development setup and daily workflow.
+- Project root: `KUBERNETES.md` — Kubernetes or k3s deployment and operations.
+
+For `brama-core`, these root files are allowed even though the detailed source content belongs in `brama-core/docs/`.
+
 ## Directory Structure Rule
 
 ```
@@ -19,7 +48,7 @@ The only exception is `INDEX.md` (project root) — see below.
 
 ## INDEX.md — Documentation Memory Index
 
-`INDEX.md` (project root) is the **agent-facing index** of all documentation. It is:
+`INDEX.md` (project root docs root) is the **agent-facing index** of all documentation. It is:
 
 - **English-only** — intended for AI agents, not humans
 - **Always in the root** of `docs/` — the sole allowed .md file in `docs/` (besides no other)
@@ -27,7 +56,17 @@ The only exception is `INDEX.md` (project root) — see below.
 - **Mandatory to update** — every Create, Delete, or Move operation MUST update `INDEX.md` (project root)
 - **Links to `en/` versions** — for bilingual sections, INDEX.md always references the `en/` path (e.g., `docs/agents/en/hello-agent.md`), because `ua/` exists only for quick human browsing
 
-Agents should load `INDEX.md` (project root) first to understand the documentation landscape before reading specific files.
+Agents should load `INDEX.md` from the target project's docs root first to understand the documentation landscape before reading specific files.
+
+## ROADMAP.md — Documentation Change Ledger
+
+`ROADMAP.md` in the target project root is the human-facing progress ledger for notable documentation and product direction changes.
+
+- For the core platform, use `brama-core/ROADMAP.md` as the canonical roadmap file.
+- Every substantive documentation update MUST include a check whether `ROADMAP.md` should also be updated.
+- Update `ROADMAP.md` when docs change product direction, onboarding flow, supported deployment paths, major setup steps, or contributor-facing workflow expectations.
+- If a documentation change is purely editorial and does not affect direction or expected workflows, explicitly verify that no roadmap update is needed.
+- Documentation work should stay consistent with `ROADMAP.md`; if the roadmap and docs disagree, resolve the mismatch instead of leaving both states in place.
 
 ## Path Schema
 
@@ -79,7 +118,8 @@ Create a new documentation file.
 4. For English-only: write `docs/<domain>/<filename>.md`
 5. Use the appropriate template (see Templates below)
 6. **Update `INDEX.md` (project root)**: add the new file entry to the appropriate section
-7. **Validate**: no .md files in intermediate directories after creation
+7. **Review `ROADMAP.md`**: add or adjust an entry if the new doc changes roadmap-facing direction, setup, deployment, or contributor workflow
+8. **Validate**: no .md files in intermediate directories after creation
 
 ### Update
 
@@ -92,6 +132,7 @@ Update an existing documentation file.
 2. If only legacy format exists, migrate to folder structure first
 3. Apply changes to both files, keeping structure and headings in sync
 4. Verify both files have the same sections after update
+5. **Review `ROADMAP.md`**: update it whenever the documentation change affects roadmap-visible setup, deployment, direction, or workflow expectations
 
 ### Delete
 
@@ -105,6 +146,7 @@ Remove a documentation file pair.
 3. If `ua/` or `en/` folder is now empty, remove it
 4. **Update `INDEX.md` (project root)**: remove the deleted file entry
 5. Check for references to the deleted doc in other files and flag them
+6. **Review `ROADMAP.md`**: remove or reword roadmap references that point to deleted or superseded documentation
 
 ### Migrate
 
@@ -118,7 +160,8 @@ Convert legacy files to proper structure.
 3. Move files to the correct leaf directory
 4. Update any cross-references in other docs
 5. **Update `INDEX.md` (project root)**: fix paths for all moved files
-6. **Validate**: no .md files remain in intermediate directories
+6. **Review `ROADMAP.md`**: update links or wording if the migration changes onboarding or contributor entrypoints
+7. **Validate**: no .md files remain in intermediate directories
 
 ## Validation
 
@@ -130,6 +173,11 @@ Run this check after any operation:
        → VIOLATION — move .md files to appropriate leaf directory
 
 2. Every .md file under docs/ (except INDEX.md) MUST have a corresponding entry in docs/INDEX.md
+
+3. If the documentation change affects setup, deployment, onboarding, contributor workflow, or project direction:
+     `ROADMAP.md` MUST be reviewed and updated if needed
+
+4. Root entry docs (`INSTALL.md`, `QUICKSTART.md`, `DEVELOPMENT.md`, `KUBERNETES.md`) MUST stay short and point to canonical docs instead of duplicating full guides
 ```
 
 ## Templates

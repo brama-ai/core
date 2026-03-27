@@ -15,7 +15,7 @@
 - URL: `http://localhost:4000`
 - Admin shortcut: `Admin -> Інструменти -> LiteLLM`
 - API auth: `Authorization: Bearer dev-key` (local default)
-- UI login: `http://localhost:4000/ui/login` (працює тільки з підключеною DB)
+- UI login: `http://litellm.localhost/ui/login` (працює тільки з підключеною DB)
 - UI credentials (local): `admin` / `dev-key`
 
 ## Креденшели
@@ -89,7 +89,7 @@ LiteLLM proxy налаштовано на відправку LLM generation even
 
 ### Langfuse UI
 
-- URL: `http://localhost:8086`
+- URL: `http://langfuse.localhost/`
 - Login: `admin@local.dev` / `test-password`
 - Дебаг: див. [langfuse-integration.md](litellm-requests/langfuse-integration.md)
 
@@ -118,7 +118,7 @@ make litellm-db-init
 
 ### `Authentication Error, Not connected to DB!`
 
-Симптом: помилка на `http://localhost:4000/ui/login`.
+Симптом: помилка на `http://litellm.localhost/ui/login`.
 
 Причина: LiteLLM не має доступу до Postgres DB `litellm` (часто на старому `postgres-data` volume).
 

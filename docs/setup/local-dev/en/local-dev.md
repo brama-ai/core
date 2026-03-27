@@ -44,9 +44,10 @@ After this:
 - Wiki Agent: `http://localhost/wiki`
 - Wiki Admin: `http://localhost/wiki-admin/login` (`admin` / `test-password`)
 - Wiki Agent direct debug: `http://localhost:8090/wiki`
-- OpenClaw UI: `http://localhost:8082/`
-- Langfuse UI: `http://localhost:8086/` (edge login + JWT cookie)
+- OpenClaw UI: `http://openclaw.localhost/`
+- Langfuse UI: `http://langfuse.localhost/` (edge login + JWT cookie)
 - LiteLLM API: `http://localhost:4000/`
+- LiteLLM UI: `http://litellm.localhost/ui/`
 
 ## Default Credentials (Local Dev Only)
 
@@ -57,11 +58,11 @@ Use these only for local development:
 | Brama admin login | `http://localhost/admin/login` | `admin` / `test-password` |
 | Wiki admin login | `http://localhost/wiki-admin/login` | `admin` / `test-password` |
 | Edge login for tools | `http://localhost/edge/auth/login` | `admin` / `test-password` |
-| Langfuse app login | `http://localhost:8086/` | `admin@local.dev` / `test-password` |
-| OpenClaw Control UI | `http://localhost:8082/` | Gateway token from `docker/openclaw/.env` (`OPENCLAW_GATEWAY_TOKEN`) |
+| Langfuse app login | `http://langfuse.localhost/` | `admin@local.dev` / `test-password` |
+| OpenClaw Control UI | `http://openclaw.localhost/` | Gateway token from `docker/openclaw/.env` (`OPENCLAW_GATEWAY_TOKEN`) |
 | Traefik dashboard | `http://localhost:8080/dashboard/` | No auth in local dev |
 | LiteLLM API | `http://localhost:4000/` | `Authorization: Bearer dev-key` |
-| LiteLLM UI login | `http://localhost:4000/ui/login` | `admin` / `dev-key` |
+| LiteLLM UI login | `http://litellm.localhost/ui/login` | `admin` / `dev-key` |
 
 Примітка: `dev-key` задається як `LITELLM_MASTER_KEY` у `compose.yaml` (local default).
 
@@ -154,8 +155,8 @@ docker compose restart openclaw-gateway
 | Wiki Agent direct debug | `http://localhost:8090/wiki` | Dedicated Traefik wiki entrypoint |
 | OpenClaw Gateway E2E | `http://localhost:28789/` | E2E OpenClaw Gateway |
 | Brama admin panel | `http://localhost/admin/login` | `admin` / `test-password` |
-| OpenClaw UI | `http://localhost:8082/` | Via Traefik + edge login |
-| Langfuse UI | `http://localhost:8086/` | Via Traefik + edge login |
+| OpenClaw UI | `http://openclaw.localhost/` | Via Traefik + edge login |
+| Langfuse UI | `http://langfuse.localhost/` | Via Traefik + edge login |
 | OpenClaw direct | `http://localhost:18789/` | Direct container port |
 | Traefik dashboard / API | `http://localhost:8080/dashboard/`, `http://localhost:8080/api/` | Insecure mode, local only |
 | Postgres | `localhost:5432` | `app` / `app` / `ai_community_platform` + `*_test` DBs |
@@ -179,7 +180,7 @@ docker compose restart openclaw-gateway
 
 ### Troubleshooting: `Authentication Error, Not connected to DB!`
 
-This error on `http://localhost:4000/ui/login` means LiteLLM cannot use Postgres DB metadata.
+This error on `http://litellm.localhost/ui/login` means LiteLLM cannot use Postgres DB metadata.
 
 Fix:
 
@@ -199,7 +200,7 @@ If your Postgres volume was created before LiteLLM DB bootstrap was added, creat
 make litellm-db-init
 ```
 
-After that, `http://localhost:4000/ui/login` can use DB-backed login flow.
+After that, `http://litellm.localhost/ui/login` can use DB-backed login flow.
 
 ## OpenClaw Manual Setup
 
@@ -214,18 +215,18 @@ openssl rand -hex 32
 
 ### Control UI Login
 
-Open `http://localhost:8082/`. Paste the gateway token from `docker/openclaw/.env`.
+Open `http://openclaw.localhost/`. Paste the gateway token from `docker/openclaw/.env`.
 
 ## Edge Login for Tools
 
-1. Open any protected tools URL, for example `http://localhost:8086/` or `http://localhost:8082/`.
+1. Open any protected tools URL, for example `http://langfuse.localhost/` or `http://openclaw.localhost/`.
 2. You will be redirected to `/edge/auth/login`.
 3. Sign in with admin credentials:
    - username: `admin`
    - password: `test-password`
 4. After login, Traefik stores JWT cookie `ACP_EDGE_TOKEN` and redirects to requested tool URL.
 
-Exception: OpenClaw messenger webhook routes under `http://localhost:8082/api/channels/*` are intentionally not behind edge login, so bot/webhook traffic works without browser cookies.
+Exception: OpenClaw messenger webhook routes under `http://openclaw.localhost/api/channels/*` are intentionally not behind edge login, so bot/webhook traffic works without browser cookies.
 
 ## Change Default Credentials After Setup
 
@@ -289,8 +290,11 @@ docker compose restart openclaw-gateway
 
 After edge login, sign in to Langfuse itself with bootstrap user:
 
+- URL: `http://langfuse.localhost/`
 - email: `admin@local.dev`
 - password: `test-password`
+
+Inside the shared devcontainer, use `http://langfuse.dev.internal/`. The `*.localhost` names resolve to the container loopback there, so the devcontainer uses a separate host alias mapped to the Docker host.
 
 ### Onboard (LLM Provider)
 
@@ -337,18 +341,87 @@ make dev-reporter-cs-check # PHP CS Fixer dry-run
 make dev-reporter-cs-fix   # PHP CS Fixer auto-fix
 ```
 
-## E2E Tests
+## Tests
+
+### Unit / Functional / Per-Agent Checks
 
 ```bash
-make e2e-prepare # Provision test DBs, RabbitMQ vhost, run migrations, register agents
-make e2e         # Playwright + CodeceptJS against full E2E stack (all agents isolated)
-make e2e-smoke   # Smoke/REST-only E2E
-make e2e-cleanup # Stop all E2E containers
+make test                 # Core Codeception suites
+make knowledge-test       # Knowledge agent Codeception suites
+make hello-test           # Hello agent Codeception suites
+make dev-reporter-test    # Dev Reporter agent Codeception suites
+make news-test            # News-maker agent pytest suites
+make wiki-test            # Wiki agent tests
 ```
 
-`make e2e` and `make e2e-smoke` automatically run `make e2e-prepare` first.
+### E2E Modes
+
 E2E tests run against duplicate containers with isolated data stores (`_test` databases,
-odd Redis DBs, `/test` RabbitMQ vhost). See `docs/agent-requirements/e2e-testing.md` for details.
+separate Redis DBs, `/test` RabbitMQ vhost). See `docs/agent-requirements/e2e-testing.md`
+for the topology details.
+
+#### 1) Full E2E
+
+Use this when you want the complete browser + API suite:
+
+```bash
+make e2e
+```
+
+This path is intended to:
+
+1. start the shared devcontainer if needed;
+2. prepare the isolated E2E stack;
+3. run Playwright + CodeceptJS.
+
+#### 2) Smoke E2E
+
+Use this for a faster health-check of the main surfaces:
+
+```bash
+make e2e-smoke
+```
+
+#### 3) Inner E2E
+
+Use this when you are already inside the devcontainer flow or when you want the Make target
+without the outer wrapper:
+
+```bash
+make e2e-inner
+make e2e-smoke-inner
+```
+
+These targets run:
+
+- `make e2e-prepare`
+- `make e2e-env-check`
+- the actual `CodeceptJS` runner
+
+#### 4) Manual Runner
+
+Use this when the E2E stack is already up and you want to rerun tests without repeating the
+full prepare/build cycle:
+
+```bash
+docker compose -f docker/compose.yaml -f docker/compose.core.yaml -f .devcontainer/docker-compose.yml exec -T devcontainer bash -lc 'cd /workspaces/brama/brama-core/tests/e2e && npm install && npx playwright install chromium --with-deps && set -a && . /workspaces/brama/.env.e2e.devcontainer && set +a && npx codeceptjs run --steps'
+```
+
+### E2E Support Commands
+
+```bash
+make e2e-prepare  # Provision test DBs, RabbitMQ vhost, run migrations, register agents
+make e2e-env-check # Preflight health checks before test run
+make e2e-cleanup  # Stop all E2E containers
+```
+
+### Current Notes
+
+- `make e2e` / `make e2e-smoke` are the intended top-level commands.
+- If the outer wrapper fails inside the shared devcontainer, use `make e2e-inner` or the
+  manual runner command above.
+- `make e2e-env-check` may fail if `openclaw-gateway-e2e` is still starting; rerun once the
+  service becomes `healthy`.
 
 ## AI Agent Skills
 

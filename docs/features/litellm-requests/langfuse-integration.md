@@ -31,7 +31,7 @@ The host uses the internal Docker network address, not the external Traefik-rout
 
 ## Langfuse Stack
 
-- **Web UI**: `http://localhost:8086` (via Traefik)
+- **Web UI**: `http://langfuse.localhost/` (via Traefik)
 - **Internal**: `http://langfuse-web:3000` (Docker network)
 - **Compose file**: `compose.langfuse.yaml`
 - **Login**: `admin@local.dev` / `test-password`
@@ -132,7 +132,7 @@ curl -sS http://localhost:4000/v1/chat/completions \
   }'
 ```
 
-Then check `http://localhost:8086` — a trace with ID ending in `...0001` should appear.
+Then check `http://langfuse.localhost/` — a trace with ID ending in `...0001` should appear.
 
 ### Common issues
 

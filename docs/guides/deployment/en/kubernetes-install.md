@@ -35,9 +35,9 @@ This guide covers the Kubernetes path. For Docker, see
 ## Prerequisites
 
 - Kubernetes 1.27+
-- Helm 3.12+
+- Helm 3.12+ (must be installed on the machine where you run `helm` commands)
 - `kubectl` configured for your target cluster
-- An ingress controller (nginx-ingress recommended)
+- An ingress controller (Traefik is bundled with K3s; nginx-ingress recommended for other clusters)
 - cert-manager (optional, for TLS automation)
 - Access to a container registry where platform images are published
 
@@ -53,6 +53,26 @@ If you bring up Brama locally through the workspace Make targets, you also need:
 > That means this helper flow is specifically designed for local K3s in Rancher Desktop.
 > For `kind`, `minikube`, or a remote cluster, prefer direct `helm upgrade --install` and your own
 > image delivery workflow.
+
+### For a remote K3s server
+
+If you deploy to a remote VPS/server running K3s, you need:
+
+- SSH access to the server
+- Helm installed **on the server** (K3s does not include Helm):
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  ```
+- `KUBECONFIG` set when running helm/kubectl on the server:
+  ```bash
+  export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+  ```
+- A way to build and load images into K3s containerd (see [Remote K3s deployment](#remote-k3s-deployment) below)
+
+> **Cross-architecture note**: If your development machine is ARM (Apple Silicon Mac) and the
+> server is x86_64, you **cannot** simply `docker save | ssh | k3s ctr images import`. The
+> images must be built for the target architecture. The simplest approach is to build directly
+> on the server using `nerdctl` (see below).
 
 ## Quickstart: local K3s/dev
 
@@ -127,6 +147,155 @@ make k8s-destroy
 | `make k8s-status` | Show pods, services, ingress, and Helm release |
 | `make k8s-shell svc=core` | Open a shell in a pod |
 | `make k8s-port-forward svc=core port=8080:80` | Access a service locally |
+
+## Remote K3s deployment
+
+This section covers deploying to a remote VPS running K3s. This is the recommended path for
+staging/demo environments and small-scale production when you don't have a managed Kubernetes
+cluster.
+
+### 1. Prepare the server
+
+Install K3s on a fresh Ubuntu 24.04+ server:
+
+```bash
+ssh root@YOUR_SERVER_IP
+
+# Install K3s
+curl -sfL https://get.k3s.io | sh -
+
+# Verify
+kubectl get nodes
+# NAME              STATUS   ROLES           AGE   VERSION
+# your-server       Ready    control-plane   30s   v1.34.x+k3s1
+
+# Install Helm (K3s does not include it)
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+# Set KUBECONFIG for this session (add to ~/.bashrc for persistence)
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+```
+
+### 2. Build images on the server
+
+If your dev machine and the server have different CPU architectures (e.g. ARM Mac vs x86_64 server),
+build images directly on the server. Install `nerdctl` and `buildkit`:
+
+```bash
+# Install nerdctl
+NERDCTL_VERSION=$(curl -fsSL https://api.github.com/repos/containerd/nerdctl/releases/latest \
+  | grep tag_name | cut -d'"' -f4 | tr -d v)
+curl -fsSL "https://github.com/containerd/nerdctl/releases/download/v${NERDCTL_VERSION}/nerdctl-${NERDCTL_VERSION}-linux-amd64.tar.gz" \
+  | tar -xz -C /usr/local/bin nerdctl
+
+# Install buildkit
+BUILDKIT_VERSION=$(curl -fsSL https://api.github.com/repos/moby/buildkit/releases/latest \
+  | grep tag_name | cut -d'"' -f4 | tr -d v)
+curl -fsSL "https://github.com/moby/buildkit/releases/download/v${BUILDKIT_VERSION}/buildkit-v${BUILDKIT_VERSION}.linux-amd64.tar.gz" \
+  | tar -xz -C /usr/local
+
+# Start buildkit as a systemd service
+cat > /etc/systemd/system/buildkit.service <<'EOF'
+[Unit]
+Description=BuildKit
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/buildkitd
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload && systemctl enable --now buildkit
+
+# Link K3s containerd socket to the default path
+mkdir -p /run/containerd
+ln -sf /run/k3s/containerd/containerd.sock /run/containerd/containerd.sock
+```
+
+Copy source files and build:
+
+```bash
+# From your dev machine / devcontainer:
+SSH_CMD="ssh -F /path/to/ssh-config"
+$SSH_CMD server "mkdir -p /opt/brama-build/brama-core/src /opt/brama-build/hello-agent"
+
+rsync -az --delete -e "$SSH_CMD" brama-core/src/ server:/opt/brama-build/brama-core/src/
+rsync -az -e "$SSH_CMD" docker/brama-core/Dockerfile server:/opt/brama-build/Dockerfile
+rsync -az --delete -e "$SSH_CMD" brama-agents/hello-agent/ server:/opt/brama-build/hello-agent/
+
+# On the server:
+cd /opt/brama-build
+nerdctl --address /run/k3s/containerd/containerd.sock -n k8s.io \
+  build -t brama/brama-core:dev -f Dockerfile .
+
+cd /opt/brama-build/hello-agent
+nerdctl --address /run/k3s/containerd/containerd.sock -n k8s.io \
+  build -t brama/hello-agent:dev .
+```
+
+> **Same-architecture shortcut**: If both machines are x86_64, you can build locally and transfer:
+> ```bash
+> docker save brama/brama-core:dev | ssh root@SERVER "k3s ctr images import -"
+> ```
+
+### 3. Copy Helm chart and deploy
+
+```bash
+# From dev machine:
+rsync -az --delete -e "$SSH_CMD" \
+  brama-core/deploy/charts/brama/ server:/opt/brama-build/charts/brama/
+
+# On the server:
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+# Create namespace and secrets
+kubectl create namespace brama
+
+kubectl create secret generic brama-core-secrets -n brama \
+  --from-literal=APP_SECRET="$(openssl rand -hex 16)" \
+  --from-literal=EDGE_AUTH_JWT_SECRET="$(openssl rand -hex 32)" \
+  --from-literal=DATABASE_URL="postgresql://app:app@brama-postgresql:5432/ai_community_platform?serverVersion=16&charset=utf8" \
+  --from-literal=REDIS_URL="redis://brama-redis-master:6379" \
+  --from-literal=RABBITMQ_URL="amqp://app:app@brama-rabbitmq:5672" \
+  --from-literal=POSTGRES_PROVISIONER_URL="postgresql://app:app@brama-postgresql:5432/ai_community_platform?serverVersion=16&charset=utf8"
+
+# Install
+cd /opt/brama-build/charts/brama
+helm dependency update .
+helm upgrade --install brama . \
+  --namespace brama \
+  -f values-k3s-dev.yaml \
+  --set ingress.hosts.core=YOUR_SERVER_IP.nip.io \
+  --wait --timeout 10m
+```
+
+### 4. Run migrations
+
+If this is a fresh install, run database migrations:
+
+```bash
+kubectl exec -n brama deploy/brama-core -- \
+  php bin/console doctrine:migrations:migrate --no-interaction
+```
+
+> **Note**: The Helm chart includes a migration job hook, but if the first install times out
+> (e.g. due to slow image pulls), the migration job may not complete. Always verify migrations
+> ran by checking `kubectl get jobs -n brama`.
+
+### 5. Verify
+
+```bash
+# Check pods
+kubectl get pods -n brama
+
+# Health check (from the server)
+curl -sf -H "Host: YOUR_SERVER_IP.nip.io" http://localhost/health
+
+# Health check (from anywhere)
+curl -sf http://YOUR_SERVER_IP.nip.io/health
+```
 
 ## Service Topology
 
@@ -441,6 +610,10 @@ This means:
 If the migration job fails, the Helm release will be marked as failed. Do not proceed with traffic
 validation until migrations complete successfully.
 
+> **First install note**: If the initial `helm install` times out (e.g. due to slow image pulls
+> or infrastructure startup), the `post-install` migration hook may not run. In this case, run
+> migrations manually with `kubectl exec` and then `helm upgrade` to stabilize the release.
+
 ## Troubleshooting
 
 ### Pod stuck in Pending
@@ -507,6 +680,58 @@ kubectl get events -n brama --sort-by='.lastTimestamp'
 ```
 
 Verify the ingress controller is installed and the `ingressClassName` matches.
+For K3s, the default ingress class is `traefik`, not `nginx`.
+
+### Agent pod returns 500 on `/health` — "Unable to write in the cache directory"
+
+The Symfony cache directory must be writable. Ensure the agent Dockerfile creates the `var/`
+directory with appropriate permissions:
+
+```dockerfile
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts \
+    && mkdir -p var/cache var/log \
+    && chmod -R 777 var/
+```
+
+### `helm upgrade --install` on K3s server: "Kubernetes cluster unreachable"
+
+Helm cannot find the kubeconfig. On a K3s server, set:
+
+```bash
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+```
+
+Add this to `~/.bashrc` for persistence.
+
+### Cross-architecture: `ImagePullBackOff` or `exec format error`
+
+If you build images on an ARM Mac (Apple Silicon) and push them to an x86_64 K3s server,
+the images will fail to run. Solutions:
+
+1. **Build on the server** using `nerdctl` (recommended, see [Remote K3s deployment](#remote-k3s-deployment))
+2. **Cross-compile** with `docker buildx build --platform linux/amd64`
+3. **Use a CI pipeline** that builds for the target architecture
+
+### `docker buildx` fails with "changes out of order"
+
+This is a known buildx issue on macOS with case-insensitive filesystems (HFS+/APFS). If your
+source tree has files that differ only by case, buildx will fail. Workarounds:
+
+1. Build on a Linux machine or the target server (recommended)
+2. Create a case-sensitive APFS volume for the workspace
+3. Add a `.dockerignore` to reduce the build context
+
+### Migrations did not run on first install
+
+If the first `helm install` times out, the migration Helm hook (`post-install`) may not complete.
+Run migrations manually:
+
+```bash
+kubectl exec -n brama deploy/brama-core -- \
+  php bin/console doctrine:migrations:migrate --no-interaction
+```
+
+Then run `helm upgrade` to mark the release as deployed.
 
 ## Next Steps
 
