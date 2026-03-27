@@ -16,10 +16,15 @@
 - [ ] 2.2 Document that product code and product docs remain in `brama-core/`
 - [ ] 2.3 Define the target location for k3s deployment assets under `deploy/`
 - [ ] 2.4 Define the target location for detailed deployment guides under `docs/deploy/`
+- [ ] 2.5 Define that each deployable project owns its `Dockerfile` in the project directory, while
+      Compose files continue to live in the workspace
+- [ ] 2.6 Migrate the core Dockerfile out of the workspace-level `docker/` directory into the owning
+      project and update all compose/build references
 
 **Acceptance checks**
 - The documented file layout matches the actual repository layout
 - There is no ambiguity about whether a runtime file belongs in the workspace repo or `brama-core`
+- Compose remains the assembly layer, not the owner of per-project image definitions
 
 ## 3. Define Verification Expectations
 - [ ] 3.1 Document the minimum verification flow for Docker Compose
@@ -35,4 +40,3 @@
 - [ ] 4.1 Review all deployment docs for contradictory wording
 - [ ] 4.2 Confirm all README links resolve to real files
 - [ ] 4.3 Validate proposal with OpenSpec tooling
-

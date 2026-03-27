@@ -22,6 +22,19 @@ Workspace runtime files SHALL live in predictable locations based on deployment 
 - **WHEN** a developer needs devcontainer definitions
 - **THEN** the required files must live under `.devcontainer/` in the workspace repository
 
+#### Scenario: Looking for Compose assembly files
+- **WHEN** an operator or developer needs Docker Compose topology files
+- **THEN** the required `compose*.yaml` files must live in the workspace repository
+- **AND** those files must describe how projects are assembled together, not duplicate project-owned
+  build definitions
+
+#### Scenario: Looking for a project image definition
+- **WHEN** an operator or developer needs the `Dockerfile` used to build a deployable project image
+- **THEN** that `Dockerfile` must live next to the owning project codebase
+- **AND** the workspace Compose layer may reference it via `build.context` and `dockerfile`
+- **AND** the workspace repository must not be the long-term owner of per-project application
+  Dockerfiles except for workspace-only tooling images
+
 #### Scenario: Looking for k3s deployment assets
 - **WHEN** an operator needs k3s deployment manifests or charts
 - **THEN** the required files must live under a dedicated deployment directory in the workspace repository
@@ -38,4 +51,3 @@ Each runtime mode SHALL have documented verification steps that can be executed 
 - **WHEN** a devcontainer is created or rebuilt
 - **THEN** the documentation must provide commands to confirm that the container has access to the Compose-backed runtime
 - **AND** the documentation must state expected success signals such as tool availability or reachable local services
-

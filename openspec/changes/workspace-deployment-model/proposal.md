@@ -20,6 +20,8 @@ workflow or another undocumented assumption.
   - Devcontainer as a developer overlay on top of Docker Compose
   - k3s as the cluster-oriented deployment path
 - **ADDED**: Documentation requirements for where deployment instructions and assets must live
+- **ADDED**: A packaging ownership rule that keeps `compose*.yaml` in the workspace while moving
+  `Dockerfile` definitions next to the code they build
 - **ADDED**: Verification-oriented acceptance criteria for each mode
 - **MODIFIED**: Local development runtime documentation to distinguish baseline runtime from overlays
 
@@ -33,5 +35,5 @@ workflow or another undocumented assumption.
   - deployment guides for Compose, devcontainer, and k3s
 - Affected structure:
   - workspace root for Compose and devcontainer assets
+  - project repositories for Docker image build definitions
   - deployment directory for k3s assets
-

@@ -1,10 +1,10 @@
 # Tasks: Fix Remaining E2E Test Failures
 
 ## Task 1: Fix Agent Health Badge Assertions
-- [ ] Inspect badge HTML on agents page (take screenshot, read DOM)
-- [ ] Identify all possible badge CSS classes from template (`agents.html.twig`)
-- [ ] Update `AgentsPage.js` `seeAgentHealthy()` and `seeAgentHealthyLike()` to accept all valid states
-- [ ] Verify: `knowledge-agent`, `news-maker-agent`, `hello-agent` badge tests pass
+- [x] Inspect badge HTML on agents page (take screenshot, read DOM)
+- [x] Identify all possible badge CSS classes from template (`agents.html.twig`)
+- [x] Update `AgentsPage.js` `seeAgentHealthy()` and `seeAgentHealthyLike()` to accept all valid states
+- [x] Verify: `knowledge-agent`, `news-maker-agent`, `hello-agent` badge tests pass
 
 **Files:** `support/pages/AgentsPage.js`, `tests/admin/agents_test.js`, `tests/admin/hello_agent_test.js`
 
