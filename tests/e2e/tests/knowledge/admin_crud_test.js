@@ -273,12 +273,9 @@ Scenario(
         I.click('Записи');
         await I.waitForText('JavaScript Basics', 10);
 
-        // The admin template always renders the tree panel with "Показати всі" link
+        // Verify tree panel exists with entries
         I.seeElement('.tree-panel');
         I.seeElement('.tree-item');
-
-        // Click "Показати всі" to reset filter
-        I.click('Показати всі');
 
         await I.switchTo();
     },

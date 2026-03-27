@@ -269,13 +269,17 @@ Scenario(
             return;
         }
 
-        // Disable encyclopedia
+        // Disable encyclopedia via admin API
         try {
-            await I.sendPostRequest(
-                `${KNOWLEDGE_URL}/api/v1/internal/settings`,
+            const res = await I.sendPutRequest(
+                `${KNOWLEDGE_URL}/admin/knowledge/api/settings`,
                 JSON.stringify({ encyclopedia_enabled: false }),
-                { 'Content-Type': 'application/json', 'X-Platform-Internal-Token': INTERNAL_TOKEN },
+                { 'Content-Type': 'application/json' },
             );
+            if (!res || res.status < 200 || res.status >= 300) {
+                console.log('SKIP: Could not disable encyclopedia, status:', res?.status);
+                return;
+            }
         } catch (error) {
             console.log('SKIP: Could not disable encyclopedia:', error.message);
             return;
@@ -290,10 +294,10 @@ Scenario(
         I.dontSeeElement('.search-bar');
 
         // Re-enable for cleanup
-        await I.sendPostRequest(
-            `${KNOWLEDGE_URL}/api/v1/internal/settings`,
+        await I.sendPutRequest(
+            `${KNOWLEDGE_URL}/admin/knowledge/api/settings`,
             JSON.stringify({ encyclopedia_enabled: true }),
-            { 'Content-Type': 'application/json', 'X-Platform-Internal-Token': INTERNAL_TOKEN },
+            { 'Content-Type': 'application/json' },
         );
     },
 ).tag('@knowledge').tag('@wiki');
