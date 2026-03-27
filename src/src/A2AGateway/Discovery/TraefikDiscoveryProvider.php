@@ -10,9 +10,28 @@ final class TraefikDiscoveryProvider implements AgentDiscoveryProviderInterface
 {
     private const TRAEFIK_API_URL = 'http://traefik:8080/api/http/services';
 
+    /**
+     * @var \Closure(string): (string|false)
+     */
+    private readonly \Closure $httpGet;
+
     public function __construct(
         private readonly LoggerInterface $logger,
+        ?callable $httpGet = null,
     ) {
+        $this->httpGet = null !== $httpGet
+            ? \Closure::fromCallable($httpGet)
+            : static function (string $url): string|false {
+                $context = stream_context_create([
+                    'http' => ['method' => 'GET', 'timeout' => 5, 'ignore_errors' => true],
+                ]);
+                set_error_handler(static fn (): bool => true);
+                try {
+                    return file_get_contents($url, false, $context);
+                } finally {
+                    restore_error_handler();
+                }
+            };
     }
 
     /**
@@ -20,16 +39,7 @@ final class TraefikDiscoveryProvider implements AgentDiscoveryProviderInterface
      */
     public function discover(): array
     {
-        $context = stream_context_create([
-            'http' => ['method' => 'GET', 'timeout' => 5, 'ignore_errors' => true],
-        ]);
-
-        set_error_handler(static fn (): bool => true);
-        try {
-            $raw = file_get_contents(self::TRAEFIK_API_URL, false, $context);
-        } finally {
-            restore_error_handler();
-        }
+        $raw = ($this->httpGet)(self::TRAEFIK_API_URL);
 
         if (false === $raw) {
             $this->logger->warning('AgentDiscoveryService: could not reach Traefik API', [

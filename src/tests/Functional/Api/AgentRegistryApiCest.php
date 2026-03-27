@@ -106,15 +106,21 @@ final class AgentRegistryApiCest
 
     public function enableDisableAgentRequiresAuthentication(\FunctionalTester $I): void
     {
+        // Ensure the client is not authenticated from a previous test
+        $I->logout();
+
         $I->sendPost('/api/v1/internal/agents/some-agent/install');
         $I->seeResponseContains('_username');
 
+        $I->logout();
         $I->sendPost('/api/v1/internal/agents/some-agent/enable');
         $I->seeResponseContains('_username');
 
+        $I->logout();
         $I->sendPost('/api/v1/internal/agents/some-agent/disable');
         $I->seeResponseContains('_username');
 
+        $I->logout();
         $I->sendPost('/api/v1/internal/agents/some-agent/crawl');
         $I->seeResponseContains('_username');
     }

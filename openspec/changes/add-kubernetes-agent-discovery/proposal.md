@@ -1,5 +1,12 @@
 # Change: Add Kubernetes-native agent discovery to AgentDiscoveryService
 
+## Status
+
+**PHP implementation merged.** All provider classes, factory, DI wiring, Helm chart labels,
+RBAC manifests, and core unit tests are in the codebase. This proposal now tracks the
+**remaining work**: additional unit tests, Helm chart validation, DI wiring verification,
+and documentation.
+
 ## Why
 
 The current agent discovery mechanism (`AgentDiscoveryService`) works **exclusively in Docker Compose**:
@@ -13,47 +20,40 @@ the current discovery logic. The platform needs an **environment-aware discovery
 in both runtimes without duplicating the downstream pipeline (manifest fetch → convention verify →
 registry upsert).
 
-## Current State
+## Current State (Post-Merge)
 
-### Docker Compose flow
-1. Each agent's `compose.agent-*.yaml` declares Traefik labels:
-   - `traefik.enable=true`
-   - `traefik.http.services.<name>.loadbalancer.server.port=<port>`
-   - `ai.platform.agent=true` (present but unused by discovery)
-2. `AgentDiscoveryService::discoverAgents()` calls Traefik API, filters `*-agent@docker` services
-3. Extracts hostname + port from loadBalancer server URLs
-4. Returns `list<array{hostname, port}>` → consumed by `AgentDiscoveryCommand`
+### Implemented PHP classes
+| File | Status |
+|------|--------|
+| `src/A2AGateway/Discovery/AgentDiscoveryProviderInterface.php` | ✅ Merged |
+| `src/A2AGateway/Discovery/TraefikDiscoveryProvider.php` | ✅ Merged |
+| `src/A2AGateway/Discovery/KubernetesDiscoveryProvider.php` | ✅ Merged |
+| `src/A2AGateway/Discovery/AgentDiscoveryProviderFactory.php` | ✅ Merged |
+| `src/A2AGateway/AgentDiscoveryService.php` (refactored) | ✅ Merged |
 
-### Kubernetes Helm chart (current)
-- Agents are deployed via `templates/agents/deployment.yaml` + `templates/agents/service.yaml`
-- Each agent gets label `app.kubernetes.io/component: agent-<key>`
-- Services are ClusterIP with named port `http`
-- **No discovery label** and **no discovery mechanism** — agents must be manually registered
+### Implemented Helm chart
+| File | Status |
+|------|--------|
+| `templates/agents/service.yaml` — `ai.platform.agent` labels | ✅ Merged |
+| `templates/agents/deployment.yaml` — pod labels | ✅ Merged |
+| `templates/core/rbac.yaml` — Role + RoleBinding | ✅ Merged |
+| `values.yaml` — `AGENT_DISCOVERY_PROVIDER: auto` | ✅ Merged |
 
-## What Changes
+### Implemented DI wiring
+| File | Status |
+|------|--------|
+| `config/services.yaml` — factory-based provider resolution | ✅ Merged |
 
-### 1. Add `ai.platform.agent` label to Kubernetes Service manifests
+### Implemented tests
+| File | Status |
+|------|--------|
+| `tests/Unit/A2AGateway/Discovery/KubernetesDiscoveryProviderTest.php` (4 tests) | ✅ Merged |
+| `tests/Unit/A2AGateway/Discovery/AgentDiscoveryProviderFactoryTest.php` (9 tests) | ✅ Merged |
 
-In `templates/agents/service.yaml`, add a discovery label to every agent Service:
+## What Changes (Architecture Summary)
 
-```yaml
-metadata:
-  labels:
-    ai.platform.agent: "true"
-    ai.platform.agent-name: {{ $agentKey | lower }}-agent
-```
-
-And in `templates/agents/deployment.yaml` pod template labels:
-
-```yaml
-labels:
-  ai.platform.agent: "true"
-```
-
-### 2. Introduce `AgentDiscoveryProviderInterface`
-
-Create an interface that both providers implement:
-
+### 1. `AgentDiscoveryProviderInterface`
+A strategy interface that both providers implement:
 ```php
 interface AgentDiscoveryProviderInterface
 {
@@ -62,85 +62,61 @@ interface AgentDiscoveryProviderInterface
 }
 ```
 
-### 3. Implement `TraefikDiscoveryProvider` (extract from current code)
+### 2. `TraefikDiscoveryProvider` (extracted from existing code)
+Queries Traefik API at `http://traefik:8080/api/http/services`, filters `*-agent@docker` services.
+Pure refactor — no behavior change from original `AgentDiscoveryService`.
 
-Move existing Traefik API logic into a dedicated provider class. No behavior change — this is
-a pure refactor of `AgentDiscoveryService::discoverAgents()`.
+### 3. `KubernetesDiscoveryProvider`
+Queries Kubernetes API for Services with label `ai.platform.agent=true`:
+- Uses in-cluster service account token and CA bundle
+- Reads namespace from `/var/run/secrets/kubernetes.io/serviceaccount/namespace`
+- Builds `hostname` as `<service-name>.<namespace>.svc.cluster.local`
+- Prefers port named `http`; falls back to first port
+- Logs clear warning on RBAC/network failure; returns empty list (no throw)
 
-### 4. Implement `KubernetesDiscoveryProvider`
-
-New provider that queries the Kubernetes API for Services with label `ai.platform.agent=true`:
-
-```
-GET /api/v1/namespaces/{namespace}/services?labelSelector=ai.platform.agent=true
-```
-
-- Uses the **in-cluster service account token** (`/var/run/secrets/kubernetes.io/serviceaccount/token`)
-- Namespace read from `/var/run/secrets/kubernetes.io/serviceaccount/namespace`
-- For each matching Service, extracts:
-  - `hostname` = `<service-name>.<namespace>.svc.cluster.local`
-  - `port` = first port from `spec.ports[]` (or the port named `http`)
-- No external dependencies — uses PHP's native HTTP client with the cluster CA bundle
-
-### 5. Add environment switch via `AGENT_DISCOVERY_PROVIDER` env var
+### 4. `AgentDiscoveryProviderFactory`
+Resolves provider based on `AGENT_DISCOVERY_PROVIDER` env var:
 
 | Value       | Provider                    | Default when          |
 |-------------|-----------------------------|-----------------------|
 | `traefik`   | `TraefikDiscoveryProvider`  | Docker Compose        |
 | `kubernetes`| `KubernetesDiscoveryProvider`| k3s / Kubernetes     |
-| `auto`      | Auto-detect (check for SA token) | —              |
+| `auto`/empty| Auto-detect (check for SA token) | —              |
 
-Default: `auto` — if `/var/run/secrets/kubernetes.io/serviceaccount/token` exists, use Kubernetes
-provider; otherwise fall back to Traefik.
+### 5. `AgentDiscoveryService` refactored
+Now a thin wrapper delegating to `AgentDiscoveryProviderInterface`. All downstream consumers
+(`AgentDiscoveryCommand`, health poller, admin controller) remain unchanged.
 
-### 6. Refactor `AgentDiscoveryService` to delegate
+### 6. Helm chart labels + RBAC
+- Agent Services get `ai.platform.agent: "true"` and `ai.platform.agent-name` labels
+- Agent Deployment pod templates get `ai.platform.agent: "true"` label
+- Core ServiceAccount gets `list services` permission via Role + RoleBinding
 
-`AgentDiscoveryService::discoverAgents()` becomes a thin wrapper that delegates to the resolved
-provider. All downstream consumers (command, admin controller, health poller) remain unchanged.
+## Remaining Work
 
-### 7. RBAC: ServiceAccount permissions
-
-The core deployment's ServiceAccount needs permission to list Services in its namespace:
-
-```yaml
-# templates/core/rbac.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: {{ include "acp.fullname" . }}-core-discovery
-rules:
-  - apiGroups: [""]
-    resources: ["services"]
-    verbs: ["list"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: {{ include "acp.fullname" . }}-core-discovery
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: {{ include "acp.fullname" . }}-core-discovery
-subjects:
-  - kind: ServiceAccount
-    name: {{ include "acp.serviceAccountName" . }}
-```
+The following tasks are tracked in `tasks.md`:
+1. **Unit tests** — TraefikDiscoveryProvider, AgentDiscoveryService (mock provider), edge cases
+2. **Helm chart validation** — `helm template` rendering, `helm lint`
+3. **DI wiring verification** — container compilation test
+4. **Documentation** — developer docs for discovery architecture
+5. **Quality checks** — PHPStan, CS Fixer, full test suite, OpenSpec validation
 
 ## Impact
 
+- **Affected specs:** `a2a-server` (MODIFIED — discovery now uses provider strategy)
 - **Affected code:**
-  - `src/A2AGateway/AgentDiscoveryService.php` — refactor to use provider interface
+  - `src/A2AGateway/AgentDiscoveryService.php` — refactored to use provider interface
   - NEW `src/A2AGateway/Discovery/AgentDiscoveryProviderInterface.php`
   - NEW `src/A2AGateway/Discovery/TraefikDiscoveryProvider.php`
   - NEW `src/A2AGateway/Discovery/KubernetesDiscoveryProvider.php`
-  - `config/services.yaml` — wire provider based on env var
+  - NEW `src/A2AGateway/Discovery/AgentDiscoveryProviderFactory.php`
+  - `config/services.yaml` — factory-based provider wiring
 - **Affected Helm chart:**
-  - `templates/agents/service.yaml` — add `ai.platform.agent` label
-  - `templates/agents/deployment.yaml` — add `ai.platform.agent` pod label
+  - `templates/agents/service.yaml` — `ai.platform.agent` label
+  - `templates/agents/deployment.yaml` — `ai.platform.agent` pod label
   - NEW `templates/core/rbac.yaml` — Service list permission
-  - `values.yaml` — add `core.env.AGENT_DISCOVERY_PROVIDER: auto`
-- **Affected Docker Compose:**
-  - None — `ai.platform.agent=true` label already present on agent services
+  - `values.yaml` — `core.env.AGENT_DISCOVERY_PROVIDER: auto`
+- **Affected Docker Compose:** None — `ai.platform.agent=true` label already present
 - **No breaking changes:** Docker Compose discovery continues to work identically
 
 ## Risks

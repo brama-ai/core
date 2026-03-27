@@ -19,8 +19,8 @@ final class AgentHealthPollerCommandCest
         // Insert a stale marketplace agent: never installed, 5 consecutive failures
         $connection->executeStatement(
             <<<'SQL'
-            INSERT INTO agent_registry (name, version, manifest, config, enabled, health_status, health_check_failures, registered_at, updated_at)
-            VALUES (:name, '1.0.0', '{}', '{}', FALSE, 'unavailable', 5, now(), now())
+            INSERT INTO agent_registry (name, version, manifest, config, enabled, health_status, health_check_failures, registered_at, updated_at, tenant_id)
+            VALUES (:name, '1.0.0', '{}', '{}', FALSE, 'unavailable', 5, now(), now(), '00000000-0000-4000-a000-000000000001')
             SQL,
             ['name' => $name],
         );
