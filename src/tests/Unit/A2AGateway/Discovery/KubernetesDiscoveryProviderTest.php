@@ -66,11 +66,9 @@ final class KubernetesDiscoveryProviderTest extends Unit
     {
         $provider = new KubernetesDiscoveryProvider(
             new NullLogger(),
-            static fn (): string|false => false,
-            static function (): array {
+            static fn (): false => false,
+            static function (): never {
                 self::fail('Kubernetes API request should not run when credentials are missing.');
-
-                return ['status' => 200, 'body' => ''];
             },
         );
 

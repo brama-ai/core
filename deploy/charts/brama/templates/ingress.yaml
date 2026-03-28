@@ -21,6 +21,12 @@ spec:
         {{- if .Values.litellm.enabled }}
         - {{ .Values.ingress.hosts.litellm }}
         {{- end }}
+        {{- if .Values.langfuse.enabled }}
+        - {{ .Values.ingress.hosts.langfuse }}
+        {{- end }}
+        {{- if .Values.openclaw.enabled }}
+        - {{ .Values.ingress.hosts.openclaw }}
+        {{- end }}
       secretName: {{ .Values.ingress.tls.secretName }}
   {{- end }}
   rules:
@@ -45,5 +51,29 @@ spec:
                 name: {{ include "acp.fullname" . }}-litellm
                 port:
                   number: {{ .Values.litellm.service.port }}
+    {{- end }}
+    {{- if .Values.langfuse.enabled }}
+    - host: {{ .Values.ingress.hosts.langfuse }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "acp.fullname" . }}-langfuse
+                port:
+                  number: {{ .Values.langfuse.service.port }}
+    {{- end }}
+    {{- if .Values.openclaw.enabled }}
+    - host: {{ .Values.ingress.hosts.openclaw }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "acp.fullname" . }}-openclaw
+                port:
+                  number: {{ .Values.openclaw.service.port }}
     {{- end }}
 {{- end }}

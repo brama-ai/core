@@ -78,6 +78,9 @@ For bilingual sections, links point to the English version by default.
 - `guides/deployment/en/docker-backup-restore.md` — Docker backup and restore guide.
 - `guides/deployment/en/kubernetes-install.md` — Kubernetes installation guide.
 - `guides/deployment/en/kubernetes-upgrade.md` — Kubernetes upgrade guide.
+- `guides/deployment/en/k3s-storage-architecture.md` — k3s storage durability tiers, PVC strategy, and service matrix.
+- `guides/deployment/en/k3s-storage-backup.md` — PostgreSQL backup/restore runbook, OpenSearch rebuild, Redis/RabbitMQ loss, and rollback strategy.
+- `guides/deployment/en/k3s-storage-verification.md` — PVC bound verification, pod-restart survival tests, and storage gate checklist.
 - `guides/external-agents/en/onboarding.md` — external agent onboarding guide.
 - `guides/external-agents/en/operator-onboarding.md` — operator onboarding for external agents.
 - `guides/external-agents/en/external-agent-workspace.md` — external agent workspace layout and contract.

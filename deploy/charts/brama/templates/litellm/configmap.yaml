@@ -1,0 +1,18 @@
+{{- if and .Values.litellm.enabled .Values.litellm.configMapRef -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.litellm.configMapRef }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "acp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: litellm
+data:
+  config.yaml: |
+    {{- if .Values.litellm.config }}
+    {{- .Values.litellm.config | nindent 4 }}
+    {{- else }}
+    # LiteLLM config — override litellm.config in your values file
+    model_list: []
+    {{- end }}
+{{- end }}

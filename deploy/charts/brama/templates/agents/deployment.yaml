@@ -34,10 +34,19 @@ spec:
             - name: http
               containerPort: {{ $agent.service.port }}
               protocol: TCP
+          {{- if or $agent.env $agent.secretRef }}
+          {{- if $agent.env }}
+          env:
+            {{- range $key, $value := $agent.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
           {{- if $agent.secretRef }}
           envFrom:
             - secretRef:
                 name: {{ $agent.secretRef }}
+          {{- end }}
           {{- end }}
           readinessProbe:
             {{- toYaml $agent.readinessProbe | nindent 12 }}

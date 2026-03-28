@@ -154,7 +154,19 @@ migrations:
 
 # ---------------------------------------------------------------------------
 # Infrastructure — in-cluster via Bitnami sub-charts
+#
+# Storage durability tiers for local k3s dev:
+#   Tier A (authoritative, back up before upgrade): PostgreSQL
+#   Tier B (rebuildable from source): OpenSearch (disabled in dev)
+#   Tier C (optional persistence): Redis, RabbitMQ
+#
+# All services use local-path storage class (k3s default for single-node).
+# PVC baselines for local dev: Postgres 2Gi, Redis 1Gi, RabbitMQ 1Gi.
 # ---------------------------------------------------------------------------
+
+# PostgreSQL — Tier A (authoritative)
+# Backup required before upgrade. Data loss = permanent platform data loss.
+# PVC: 2Gi local-path (local dev baseline)
 postgresql:
   enabled: true
   image:
@@ -171,6 +183,9 @@ postgresql:
       storageClass: local-path
       size: 2Gi
 
+# Redis — Tier C (cache/session state, no backup required)
+# Loss impact: temporary cache miss or session reset only.
+# PVC: 1Gi local-path (local dev baseline)
 redis:
   enabled: true
   architecture: standalone
@@ -185,6 +200,9 @@ redis:
       storageClass: local-path
       size: 1Gi
 
+# RabbitMQ — Tier C (transient message delivery, no backup required)
+# Loss impact: in-flight messages may be lost; producers re-enqueue.
+# PVC: 1Gi local-path (local dev baseline)
 rabbitmq:
   enabled: true
   image:
@@ -198,6 +216,9 @@ rabbitmq:
     storageClass: local-path
     size: 1Gi
 
+# OpenSearch — Tier B (rebuildable from Postgres via re-indexing)
+# Disabled in local dev by default. Enable when search features are needed.
+# PVC: 8Gi local-path when enabled.
 opensearch:
   enabled: false
 

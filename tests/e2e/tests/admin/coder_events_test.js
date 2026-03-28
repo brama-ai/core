@@ -5,8 +5,11 @@
 const { execSync } = require('child_process');
 
 const PROJECT_ROOT = process.cwd().replace(/\/tests\/e2e$/, '');
-const CORE_DB_NAME = process.env.CORE_DB_NAME || 'ai_community_platform_test';
-const PSQL = `docker exec brama-postgres-1 psql -U app -d ${CORE_DB_NAME} -c`;
+const CORE_DB_NAME = process.env.CORE_DB_NAME || 'brama_test';
+const POSTGRES_DSN = process.env.POSTGRES_DSN || `postgresql://app:app@postgres:5432/${CORE_DB_NAME}`;
+const PSQL = process.env.PSQL_CMD || `psql ${POSTGRES_DSN} -c`;
+
+let sseTaskId = null;
 
 Feature('Admin: Coder Events SSE');
 
@@ -26,15 +29,24 @@ Scenario(
             `${PSQL} "INSERT INTO coder_tasks (id, title, description, status, priority, created_at, updated_at) VALUES (gen_random_uuid(), 'E2E SSE Test Task', 'Test for SSE', 'in_progress', 1, now(), now())"`,
             { cwd: PROJECT_ROOT },
         );
+        // Get the task ID for direct navigation
+        const result = execSync(
+            `${PSQL} "SELECT id FROM coder_tasks WHERE title = 'E2E SSE Test Task' LIMIT 1" -t -A`,
+            { cwd: PROJECT_ROOT, encoding: 'utf-8' },
+        ).trim();
+        sseTaskId = result;
     },
 ).tag('@admin').tag('@coder').tag('@sse');
 
 Scenario(
     'coder detail page includes SSE EventSource script',
-    async ({ I, coderPage }) => {
-        await coderPage.open();
-        I.click('E2E SSE Test Task');
-        await I.waitForElement('.card', 5);
+    async ({ I }) => {
+        if (!sseTaskId) {
+            I.say('SKIP: SSE task ID not available');
+            return;
+        }
+        I.amOnPage(`/admin/coder/${sseTaskId}`);
+        await I.waitForText('E2E SSE Test Task', 15);
 
         I.seeInSource('EventSource');
         I.seeInSource('/admin/coder/events');
@@ -43,10 +55,13 @@ Scenario(
 
 Scenario(
     'coder detail page has log panel for real-time updates',
-    async ({ I, coderPage }) => {
-        await coderPage.open();
-        I.click('E2E SSE Test Task');
-        await I.waitForElement('.card', 5);
+    async ({ I }) => {
+        if (!sseTaskId) {
+            I.say('SKIP: SSE task ID not available');
+            return;
+        }
+        I.amOnPage(`/admin/coder/${sseTaskId}`);
+        await I.waitForText('Логи', 15);
 
         I.seeElement('#log-panel');
     },

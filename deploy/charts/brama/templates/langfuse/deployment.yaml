@@ -1,0 +1,110 @@
+{{- if .Values.langfuse.enabled -}}
+---
+# Langfuse web server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "acp.fullname" . }}-langfuse-web
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "acp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: langfuse-web
+spec:
+  replicas: {{ .Values.langfuse.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "acp.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: langfuse-web
+  template:
+    metadata:
+      labels:
+        {{- include "acp.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: langfuse-web
+    spec:
+      {{- include "acp.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "acp.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: langfuse-web
+          image: "{{ .Values.langfuse.web.image.repository }}:{{ .Values.langfuse.web.image.tag }}"
+          imagePullPolicy: {{ .Values.langfuse.web.image.pullPolicy | default .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.langfuse.service.port }}
+              protocol: TCP
+          {{- if .Values.langfuse.secretRef }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.langfuse.secretRef }}
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /api/public/health
+              port: {{ .Values.langfuse.service.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/public/health
+              port: {{ .Values.langfuse.service.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.langfuse.web.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+# Langfuse worker
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "acp.fullname" . }}-langfuse-worker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "acp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: langfuse-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "acp.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: langfuse-worker
+  template:
+    metadata:
+      labels:
+        {{- include "acp.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: langfuse-worker
+    spec:
+      {{- include "acp.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "acp.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: langfuse-worker
+          image: "{{ .Values.langfuse.worker.image.repository }}:{{ .Values.langfuse.worker.image.tag }}"
+          imagePullPolicy: {{ .Values.langfuse.worker.image.pullPolicy | default .Values.global.imagePullPolicy }}
+          {{- if .Values.langfuse.secretRef }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.langfuse.secretRef }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.langfuse.worker.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

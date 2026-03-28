@@ -27,10 +27,15 @@ core:
     EDGE_AUTH_TOKEN_TTL: "43200"
     EDGE_AUTH_LOGIN_BASE_URL: "https://platform.example.com"
     EDGE_AUTH_COOKIE_DOMAIN: ".example.com"
+    # Cloudflare Turnstile CAPTCHA — enable in production to protect the edge auth login form.
+    # Obtain keys from https://dash.cloudflare.com/ → Turnstile.
+    # TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY must be stored in the Kubernetes secret (secretRef).
+    TURNSTILE_ENABLED: "true"
 
   # Name of the Kubernetes Secret containing:
   #   APP_SECRET, EDGE_AUTH_JWT_SECRET, DATABASE_URL,
-  #   LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY
+  #   LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY,
+  #   TURNSTILE_SITE_KEY, TURNSTILE_SECRET_KEY
   secretRef: core-secrets
 
 coreScheduler:
@@ -87,23 +92,51 @@ ingress:
 
 # ---------------------------------------------------------------------------
 # External managed services (recommended for production Kubernetes)
+#
+# Storage durability tiers for production:
+#   Tier A (authoritative, must back up): PostgreSQL
+#     → Use managed PostgreSQL (RDS, Cloud SQL, Hetzner Managed DB) for
+#       production. Set external: true and disable the bundled sub-chart.
+#     → If using bundled sub-chart on single-node k3s: PVC 10Gi local-path.
+#     → Backup: pg_dump before every upgrade. See k3s-storage-backup.md.
+#   Tier B (rebuildable from source): OpenSearch
+#     → Indices can be rebuilt from Postgres via re-indexing if lost.
+#     → Snapshot recommended for large volumes.
+#   Tier C (optional persistence): Redis, RabbitMQ
+#     → Use managed Redis (ElastiCache, Memorystore, Upstash) for production.
+#     → Redis loss: temporary cache miss or session reset only.
+#     → RabbitMQ loss: in-flight messages may be lost; producers re-enqueue.
+#
+# Externalization path:
+#   Setting external: true disables the bundled sub-chart and routes the
+#   application to the specified host. No in-cluster PVC is created.
+#   This pattern ensures storage decisions do not prevent future migration
+#   to managed services.
 # ---------------------------------------------------------------------------
 externalDependencies:
+  # PostgreSQL — Tier A (authoritative, must back up before upgrade)
+  # Recommended: use a managed PostgreSQL service in production.
+  # Backup: pg_dump before every upgrade (see k3s-storage-backup.md).
   postgres:
     external: true
     host: postgres.example.com
     port: 5432
     database: ai_community_platform
 
+  # Redis — Tier C (cache/session state, no backup required)
+  # Recommended: use a managed Redis service in production.
+  # Loss impact: temporary cache miss or session reset only.
   redis:
     external: true
     host: redis.example.com
     port: 6379
 
 # Disable bundled sub-charts when using external managed services
+# PostgreSQL — Tier A: disable when using externalDependencies.postgres
 postgresql:
   enabled: false
 
+# Redis — Tier C: disable when using externalDependencies.redis
 redis:
   enabled: false
 

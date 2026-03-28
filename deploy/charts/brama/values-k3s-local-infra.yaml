@@ -1,3 +1,16 @@
+# K3S Local Infrastructure Values
+#
+# Deploys only stateful infrastructure services (no application workloads).
+# Used for local k3s validation and pre-production infra bring-up.
+#
+# Storage durability tiers:
+#   Tier A (authoritative, back up before upgrade): PostgreSQL
+#   Tier B (rebuildable from source): OpenSearch
+#   Tier C (optional persistence): Redis, RabbitMQ
+#
+# All services use local-path storage class (k3s default for single-node).
+# PVC baselines: Postgres 5Gi, Redis 1Gi, RabbitMQ 2Gi, OpenSearch 8Gi.
+
 global:
   security:
     allowInsecureImages: true
@@ -30,6 +43,9 @@ ingress:
 migrations:
   enabled: false
 
+# PostgreSQL — Tier A (authoritative)
+# Backup required before upgrade. Data loss = permanent platform data loss.
+# PVC: 5Gi local-path (local infra baseline; larger than dev for validation)
 postgresql:
   enabled: true
   image:
@@ -41,6 +57,9 @@ postgresql:
       storageClass: local-path
       size: 5Gi
 
+# Redis — Tier C (cache/session state, no backup required)
+# Loss impact: temporary cache miss or session reset only.
+# PVC: 1Gi local-path
 redis:
   enabled: true
   image:
@@ -52,6 +71,9 @@ redis:
       storageClass: local-path
       size: 1Gi
 
+# RabbitMQ — Tier C (transient message delivery, no backup required)
+# Loss impact: in-flight messages may be lost; producers re-enqueue.
+# PVC: 2Gi local-path
 rabbitmq:
   enabled: true
   image:
@@ -62,6 +84,9 @@ rabbitmq:
     storageClass: local-path
     size: 2Gi
 
+# OpenSearch — Tier B (rebuildable from Postgres via re-indexing)
+# Enabled in local infra profile for search/log validation.
+# PVC: 8Gi local-path (same baseline for all environments where enabled)
 opensearch:
   enabled: true
   extraEnvs:

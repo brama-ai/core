@@ -1,0 +1,20 @@
+{{- if .Values.openclaw.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "acp.fullname" . }}-openclaw
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "acp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: openclaw
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.openclaw.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "acp.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: openclaw
+{{- end }}

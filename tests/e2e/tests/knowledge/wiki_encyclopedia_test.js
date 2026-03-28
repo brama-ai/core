@@ -45,9 +45,9 @@ function seedEntryViaOpenSearch(entry) {
     };
 
     const jsonPayload = JSON.stringify(doc).replace(/'/g, "'\\''");
+    const opensearchUrl = process.env.OPENSEARCH_URL || 'http://opensearch:9200';
     const cmd =
-        `docker exec brama-opensearch-1 ` +
-        `curl -s -X POST "http://localhost:9200/${OPENSEARCH_INDEX}/_doc?refresh=true" ` +
+        `curl -s -X POST "${opensearchUrl}/${OPENSEARCH_INDEX}/_doc?refresh=true" ` +
         `-H "Content-Type: application/json" -d '${jsonPayload}'`;
 
     try {
@@ -115,9 +115,9 @@ Before(async ({ I }) => {
 After(async ({ I }) => {
     // Clean up test entries (best-effort) — delete from OpenSearch directly
     try {
+        const opensearchUrl = process.env.OPENSEARCH_URL || 'http://opensearch:9200';
         const deleteCmd =
-            `docker exec brama-opensearch-1 ` +
-            `curl -s -X POST "http://localhost:9200/${OPENSEARCH_INDEX}/_delete_by_query?refresh=true" ` +
+            `curl -s -X POST "${opensearchUrl}/${OPENSEARCH_INDEX}/_delete_by_query?refresh=true" ` +
             `-H "Content-Type: application/json" -d '{"query":{"term":{"created_by":"test_user"}}}'`;
         execSync(deleteCmd, { encoding: 'utf8', timeout: 10000 });
     } catch (error) {

@@ -1,0 +1,57 @@
+{{- if .Values.openclaw.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "acp.fullname" . }}-openclaw
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "acp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: openclaw
+spec:
+  replicas: {{ .Values.openclaw.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "acp.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: openclaw
+  template:
+    metadata:
+      labels:
+        {{- include "acp.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: openclaw
+    spec:
+      {{- include "acp.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "acp.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: openclaw
+          image: "{{ .Values.openclaw.image.repository }}:{{ .Values.openclaw.image.tag }}"
+          imagePullPolicy: {{ .Values.openclaw.image.pullPolicy | default .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.openclaw.service.port }}
+              protocol: TCP
+          {{- if .Values.openclaw.secretRef }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.openclaw.secretRef }}
+          {{- end }}
+          {{- if .Values.openclaw.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.openclaw.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.openclaw.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.openclaw.livenessProbe | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.openclaw.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

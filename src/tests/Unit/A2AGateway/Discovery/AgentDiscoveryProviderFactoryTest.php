@@ -126,7 +126,7 @@ final class AgentDiscoveryProviderFactoryTest extends Unit
     {
         return new KubernetesDiscoveryProvider(
             new NullLogger(),
-            static fn (): string|false => false,
+            static fn (): false => false,
             static function (): array {
                 return ['status' => 200, 'body' => '{"items":[]}'];
             },

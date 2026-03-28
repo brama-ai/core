@@ -41,11 +41,11 @@ jq -r '[.timestamp, .type, (.step // "-"), (.message // "-")] | @tsv' "$TASK_DIR
 Enables detailed stderr/debug tracing for state-management operations.
 
 ```bash
-FOUNDRY_DEBUG=true ./agentic-development/foundry.sh run --task-file /absolute/path/to/task.md
+FOUNDRY_DEBUG=true ./agentic-development/foundry run --task-file /absolute/path/to/task.md
 
 # or via .env.local
 printf 'FOUNDRY_DEBUG=true\n' >> .env.local
-./agentic-development/foundry.sh headless
+./agentic-development/foundry headless
 ```
 
 Useful files:
@@ -59,7 +59,7 @@ Useful files:
 Logs calls to instrumented Bash/TypeScript helpers in JSONL format.
 
 ```bash
-FOUNDRY_USAGE_TRACKING=true ./agentic-development/foundry.sh headless
+FOUNDRY_USAGE_TRACKING=true ./agentic-development/foundry headless
 ```
 
 Useful file:
@@ -90,9 +90,9 @@ opencode export <session-id>
 
 | Symptom | Likely cause | What to do |
 |---|---|---|
-| `status=stopped`, `stop_reason=dirty_default_workspace` | The workspace has uncommitted changes | Clean up or commit changes, then run `./agentic-development/foundry.sh resume <slug>` |
+| `status=stopped`, `stop_reason=dirty_default_workspace` | The workspace has uncommitted changes | Clean up or commit changes, then run `./agentic-development/foundry resume <slug>` |
 | Failure at `u-validator` or `u-tester` | Real code issue or flaky test | Read `handoff.md`, `summary.md`, agent log, then rerun with `--from u-validator` or `--from u-tester` |
-| `preflight_failed` or `dependency_unavailable` | Services are down or dependencies are missing | Run `./agentic-development/foundry.sh env-check`, then inspect `docker compose ps` |
+| `preflight_failed` or `dependency_unavailable` | Services are down or dependencies are missing | Run `./agentic-development/foundry env-check`, then inspect `docker compose ps` |
 | No clear error, but the task appears stuck | Normal logs do not provide enough signal | Rerun with `FOUNDRY_DEBUG=true` and inspect `foundry-debug.log` |
 | Agent completed, but token/cost numbers look wrong | Fallback model or repeated calls happened | Check `state.json`, `artifacts/checkpoint.json`, `artifacts/telemetry/*.json`, and an OpenCode session export |
 | Multiple related E2E failures appear together | One upstream root cause affects several scenarios | Build a timeline, find the first failure, and group by flow rather than by each individual test |
@@ -140,8 +140,8 @@ rg -n "ERROR|FAILED|Exception|Traceback|panic|fatal" "$TASK_DIR/artifacts/$FAILE
 ### Перевірити, чи працювали сервіси / Check whether services were running
 
 ```bash
-./agentic-development/foundry.sh env-check
-./agentic-development/foundry.sh env-check --app core
+./agentic-development/foundry env-check
+./agentic-development/foundry env-check --app core
 docker compose ps postgres redis opensearch rabbitmq
 ```
 
@@ -181,26 +181,26 @@ Practical flow:
 ### Повторити повний запуск з debug / Rerun the whole task with debug
 
 ```bash
-FOUNDRY_DEBUG=true ./agentic-development/foundry.sh run --task-file /absolute/path/to/task.md
+FOUNDRY_DEBUG=true ./agentic-development/foundry run --task-file /absolute/path/to/task.md
 ```
 
 ### Продовжити з конкретного агента / Resume from a specific agent
 
 ```bash
-./agentic-development/foundry.sh run --from u-validator "<same task prompt>"
-./agentic-development/foundry.sh run --from u-tester "<same task prompt>"
+./agentic-development/foundry run --from u-validator "<same task prompt>"
+./agentic-development/foundry run --from u-tester "<same task prompt>"
 ```
 
 ### Відновити stopped-задачу / Resume a stopped task
 
 ```bash
-./agentic-development/foundry.sh resume <task-slug>
+./agentic-development/foundry resume <task-slug>
 ```
 
 ### Створити задачі з готового E2E report / Recreate tasks from an existing E2E report
 
 ```bash
-./agentic-development/foundry.sh autotest 5 --from-report .opencode/pipeline/reports/<report>.json --start
+./agentic-development/foundry autotest 5 --from-report .opencode/pipeline/reports/<report>.json --start
 ```
 
 Tip: if the issue only reproduces in one stage, do not rerun the full chain. Start from `--from <agent>` and keep the previous artifacts for comparison.

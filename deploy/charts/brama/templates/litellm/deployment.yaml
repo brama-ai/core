@@ -1,0 +1,73 @@
+{{- if .Values.litellm.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "acp.fullname" . }}-litellm
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "acp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: litellm
+spec:
+  replicas: {{ .Values.litellm.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "acp.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: litellm
+  template:
+    metadata:
+      labels:
+        {{- include "acp.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: litellm
+    spec:
+      {{- include "acp.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "acp.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: litellm
+          image: "{{ .Values.litellm.image.repository }}:{{ .Values.litellm.image.tag }}"
+          imagePullPolicy: {{ .Values.litellm.image.pullPolicy | default .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.litellm.service.port }}
+              protocol: TCP
+          {{- if .Values.litellm.configMapRef }}
+          args:
+            - "--config"
+            - "/app/config.yaml"
+          volumeMounts:
+            - name: litellm-config
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+              readOnly: true
+          {{- end }}
+          {{- if .Values.litellm.secretRef }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.litellm.secretRef }}
+          {{- end }}
+          readinessProbe:
+            {{- toYaml .Values.litellm.readinessProbe | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.litellm.livenessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.litellm.resources | nindent 12 }}
+      {{- if .Values.litellm.configMapRef }}
+      volumes:
+        - name: litellm-config
+          configMap:
+            name: {{ .Values.litellm.configMapRef }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

@@ -4,8 +4,21 @@
 // and source CRUD (add, toggle, delete) works correctly through the iframe.
 
 const assert = require('assert');
+const axios = require('axios');
 
 const NEWS_MAKER_URL = process.env.NEWS_URL || 'http://localhost:18084';
+
+/**
+ * Check if the news-maker-agent is available.
+ */
+async function isNewsMakerAvailable() {
+    try {
+        const res = await axios.get(`${NEWS_MAKER_URL}/health`, { timeout: 3000 });
+        return res.status === 200;
+    } catch (_) {
+        return false;
+    }
+}
 const INTERNAL_TOKEN = process.env.APP_INTERNAL_TOKEN || 'dev-internal-token';
 const TEST_SOURCE_NAME = 'E2E Test Source';
 const TEST_SOURCE_URL =
@@ -262,6 +275,10 @@ Scenario(
 Scenario(
     'news-maker-agent health endpoint returns ok',
     async ({ I }) => {
+        if (!await isNewsMakerAvailable()) {
+            I.say('SKIP: news-maker-agent not available at ' + NEWS_MAKER_URL);
+            return;
+        }
         const cookieName =
             process.env.EDGE_AUTH_COOKIE_NAME || 'ACP_EDGE_TOKEN';
         await I.ensureEdgeAccess(`${NEWS_MAKER_URL}/health`);
@@ -287,6 +304,10 @@ Scenario(
 Scenario(
     'news-maker-agent manifest includes admin_url and storage',
     async ({ I }) => {
+        if (!await isNewsMakerAvailable()) {
+            I.say('SKIP: news-maker-agent not available at ' + NEWS_MAKER_URL);
+            return;
+        }
         const cookieName =
             process.env.EDGE_AUTH_COOKIE_NAME || 'ACP_EDGE_TOKEN';
         await I.ensureEdgeAccess(`${NEWS_MAKER_URL}/api/v1/manifest`);

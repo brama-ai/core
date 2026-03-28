@@ -1,16 +1,20 @@
-name: Deploy (Core + Agents)
+name: Deploy (k3s / Helm)
 
 on:
   workflow_dispatch:
     inputs:
       services:
-        description: "Optional: comma-separated services. Use 'all' to redeploy core + all agents."
+        description: "Optional: comma-separated services to rebuild. Use 'all' to rebuild all images."
         required: false
         default: ""
+      helm_only:
+        description: "Skip image build, run helm upgrade only"
+        required: false
+        default: "false"
+        type: boolean
   push:
     branches:
       - main
-      - wiki-agent
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -35,47 +39,42 @@ jobs:
           set -euo pipefail
 
           INPUT_SERVICES="${{ github.event.inputs.services || '' }}"
+          HELM_ONLY="${{ github.event.inputs.helm_only || 'false' }}"
 
-          parse_service_builds() {
-            local compose_file="$1"
-            awk '
-              BEGIN { in_services=0; svc=""; in_build=0; }
-              /^services:[[:space:]]*$/ { in_services=1; next }
-              in_services && /^[^[:space:]]/ { in_services=0 }
-              in_services && /^  [A-Za-z0-9_.-]+:[[:space:]]*$/ {
-                svc=$1; sub(":", "", svc); in_build=0; next
-              }
-              in_services && /^    build:[[:space:]]*$/ { in_build=1; next }
-              in_services && /^    [A-Za-z0-9_.-]+:[[:space:]]*$/ && $1 != "build:" { in_build=0 }
-              in_services && in_build && /^[[:space:]]+dockerfile:[[:space:]]*/ {
-                df=$2; gsub(/"/, "", df); print svc "|" df
-              }
-            ' "$compose_file"
-          }
+          # If helm_only, skip image detection — just deploy
+          if [[ "$HELM_ONLY" == "true" ]]; then
+            echo "services_csv=" >> "$GITHUB_OUTPUT"
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-          declare -A SERVICE_DOCKERFILE=()
-          declare -A SERVICE_SOURCE=()
-          declare -A SERVICE_COMPOSE=()
+          # Service → source directory mapping (relative to repo root)
+          declare -A SERVICE_SOURCE=(
+            [core]="brama-core/src"
+            [knowledge-agent]="brama-agents/knowledge-agent"
+            [hello-agent]="brama-agents/hello-agent"
+            [wiki-agent]="brama-agents/wiki-agent"
+            [news-maker-agent]="brama-agents/news-maker-agent"
+            [dev-reporter-agent]="brama-agents/dev-reporter-agent"
+            [dev-agent]="brama-agents/dev-agent"
+          )
 
-          for file in compose.core.yaml compose.agent-*.yaml; do
-            [[ -f "$file" ]] || continue
-            while IFS='|' read -r svc dockerfile; do
-              [[ -n "$svc" && -n "$dockerfile" ]] || continue
-              SERVICE_DOCKERFILE["$svc"]="$dockerfile"
-              SERVICE_COMPOSE["$svc"]="$file"
-              if [[ "$dockerfile" == docker/*/* ]]; then
-                source_dir="${dockerfile#docker/}"
-                source_dir="${source_dir%%/*}"
-                SERVICE_SOURCE["$svc"]="$source_dir"
-              fi
-            done < <(parse_service_builds "$file")
-          done
+          declare -A SERVICE_DOCKER=(
+            [core]="docker/brama-core"
+            [knowledge-agent]="docker/knowledge-agent"
+            [hello-agent]="docker/hello-agent"
+            [wiki-agent]="docker/wiki-agent"
+            [news-maker-agent]="docker/news-maker-agent"
+            [dev-reporter-agent]="docker/dev-reporter-agent"
+            [dev-agent]="docker/dev-agent"
+          )
+
+          ALL_SERVICES=(core knowledge-agent hello-agent wiki-agent news-maker-agent dev-reporter-agent dev-agent)
 
           if [[ -n "$INPUT_SERVICES" ]]; then
             if [[ "$INPUT_SERVICES" == "all" ]]; then
-              mapfile -t ORDERED_ALL < <(printf '%s\n' "${!SERVICE_DOCKERFILE[@]}" | sort)
-              CSV_ALL="$(IFS=,; echo "${ORDERED_ALL[*]}")"
-              echo "services_csv=$CSV_ALL" >> "$GITHUB_OUTPUT"
+              CSV="$(IFS=,; echo "${ALL_SERVICES[*]}")"
+              echo "services_csv=$CSV" >> "$GITHUB_OUTPUT"
             else
               echo "services_csv=$INPUT_SERVICES" >> "$GITHUB_OUTPUT"
             fi
@@ -96,44 +95,40 @@ jobs:
 
           build_all=false
           declare -A SERVICES=()
+
           for file in "${CHANGED[@]}"; do
             case "$file" in
-              compose.yaml|Makefile|.github/workflows/deploy.yml)
+              brama-core/deploy/charts/brama/*|.github/workflows/deploy.yml|brama-core/Makefile)
                 build_all=true
                 ;;
             esac
 
-            for svc in "${!SERVICE_DOCKERFILE[@]}"; do
-              source_dir="${SERVICE_SOURCE[$svc]:-}"
-              compose_file="${SERVICE_COMPOSE[$svc]:-}"
-
-              if [[ "$file" == "$compose_file" ]]; then
+            for svc in "${ALL_SERVICES[@]}"; do
+              src="${SERVICE_SOURCE[$svc]:-}"
+              docker_dir="${SERVICE_DOCKER[$svc]:-}"
+              if [[ -n "$src" && "$file" == "$src/"* ]]; then
                 SERVICES["$svc"]=1
               fi
-              if [[ -n "$source_dir" && "$file" == "apps/$source_dir/"* ]]; then
-                SERVICES["$svc"]=1
-              fi
-              if [[ -n "$source_dir" && "$file" == "docker/$source_dir/"* ]]; then
+              if [[ -n "$docker_dir" && "$file" == "$docker_dir/"* ]]; then
                 SERVICES["$svc"]=1
               fi
             done
           done
 
           if [[ "$build_all" == "true" ]]; then
-            for svc in "${!SERVICE_DOCKERFILE[@]}"; do
+            for svc in "${ALL_SERVICES[@]}"; do
               SERVICES["$svc"]=1
             done
           fi
 
           if [[ ${#SERVICES[@]} -eq 0 ]]; then
             echo "services_csv=" >> "$GITHUB_OUTPUT"
-            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           mapfile -t ORDERED < <(printf '%s\n' "${!SERVICES[@]}" | sort)
           CSV="$(IFS=,; echo "${ORDERED[*]}")"
-
           echo "services_csv=$CSV" >> "$GITHUB_OUTPUT"
           echo "should_deploy=true" >> "$GITHUB_OUTPUT"
 
@@ -155,7 +150,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
 
-      - name: Deploy changed services
+      - name: Deploy via Helm on k3s
         shell: bash
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -164,17 +159,21 @@ jobs:
           APP_PATH: ${{ vars.APP_PATH }}
           TARGET_REF: ${{ github.ref_name }}
           SERVICES_CSV: ${{ needs.detect-services.outputs.services_csv }}
+          KUBECONFIG: /etc/rancher/k3s/k3s.yaml
         run: |
           set -euo pipefail
           if [[ -z "${APP_PATH:-}" ]]; then
-            APP_PATH="/root/app/ai-community-platform"
+            APP_PATH="/root/app/brama-core"
           fi
 
           REMOTE_SERVICES="${SERVICES_CSV//,/ }"
-          echo "Deploying services: ${REMOTE_SERVICES}"
+          echo "Services to rebuild: ${REMOTE_SERVICES:-<none — helm upgrade only>}"
 
           ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "
             set -euo pipefail
+            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+            # Pull latest code
             cd '$APP_PATH'
             git fetch --all --prune
             if git show-ref --verify --quiet refs/remotes/origin/$TARGET_REF; then
@@ -184,10 +183,29 @@ jobs:
               git checkout \"$TARGET_REF\"
               git pull --ff-only
             fi
-            COMPOSE_ARGS='-f compose.yaml -f compose.core.yaml'
-            for f in compose.agent-*.yaml compose.langfuse.yaml compose.openclaw.yaml; do
-              [ -f \"\$f\" ] && COMPOSE_ARGS=\"\$COMPOSE_ARGS -f \$f\"
-            done
-            eval docker compose \$COMPOSE_ARGS up -d --build --no-deps ${REMOTE_SERVICES}
-            eval docker compose \$COMPOSE_ARGS ps
+
+            # Build and push changed images (if any)
+            if [[ -n '${REMOTE_SERVICES}' ]]; then
+              echo '==> Building images: ${REMOTE_SERVICES}'
+              cd '$APP_PATH/..'
+              bash brama-core/deploy/build-and-push.sh ${REMOTE_SERVICES}
+              cd '$APP_PATH'
+            fi
+
+            # Helm upgrade
+            echo '==> Running helm dependency update'
+            helm dependency update ./deploy/charts/brama
+
+            echo '==> Running helm upgrade --install'
+            helm upgrade --install brama ./deploy/charts/brama \
+              --namespace brama \
+              --create-namespace \
+              -f deploy/charts/brama/values-hetzner.yaml \
+              --wait \
+              --timeout 15m
+
+            # Verify rollout
+            echo '==> Checking rollout status'
+            kubectl rollout status deploy/brama-core -n brama --timeout=120s
+            kubectl get pods -n brama
           "

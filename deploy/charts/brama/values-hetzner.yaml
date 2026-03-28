@@ -1,0 +1,374 @@
+# Brama — Hetzner CX32 Production Values
+#
+# Optimized for a single-node Hetzner CX32 (4 vCPU / 8 GB RAM, x86_64).
+# Total resource requests: ~2.7 Gi (within 7 Gi workload budget after k3s overhead).
+# Total resource limits:   ~5.0 Gi
+#
+# Usage:
+#   helm upgrade --install brama ./deploy/charts/brama \
+#     -n brama --create-namespace \
+#     -f deploy/charts/brama/values-hetzner.yaml \
+#     --wait --timeout 15m
+#
+# Prerequisites:
+#   - k3s installed (built-in Traefik ingress)
+#   - cert-manager installed with letsencrypt-prod ClusterIssuer
+#   - Local registry running at registry.localhost:5000
+#   - Kubernetes secrets created (see docs/guides/deployment/en/kubernetes-install.md)
+
+# ---------------------------------------------------------------------------
+# Global
+# ---------------------------------------------------------------------------
+global:
+  imagePullPolicy: IfNotPresent
+
+# ---------------------------------------------------------------------------
+# Core application
+# ---------------------------------------------------------------------------
+core:
+  enabled: true
+  image:
+    repository: registry.localhost:5000/acp/brama-core
+    tag: "latest"
+    pullPolicy: Always
+
+  replicaCount: 1
+
+  env:
+    APP_ENV: prod
+    AGENT_DISCOVERY_PROVIDER: auto
+    LANGFUSE_ENABLED: "true"
+    LANGFUSE_BASE_URL: "https://langfuse.brama.example.com"
+    EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
+    EDGE_AUTH_TOKEN_TTL: "43200"
+    EDGE_AUTH_LOGIN_BASE_URL: "https://brama.example.com"
+    EDGE_AUTH_COOKIE_DOMAIN: ".brama.example.com"
+
+  # kubectl create secret generic core-secrets -n brama \
+  #   --from-literal=APP_SECRET="..." \
+  #   --from-literal=EDGE_AUTH_JWT_SECRET="..." \
+  #   --from-literal=DATABASE_URL="postgresql://app:PASSWORD@brama-postgresql:5432/ai_community_platform?serverVersion=16&charset=utf8" \
+  #   --from-literal=LANGFUSE_PUBLIC_KEY="lf_pk_..." \
+  #   --from-literal=LANGFUSE_SECRET_KEY="lf_sk_..."
+  secretRef: core-secrets
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+
+coreScheduler:
+  enabled: true
+  image:
+    repository: registry.localhost:5000/acp/brama-core
+    tag: "latest"
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# ---------------------------------------------------------------------------
+# Agents
+# ---------------------------------------------------------------------------
+agents:
+  knowledge:
+    enabled: true
+    image:
+      repository: registry.localhost:5000/acp/knowledge-agent
+      tag: "latest"
+      pullPolicy: Always
+    secretRef: knowledge-agent-secrets
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+
+  hello:
+    enabled: true
+    image:
+      repository: registry.localhost:5000/acp/hello-agent
+      tag: "latest"
+      pullPolicy: Always
+    secretRef: hello-agent-secrets
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+
+  newsMaker:
+    enabled: true
+    image:
+      repository: registry.localhost:5000/acp/news-maker-agent
+      tag: "latest"
+      pullPolicy: Always
+    secretRef: news-maker-agent-secrets
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+
+  wiki:
+    enabled: true
+    image:
+      repository: registry.localhost:5000/acp/wiki-agent
+      tag: "latest"
+      pullPolicy: Always
+    secretRef: wiki-agent-secrets
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+
+  devReporter:
+    enabled: true
+    image:
+      repository: registry.localhost:5000/acp/dev-reporter-agent
+      tag: "latest"
+      pullPolicy: Always
+    secretRef: dev-reporter-agent-secrets
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+
+  # dev-agent is heavy (git + gh CLI) — disabled by default on CX32
+  devAgent:
+    enabled: false
+    image:
+      repository: registry.localhost:5000/acp/dev-agent
+      tag: "latest"
+      pullPolicy: Always
+
+# ---------------------------------------------------------------------------
+# Knowledge worker
+# ---------------------------------------------------------------------------
+knowledgeWorker:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# ---------------------------------------------------------------------------
+# LiteLLM
+# ---------------------------------------------------------------------------
+litellm:
+  enabled: true
+  image:
+    repository: ghcr.io/berriai/litellm
+    tag: "main-stable"
+    pullPolicy: IfNotPresent
+  # kubectl create secret generic litellm-secrets -n brama \
+  #   --from-literal=LITELLM_MASTER_KEY="..." \
+  #   --from-literal=DATABASE_URL="postgresql://app:PASSWORD@brama-postgresql:5432/litellm?serverVersion=16&charset=utf8" \
+  #   --from-literal=OPENROUTER_API_KEY="sk-or-..."
+  secretRef: litellm-secrets
+  configMapRef: litellm-config
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 384Mi
+
+# ---------------------------------------------------------------------------
+# Langfuse observability
+# ---------------------------------------------------------------------------
+langfuse:
+  enabled: true
+  # kubectl create secret generic langfuse-secrets -n brama \
+  #   --from-literal=DATABASE_URL="postgresql://app:PASSWORD@brama-postgresql:5432/langfuse?serverVersion=16&charset=utf8" \
+  #   --from-literal=NEXTAUTH_SECRET="..." \
+  #   --from-literal=NEXTAUTH_URL="https://langfuse.brama.example.com" \
+  #   --from-literal=SALT="..."
+  secretRef: langfuse-secrets
+  web:
+    image:
+      repository: langfuse/langfuse
+      tag: "2"
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  worker:
+    image:
+      repository: langfuse/langfuse-worker
+      tag: "2"
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+
+# ---------------------------------------------------------------------------
+# OpenClaw Telegram gateway (optional)
+# ---------------------------------------------------------------------------
+openclaw:
+  enabled: false
+  image:
+    repository: registry.localhost:5000/acp/openclaw
+    tag: "latest"
+    pullPolicy: Always
+  secretRef: openclaw-secrets
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+# ---------------------------------------------------------------------------
+# Ingress — Traefik (k3s built-in)
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: true
+  className: traefik
+  tls:
+    enabled: true
+    secretName: brama-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    core: brama.example.com
+    langfuse: langfuse.brama.example.com
+    litellm: litellm.brama.example.com
+    openclaw: openclaw.brama.example.com
+
+# ---------------------------------------------------------------------------
+# Bundled sub-charts — all enabled for single-node k3s
+# ---------------------------------------------------------------------------
+
+# PostgreSQL — Tier A (authoritative, must back up before upgrade)
+postgresql:
+  enabled: true
+  architecture: standalone
+  auth:
+    database: ai_community_platform
+    username: app
+    existingSecret: postgresql-secrets
+    secretKeys:
+      adminPasswordKey: postgres-password
+      userPasswordKey: password
+  primary:
+    persistence:
+      enabled: true
+      storageClass: local-path
+      size: 10Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+
+# Redis — Tier C (cache/session, persistence optional)
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      storageClass: local-path
+      size: 2Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+
+# OpenSearch — Tier B (rebuildable from Postgres)
+# Heap reduced to 512m to fit within 8 GB RAM budget
+opensearch:
+  enabled: true
+  replicas: 1
+  singleNode: true
+  extraEnvs:
+    - name: plugins.security.disabled
+      value: "true"
+  opensearchJavaOpts: "-Xms512m -Xmx512m"
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 8Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 768Mi
+    limits:
+      cpu: 1000m
+      memory: 1536Mi
+
+# RabbitMQ — Tier C (transient message delivery)
+rabbitmq:
+  enabled: true
+  auth:
+    username: app
+    existingPasswordSecret: rabbitmq-secrets
+  persistence:
+    enabled: true
+    storageClass: local-path
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# ---------------------------------------------------------------------------
+# Migrations
+# ---------------------------------------------------------------------------
+migrations:
+  enabled: true
+  image:
+    repository: registry.localhost:5000/acp/brama-core
+    tag: "latest"
+    pullPolicy: Always
+  secretRef: core-secrets
+
+# ---------------------------------------------------------------------------
+# Pod security context
+# ---------------------------------------------------------------------------
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000

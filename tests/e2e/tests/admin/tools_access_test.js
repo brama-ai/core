@@ -112,7 +112,9 @@ Scenario(
         assert.ok(redirectResult, 'Expected a response from Langfuse');
         assert.ok(redirectResult.includes('/edge/auth/login'), `Expected edge login redirect, got: ${redirectResult}`);
 
-        // Step 2: Submit login form via curl, capture JWT cookie
+        // Step 2: Submit login form via curl, capture JWT cookie.
+        // Note: Cloudflare Turnstile CAPTCHA must be disabled (TURNSTILE_ENABLED=false)
+        // in the E2E environment so that automated login without a browser widget works.
         const cookieResult = curlSafe(
             `curl -s -c - -L --max-time 10 --connect-timeout 3 -d '_username=admin&_password=${password}' '${redirectResult}'`,
         );

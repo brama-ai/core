@@ -154,6 +154,8 @@ agents:
       initialDelaySeconds: 30
       periodSeconds: 30
     secretRef: ""
+    # Optional inline env vars (non-sensitive)
+    env: {}
 
   hello:
     enabled: true
@@ -184,6 +186,7 @@ agents:
       initialDelaySeconds: 30
       periodSeconds: 30
     secretRef: ""
+    env: {}
 
   newsMaker:
     enabled: false
@@ -214,6 +217,117 @@ agents:
       initialDelaySeconds: 30
       periodSeconds: 30
     secretRef: ""
+    # Optional inline env vars (non-sensitive)
+    env: {}
+
+  wiki:
+    enabled: false
+    image:
+      repository: ghcr.io/nmdimas/brama/wiki-agent
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+    replicaCount: 1
+    service:
+      port: 8089
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 8089
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8089
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    secretRef: ""
+    env: {}
+
+  devReporter:
+    enabled: false
+    image:
+      repository: ghcr.io/nmdimas/brama/dev-reporter-agent
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+    replicaCount: 1
+    service:
+      port: 8091
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 8091
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8091
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    secretRef: ""
+    env: {}
+
+  devAgent:
+    # dev-agent is heavy (git + gh CLI) — disabled by default
+    enabled: false
+    image:
+      repository: ghcr.io/nmdimas/brama/dev-agent
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+    replicaCount: 1
+    service:
+      port: 8093
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 8093
+      initialDelaySeconds: 15
+      periodSeconds: 10
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8093
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    secretRef: ""
+    env: {}
+
+# ---------------------------------------------------------------------------
+# Knowledge worker (background message consumer)
+# Shares the same image as knowledge-agent.
+# Enabled automatically when agents.knowledge.enabled is true.
+# ---------------------------------------------------------------------------
+knowledgeWorker:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
 
 # ---------------------------------------------------------------------------
 # LiteLLM proxy
@@ -276,6 +390,65 @@ website:
       memory: 128Mi
 
 # ---------------------------------------------------------------------------
+# OpenClaw — Telegram gateway (optional)
+# ---------------------------------------------------------------------------
+openclaw:
+  enabled: false
+  image:
+    repository: ghcr.io/nmdimas/brama/openclaw
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    port: 8080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+  readinessProbe: {}
+  livenessProbe: {}
+  secretRef: ""
+
+# ---------------------------------------------------------------------------
+# Langfuse — LLM observability (optional)
+# ---------------------------------------------------------------------------
+langfuse:
+  enabled: false
+  replicaCount: 1
+  service:
+    port: 3000
+  secretRef: ""
+  web:
+    image:
+      repository: langfuse/langfuse
+      tag: "2"
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  worker:
+    image:
+      repository: langfuse/langfuse-worker
+      tag: "2"
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  # Optional: inline LiteLLM-style config (not used by Langfuse directly)
+  config: ""
+
+# ---------------------------------------------------------------------------
 # Ingress
 # ---------------------------------------------------------------------------
 ingress:
@@ -330,6 +503,39 @@ externalDependencies:
 # ---------------------------------------------------------------------------
 # Bundled sub-chart toggles
 # Disable these when using external managed services.
+#
+# Storage durability tiers (k3s storage architecture):
+#   Tier A — authoritative, must back up before upgrade:
+#     PostgreSQL (core + agent databases)
+#   Tier B — recommended to persist, rebuildable from source if lost:
+#     OpenSearch (indices rebuildable from Postgres via re-indexing)
+#     Langfuse stateful dependencies (when observability history matters)
+#   Tier C — persistence optional or environment-dependent:
+#     Redis (cache/session state; loss causes temporary degradation only)
+#     RabbitMQ (transient message delivery; in-flight messages may be lost)
+#     Local container registry (images can be rebuilt)
+#
+# PVC baseline sizes (single-node k3s):
+#   Service      | Local Dev | Production | Tier
+#   -------------|-----------|------------|------
+#   PostgreSQL   | 2 Gi      | 10 Gi      | A
+#   Redis        | 1 Gi      | 2 Gi       | C
+#   RabbitMQ     | 1 Gi      | 2 Gi       | C
+#   OpenSearch   | 8 Gi      | 8 Gi       | B
+#
+# All single-node k3s environments use the `local-path` storage class.
+# For production with managed services, set externalDependencies.*.external: true
+# and disable the corresponding sub-chart.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# PostgreSQL — Tier A (authoritative, must back up)
+# Data: platform and agent relational state (source of truth)
+# Backup: required before every upgrade (pg_dump)
+# Restore: documented restore path with post-restore verification
+# Loss impact: permanent data loss; platform cannot function without restore
+# Externalization: set externalDependencies.postgres.external: true to use
+#   a managed PostgreSQL instance (RDS, Cloud SQL, Hetzner Managed DB, etc.)
 # ---------------------------------------------------------------------------
 postgresql:
   enabled: true
@@ -348,6 +554,15 @@ postgresql:
       storageClass: ""
       size: 10Gi
 
+# ---------------------------------------------------------------------------
+# Redis — Tier C (persistence optional, cache/session state only)
+# Data: session tokens, cache entries, transient workflow state
+# Backup: not required for cache-only usage
+# Loss impact: temporary cache miss or session reset; no permanent data loss
+# Recovery: application reconnects automatically; users may need to re-login
+# Externalization: set externalDependencies.redis.external: true to use
+#   a managed Redis instance (ElastiCache, Memorystore, Upstash, etc.)
+# ---------------------------------------------------------------------------
 redis:
   enabled: true
   auth:
@@ -358,6 +573,14 @@ redis:
       storageClass: ""
       size: 2Gi
 
+# ---------------------------------------------------------------------------
+# OpenSearch — Tier B (recommended to persist, rebuildable from Postgres)
+# Data: search indices, structured logs
+# Backup: optional; snapshot recommended for large index volumes
+# Loss impact: search/log data unavailable until re-indexed from Postgres
+# Recovery: re-index from Postgres using platform re-indexing commands
+# Note: disabled by default; enable when search or log features are needed
+# ---------------------------------------------------------------------------
 opensearch:
   enabled: false
   replicas: 1
@@ -381,6 +604,14 @@ opensearch:
     ports:
       http: 9200
 
+# ---------------------------------------------------------------------------
+# RabbitMQ — Tier C (persistence optional, transient message delivery)
+# Data: message queues for agent task delivery
+# Backup: not required; queues are transient
+# Loss impact: in-flight messages may be lost on pod restart or node loss
+# Recovery: producers re-enqueue; consumers reconnect automatically
+# Note: disabled by default; enable when agent messaging is required
+# ---------------------------------------------------------------------------
 rabbitmq:
   enabled: false
   auth:

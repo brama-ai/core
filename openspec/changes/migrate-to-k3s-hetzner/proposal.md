@@ -37,8 +37,8 @@ while a local container registry eliminates the need for external registry infra
 ## Impact
 
 - Affected specs:
-  - Modifies capability `kubernetes-packaging` — extends chart to full stack
-  - Modifies capability `self-hosted-deployment` — adds k3s as supported topology
+  - Adds capability `k3s-deployment` — full-stack k3s single-node deployment with Helm chart, local registry, Traefik ingress, cert-manager TLS, resource budgeting, data migration, and CI/CD automation
+  - Adds capability `self-hosted-deployment` — defines the self-hosted VPS deployment topology with k3s as the orchestration layer
 - Affected code:
   - `deploy/charts/ai-community-platform/` — chart templates, values, Chart.yaml
   - `.github/workflows/deploy.yml` — deployment workflow

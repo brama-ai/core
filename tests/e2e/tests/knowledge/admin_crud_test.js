@@ -30,9 +30,9 @@ function seedEntryViaOpenSearch(entry) {
     };
 
     const jsonPayload = JSON.stringify(doc).replace(/'/g, "'\\''");
+    const opensearchUrl = process.env.OPENSEARCH_URL || 'http://opensearch:9200';
     const cmd =
-        `docker exec brama-opensearch-1 ` +
-        `curl -s -X POST "http://localhost:9200/${OPENSEARCH_INDEX}/_doc?refresh=true" ` +
+        `curl -s -X POST "${opensearchUrl}/${OPENSEARCH_INDEX}/_doc?refresh=true" ` +
         `-H "Content-Type: application/json" -d '${jsonPayload}'`;
 
     try {

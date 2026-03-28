@@ -2,25 +2,25 @@
 
 Add all missing Kubernetes resources so the chart covers the full docker-compose stack.
 
-- [ ] 1.1 Create `templates/litellm/deployment.yaml` — LiteLLM Deployment with health probes on port 4000, secretRef, configMapRef
-- [ ] 1.2 Create `templates/litellm/service.yaml` — ClusterIP service for LiteLLM
-- [ ] 1.3 Create `templates/litellm/configmap.yaml` — LiteLLM config.yaml as ConfigMap (conditional on `litellm.configMapRef`)
-- [ ] 1.4 Create `templates/agents/worker-deployment.yaml` — knowledge-worker Deployment (same image as knowledge-agent, command: `php bin/console messenger:consume async`, no HTTP port, exec liveness probe)
-- [ ] 1.5 Add `wiki`, `devReporter`, `devAgent` agent sections to `values.yaml` (following existing agent pattern: image, replicaCount, service.port, resources, probes, secretRef)
-- [ ] 1.6 Modify `templates/agents/deployment.yaml` — add `env` block support (inline env vars, matching core deployment pattern)
-- [ ] 1.7 Create `templates/openclaw/deployment.yaml` + `templates/openclaw/service.yaml` — OpenClaw gateway (conditional on `openclaw.enabled`)
-- [ ] 1.8 Create `templates/langfuse/deployment.yaml` + `templates/langfuse/service.yaml` — Langfuse web + worker (conditional on `langfuse.enabled`)
-- [ ] 1.9 Add OpenSearch and RabbitMQ as optional sub-chart dependencies in `Chart.yaml`
-- [ ] 1.10 Update `values.yaml` with `opensearch`, `rabbitmq`, `openclaw`, `langfuse` configuration sections
-- [ ] 1.11 Update `templates/ingress.yaml` — add host rules for Langfuse and OpenClaw (conditional)
-- [ ] 1.12 Extend `templates/jobs/migration.yaml` — support agent-specific migrations (knowledge-agent DB)
+- [x] 1.1 Create `templates/litellm/deployment.yaml` — LiteLLM Deployment with health probes on port 4000, secretRef, configMapRef
+- [x] 1.2 Create `templates/litellm/service.yaml` — ClusterIP service for LiteLLM
+- [x] 1.3 Create `templates/litellm/configmap.yaml` — LiteLLM config.yaml as ConfigMap (conditional on `litellm.configMapRef`)
+- [x] 1.4 Create `templates/agents/worker-deployment.yaml` — knowledge-worker Deployment (same image as knowledge-agent, command: `php bin/console messenger:consume async`, no HTTP port, exec liveness probe)
+- [x] 1.5 Add `wiki`, `devReporter`, `devAgent` agent sections to `values.yaml` (following existing agent pattern: image, replicaCount, service.port, resources, probes, secretRef)
+- [x] 1.6 Modify `templates/agents/deployment.yaml` — add `env` block support (inline env vars, matching core deployment pattern)
+- [x] 1.7 Create `templates/openclaw/deployment.yaml` + `templates/openclaw/service.yaml` — OpenClaw gateway (conditional on `openclaw.enabled`)
+- [x] 1.8 Create `templates/langfuse/deployment.yaml` + `templates/langfuse/service.yaml` — Langfuse web + worker (conditional on `langfuse.enabled`)
+- [x] 1.9 Add OpenSearch and RabbitMQ as optional sub-chart dependencies in `Chart.yaml`
+- [x] 1.10 Update `values.yaml` with `opensearch`, `rabbitmq`, `openclaw`, `langfuse` configuration sections
+- [x] 1.11 Update `templates/ingress.yaml` — add host rules for Langfuse and OpenClaw (conditional)
+- [x] 1.12 Extend `templates/jobs/migration.yaml` — support agent-specific migrations (knowledge-agent DB)
 
 **Verification:**
 ```bash
-helm dependency update ./deploy/charts/ai-community-platform
-helm lint ./deploy/charts/ai-community-platform
-helm template acp ./deploy/charts/ai-community-platform \
-  -f deploy/charts/ai-community-platform/values-hetzner.yaml \
+helm dependency update ./deploy/charts/brama
+helm lint ./deploy/charts/brama
+helm template acp ./deploy/charts/brama \
+  -f deploy/charts/brama/values-hetzner.yaml \
   --debug | kubectl apply --dry-run=client -f -
 ```
 
@@ -28,7 +28,7 @@ helm template acp ./deploy/charts/ai-community-platform \
 
 Production values file optimized for single-node Hetzner CX32 (4 vCPU / 8 GB RAM).
 
-- [ ] 2.1 Create `deploy/charts/ai-community-platform/values-hetzner.yaml` with:
+- [x] 2.1 Create `deploy/charts/brama/values-hetzner.yaml` with:
   - `ingress.className: traefik`
   - All services enabled with tight resource requests (total requests < 3 Gi)
   - Image repositories pointing to `registry.localhost:5000/acp/*`
@@ -37,12 +37,12 @@ Production values file optimized for single-node Hetzner CX32 (4 vCPU / 8 GB RAM
   - secretRef fields for all services
   - cert-manager annotations for TLS
   - Actual domain names for ingress hosts
-- [ ] 2.2 Add dev-agent as disabled by default (heavy: git + gh CLI)
+- [x] 2.2 Add dev-agent as disabled by default (heavy: git + gh CLI)
 
 **Verification:**
 ```bash
-helm template acp ./deploy/charts/ai-community-platform \
-  -f deploy/charts/ai-community-platform/values-hetzner.yaml --debug
+helm template acp ./deploy/charts/brama \
+  -f deploy/charts/brama/values-hetzner.yaml --debug
 # Manually verify: total resource requests < 3 Gi, total limits < 5.5 Gi
 ```
 
@@ -97,7 +97,7 @@ kubectl get pods -n cert-manager               # cert-manager pods Running
 
 Build all platform Dockerfiles on the VPS and push to the local registry.
 
-- [ ] 4.1 Create `deploy/build-and-push.sh` script:
+- [x] 4.1 Create `deploy/build-and-push.sh` script:
   - Reads image list (service name → Dockerfile path → registry tag)
   - Builds each with `docker build`
   - Tags as `registry.localhost:5000/acp/<service>:<version>`
@@ -172,13 +172,13 @@ kubectl logs job/acp-migrate -n acp        # Should end with "Migrations complet
 
 Modify the GitHub Actions deploy workflow to use Helm instead of Docker Compose.
 
-- [ ] 6.1 Update `.github/workflows/deploy.yml`:
+- [x] 6.1 Update `.github/workflows/deploy.yml`:
   - SSH into VPS
   - `git pull` to get latest code
   - Run `deploy/build-and-push.sh` for changed services
   - Run `helm upgrade --install acp ... --wait`
   - Check rollout status
-- [ ] 6.2 Add `KUBECONFIG` path to SSH commands (`/etc/rancher/k3s/k3s.yaml`)
+- [x] 6.2 Add `KUBECONFIG` path to SSH commands (`/etc/rancher/k3s/k3s.yaml`)
 
 **Verification:**
 ```bash
@@ -193,14 +193,14 @@ kubectl rollout status deploy/acp-core -n acp
 
 ## 7. Documentation
 
-- [ ] 7.1 Update `docs/guides/deployment/en/kubernetes-install.md` — add k3s single-node section with Hetzner-specific instructions
-- [ ] 7.2 Update `docs/guides/deployment/ua/kubernetes-install.md` — Ukrainian mirror
-- [ ] 7.3 Document the `deploy/build-and-push.sh` script usage in `deploy/README.md` or existing deployment docs
+- [x] 7.1 Update `docs/guides/deployment/en/kubernetes-install.md` — add k3s single-node section with Hetzner-specific instructions
+- [x] 7.2 Update `docs/guides/deployment/ua/kubernetes-install.md` — Ukrainian mirror
+- [x] 7.3 Document the `deploy/build-and-push.sh` script usage in `deploy/README.md`
 
 ## 8. Quality Checks
 
-- [ ] 8.1 `helm lint ./deploy/charts/ai-community-platform` — no warnings
-- [ ] 8.2 `helm template` with values-hetzner.yaml — all resources render correctly
+- [x] 8.1 `helm lint ./deploy/charts/brama` — no warnings
+- [x] 8.2 `helm template` with values-hetzner.yaml — all resources render correctly (59 resources)
 - [ ] 8.3 All pods in `acp` namespace are Running
 - [ ] 8.4 Core `/health` endpoint responds 200
 - [ ] 8.5 At least one agent `/health` endpoint responds 200

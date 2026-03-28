@@ -47,6 +47,7 @@ Isolation is purely via Docker Compose environment overrides using `profiles: [e
 | Knowledge Agent | 8083 | 18083 |
 | News-Maker Agent | 8084 | 18084 |
 | Hello Agent | 8085 | 18085 |
+| Dev Reporter Agent | 8087 | 18087 |
 | OpenClaw Gateway | 8082 / 18789 | 28789 |
 
 ### A2A Routing in E2E
@@ -249,6 +250,7 @@ See [agent-requirements/agent-state-model.md](agent-state-model.md) for badge se
 | `KNOWLEDGE_URL` | `http://localhost:18083` | Knowledge Agent E2E URL |
 | `NEWS_URL` | `http://localhost:18084` | News-Maker Agent E2E URL |
 | `HELLO_URL` | `http://localhost:18085` | Hello Agent E2E URL |
+| `DEV_REPORTER_URL` | `http://localhost:18087` | Dev Reporter Agent E2E URL |
 | `OPENCLAW_URL` | `http://localhost:28789` | OpenClaw Gateway E2E URL |
 | `TRAEFIK_API` | `http://localhost:8080` | Traefik dashboard API |
 | `ADMIN_PASSWORD` | `test-password` | Admin login password |

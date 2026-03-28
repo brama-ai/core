@@ -41,11 +41,11 @@ jq -r '[.timestamp, .type, (.step // "-"), (.message // "-")] | @tsv' "$TASK_DIR
 Вмикає детальний stderr/debug trace для операцій state-management.
 
 ```bash
-FOUNDRY_DEBUG=true ./agentic-development/foundry.sh run --task-file /absolute/path/to/task.md
+FOUNDRY_DEBUG=true ./agentic-development/foundry run --task-file /absolute/path/to/task.md
 
 # або через .env.local
 printf 'FOUNDRY_DEBUG=true\n' >> .env.local
-./agentic-development/foundry.sh headless
+./agentic-development/foundry headless
 ```
 
 Корисні файли:
@@ -59,7 +59,7 @@ printf 'FOUNDRY_DEBUG=true\n' >> .env.local
 Логує виклики інструментованих Bash/TypeScript функцій у JSONL.
 
 ```bash
-FOUNDRY_USAGE_TRACKING=true ./agentic-development/foundry.sh headless
+FOUNDRY_USAGE_TRACKING=true ./agentic-development/foundry headless
 ```
 
 Корисний файл:
@@ -90,9 +90,9 @@ opencode export <session-id>
 
 | Симптом | Ймовірна причина | Що робити |
 |---|---|---|
-| `status=stopped`, `stop_reason=dirty_default_workspace` | У workspace є незакомічені зміни | Очистити або закомітити зміни, потім `./agentic-development/foundry.sh resume <slug>` |
+| `status=stopped`, `stop_reason=dirty_default_workspace` | У workspace є незакомічені зміни | Очистити або закомітити зміни, потім `./agentic-development/foundry resume <slug>` |
 | Падіння на `u-validator` або `u-tester` | Реальна помилка в коді або флейковий тест | Подивитися `handoff.md`, `summary.md`, agent log, потім перезапустити з `--from u-validator` або `--from u-tester` |
-| `preflight_failed` або `dependency_unavailable` | Не підняті сервіси, бракує залежностей | Запустити `./agentic-development/foundry.sh env-check`, перевірити `docker compose ps` |
+| `preflight_failed` або `dependency_unavailable` | Не підняті сервіси, бракує залежностей | Запустити `./agentic-development/foundry env-check`, перевірити `docker compose ps` |
 | Немає зрозумілої помилки, але задача зависає | Мало сигналів у звичайних логах | Повторити запуск з `FOUNDRY_DEBUG=true` і прочитати `foundry-debug.log` |
 | Агент відпрацював, але витрати або токени дивні | Fallback model або кілька повторних викликів | Перевірити `state.json`, `artifacts/checkpoint.json`, `artifacts/telemetry/*.json`, export сесії OpenCode |
 | Після E2E з'явилося кілька пов'язаних fail-ів | Одна upstream-причина в кількох сценаріях | Зібрати таймлайн, знайти перший fail, групувати за flow, а не за кожним окремим тестом |
@@ -140,8 +140,8 @@ rg -n "ERROR|FAILED|Exception|Traceback|panic|fatal" "$TASK_DIR/artifacts/$FAILE
 ### Перевірити, чи працювали сервіси / Check whether services were running
 
 ```bash
-./agentic-development/foundry.sh env-check
-./agentic-development/foundry.sh env-check --app core
+./agentic-development/foundry env-check
+./agentic-development/foundry env-check --app core
 docker compose ps postgres redis opensearch rabbitmq
 ```
 
@@ -181,26 +181,26 @@ comm -23 /tmp/declared-functions.txt /tmp/used-functions.txt
 ### Повторити повний запуск з debug / Rerun the whole task with debug
 
 ```bash
-FOUNDRY_DEBUG=true ./agentic-development/foundry.sh run --task-file /absolute/path/to/task.md
+FOUNDRY_DEBUG=true ./agentic-development/foundry run --task-file /absolute/path/to/task.md
 ```
 
 ### Продовжити з конкретного агента / Resume from a specific agent
 
 ```bash
-./agentic-development/foundry.sh run --from u-validator "<same task prompt>"
-./agentic-development/foundry.sh run --from u-tester "<same task prompt>"
+./agentic-development/foundry run --from u-validator "<same task prompt>"
+./agentic-development/foundry run --from u-tester "<same task prompt>"
 ```
 
 ### Відновити stopped-задачу / Resume a stopped task
 
 ```bash
-./agentic-development/foundry.sh resume <task-slug>
+./agentic-development/foundry resume <task-slug>
 ```
 
 ### Створити задачі з готового E2E report / Recreate tasks from an existing E2E report
 
 ```bash
-./agentic-development/foundry.sh autotest 5 --from-report .opencode/pipeline/reports/<report>.json --start
+./agentic-development/foundry autotest 5 --from-report .opencode/pipeline/reports/<report>.json --start
 ```
 
 Порада: якщо проблема відтворюється тільки на одному етапі, не запускай весь ланцюг заново. Почни з `--from <agent>` і збережи попередні артефакти для порівняння.

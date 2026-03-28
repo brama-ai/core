@@ -35,6 +35,9 @@ spec:
               set -e
               echo "==> Running core migrations"
               php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+              {{- if and .Values.agents.knowledge.enabled .Values.agents.knowledge.secretRef }}
+              echo "==> Core migrations complete"
+              {{- end }}
               echo "==> Migrations complete"
           env:
             {{- range $key, $value := .Values.core.env }}

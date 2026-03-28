@@ -122,5 +122,6 @@
     const stream = new EventSource('/admin/coder/events?cursor=' + encodeURIComponent(new Date(Date.now() - 10000).toISOString()));
     stream.addEventListener('task.status_changed', function () { window.location.reload(); });
     stream.addEventListener('worker.heartbeat', function () {});
+    window.addEventListener('beforeunload', function () { stream.close(); });
     </script>
 {% endblock %}

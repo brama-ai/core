@@ -560,6 +560,10 @@ make k8s-port-forward svc=core port=8080:80
 - [ ] Secrets are managed outside the shell workflow
 - [ ] Persistence policy is defined for stateful components
 - [ ] `postgresql.enabled` and `redis.enabled` are disabled when using external managed services
+- [ ] **Storage verification gate passed** — see [Storage Verification Procedures](./k3s-storage-verification.md)
+  - [ ] PostgreSQL PVC is `Bound`
+  - [ ] PostgreSQL pod-restart test confirms data survives
+  - [ ] Pre-upgrade PostgreSQL backup taken — see [Backup and Restore Runbook](./k3s-storage-backup.md)
 - [ ] Rollback is tested with `helm rollback`
 - [ ] Post-deploy smoke checks exist for `/health`, login, and scheduler behavior
 
@@ -733,8 +737,304 @@ kubectl exec -n brama deploy/brama-core -- \
 
 Then run `helm upgrade` to mark the release as deployed.
 
+## k3s Single-Node Deployment on Hetzner VPS
+
+This section covers migrating from Docker Compose to k3s on a Hetzner CX32 VPS
+(4 vCPU / 8 GB RAM). This is the recommended production path for single-operator deployments.
+
+### Prerequisites
+
+- Hetzner CX32 VPS (or equivalent) running Ubuntu 24.04+
+- SSH access as root
+- Domain name pointing to the VPS IP
+- GitHub Actions secrets configured: `SSH_HOST`, `SSH_PORT`, `SSH_USER`, `SSH_PRIVATE_KEY`
+
+### RAM Budget
+
+The full stack fits within 8 GB RAM with conservative resource requests (~2.7 Gi total):
+
+| Service | Requests | Limits |
+|---------|----------|--------|
+| PostgreSQL | 256 Mi | 512 Mi |
+| Redis | 64 Mi | 128 Mi |
+| OpenSearch | 768 Mi | 1536 Mi |
+| RabbitMQ | 128 Mi | 256 Mi |
+| Core | 256 Mi | 512 Mi |
+| Core Scheduler | 128 Mi | 256 Mi |
+| LiteLLM | 256 Mi | 384 Mi |
+| Knowledge Agent + Worker | 256 Mi | 512 Mi |
+| Hello Agent | 64 Mi | 128 Mi |
+| Wiki Agent | 64 Mi | 128 Mi |
+| News Maker Agent | 128 Mi | 256 Mi |
+| Dev Reporter Agent | 64 Mi | 128 Mi |
+| Langfuse (web+worker) | 256 Mi | 512 Mi |
+| **Total** | **~2.7 Gi** | **~5.0 Gi** |
+
+> **dev-agent** is disabled by default in `values-hetzner.yaml` — it is heavy (git + gh CLI).
+> Enable it only if needed and monitor RAM usage with `kubectl top nodes`.
+
+### Step 1: Backup PostgreSQL (Docker Compose)
+
+Before stopping Docker Compose, back up all data:
+
+```bash
+ssh root@YOUR_VPS_IP
+
+cd /root/app/brama-core  # or wherever your compose stack lives
+docker compose exec postgres pg_dumpall -U app > /root/pg-backup-$(date +%Y%m%d).sql
+ls -lh /root/pg-backup-*.sql  # verify backup has size > 0
+```
+
+### Step 2: Stop Docker Compose
+
+```bash
+docker compose down
+docker ps  # verify no containers running
+```
+
+### Step 3: Install k3s
+
+```bash
+# Install k3s (keeps built-in Traefik ingress controller)
+curl -sfL https://get.k3s.io | sh -
+
+# Set KUBECONFIG for this session (add to ~/.bashrc for persistence)
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+echo 'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml' >> ~/.bashrc
+
+# Verify
+kubectl get nodes
+# NAME       STATUS   ROLES                  AGE   VERSION
+# your-vps   Ready    control-plane,master   30s   v1.34.x+k3s1
+```
+
+### Step 4: Install Helm
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+helm version
+```
+
+### Step 5: Deploy Local Container Registry
+
+```bash
+# Apply registry resources
+kubectl apply -f - <<'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: registry
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: registry
+  template:
+    metadata:
+      labels:
+        app: registry
+    spec:
+      hostNetwork: true
+      containers:
+        - name: registry
+          image: registry:2
+          ports:
+            - containerPort: 5000
+              hostPort: 5000
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/registry
+      volumes:
+        - name: data
+          hostPath:
+            path: /var/lib/registry
+            type: DirectoryOrCreate
+EOF
+
+# Configure k3s to trust the local registry
+cat > /etc/rancher/k3s/registries.yaml <<'EOF'
+mirrors:
+  "registry.localhost:5000":
+    endpoint:
+      - "http://registry.localhost:5000"
+EOF
+
+# Restart k3s to pick up registries.yaml
+systemctl restart k3s
+sleep 10
+kubectl get nodes  # should still be Ready
+
+# Test registry
+curl -s http://registry.localhost:5000/v2/_catalog
+# {"repositories":[]}
+```
+
+### Step 6: Install cert-manager
+
+```bash
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+helm install cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --set crds.enabled=true
+
+# Wait for cert-manager pods
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager \
+  -n cert-manager --timeout=120s
+
+# Create Let's Encrypt ClusterIssuer
+kubectl apply -f - <<'EOF'
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: your-email@example.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+      - http01:
+          ingress:
+            class: traefik
+EOF
+```
+
+### Step 7: Build and Push Images
+
+```bash
+cd /root/app  # workspace root (parent of brama-core)
+
+# Build all 7 platform images and push to local registry
+bash brama-core/deploy/build-and-push.sh
+
+# Verify all images are available
+curl -s http://registry.localhost:5000/v2/_catalog
+# {"repositories":["acp/brama-core","acp/knowledge-agent","acp/hello-agent",...]}
+```
+
+See [`deploy/build-and-push.sh`](../../../../deploy/build-and-push.sh) for usage details.
+
+### Step 8: Create Namespace and Secrets
+
+```bash
+kubectl create namespace brama
+
+# Core secrets
+kubectl create secret generic core-secrets -n brama \
+  --from-literal=APP_SECRET="$(openssl rand -hex 32)" \
+  --from-literal=EDGE_AUTH_JWT_SECRET="$(openssl rand -hex 32)" \
+  --from-literal=DATABASE_URL="postgresql://app:PASSWORD@brama-postgresql:5432/ai_community_platform?serverVersion=16&charset=utf8" \
+  --from-literal=LANGFUSE_PUBLIC_KEY="lf_pk_..." \
+  --from-literal=LANGFUSE_SECRET_KEY="lf_sk_..."
+
+# PostgreSQL password secret (used by Bitnami sub-chart)
+kubectl create secret generic postgresql-secrets -n brama \
+  --from-literal=postgres-password="POSTGRES_ADMIN_PASSWORD" \
+  --from-literal=password="APP_PASSWORD"
+
+# LiteLLM secrets
+kubectl create secret generic litellm-secrets -n brama \
+  --from-literal=LITELLM_MASTER_KEY="$(openssl rand -hex 32)" \
+  --from-literal=DATABASE_URL="postgresql://app:PASSWORD@brama-postgresql:5432/litellm?serverVersion=16&charset=utf8" \
+  --from-literal=OPENROUTER_API_KEY="sk-or-..."
+
+# Agent secrets
+kubectl create secret generic knowledge-agent-secrets -n brama \
+  --from-literal=APP_SECRET="$(openssl rand -hex 32)" \
+  --from-literal=DATABASE_URL="postgresql://app:PASSWORD@brama-postgresql:5432/knowledge_agent?serverVersion=16&charset=utf8"
+
+kubectl create secret generic hello-agent-secrets -n brama \
+  --from-literal=APP_SECRET="$(openssl rand -hex 32)"
+
+# Langfuse secrets
+kubectl create secret generic langfuse-secrets -n brama \
+  --from-literal=DATABASE_URL="postgresql://app:PASSWORD@brama-postgresql:5432/langfuse?serverVersion=16&charset=utf8" \
+  --from-literal=NEXTAUTH_SECRET="$(openssl rand -hex 32)" \
+  --from-literal=NEXTAUTH_URL="https://langfuse.brama.example.com" \
+  --from-literal=SALT="$(openssl rand -hex 16)"
+
+# RabbitMQ password secret
+kubectl create secret generic rabbitmq-secrets -n brama \
+  --from-literal=rabbitmq-password="RABBITMQ_PASSWORD"
+```
+
+### Step 9: Deploy with Helm
+
+Edit `deploy/charts/brama/values-hetzner.yaml` to set your actual domain names, then:
+
+```bash
+cd /root/app/brama-core
+
+# Update sub-chart dependencies
+helm dependency update ./deploy/charts/brama
+
+# Deploy
+helm upgrade --install brama ./deploy/charts/brama \
+  --namespace brama \
+  -f deploy/charts/brama/values-hetzner.yaml \
+  --wait \
+  --timeout 15m
+```
+
+### Step 10: Restore PostgreSQL Data
+
+```bash
+# Wait for PostgreSQL pod
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql \
+  -n brama --timeout=120s
+
+# Get PostgreSQL pod name
+PG_POD=$(kubectl get pod -n brama -l app.kubernetes.io/name=postgresql \
+  -o jsonpath='{.items[0].metadata.name}')
+
+# Copy backup and restore
+kubectl cp /root/pg-backup-*.sql brama/${PG_POD}:/tmp/backup.sql
+kubectl exec -n brama ${PG_POD} -- psql -U app -f /tmp/backup.sql
+
+# Restart application pods to pick up restored data
+kubectl rollout restart deploy -n brama
+```
+
+### Step 11: Verify
+
+```bash
+# All pods should be Running or Completed
+kubectl get pods -n brama
+
+# Check ingress
+kubectl get ingress -n brama
+
+# Test health endpoints
+kubectl port-forward -n brama svc/brama-core 8080:80 &
+curl -sf http://localhost:8080/health  # {"status":"ok"}
+
+# Check migration job
+kubectl get jobs -n brama
+kubectl logs job/brama-migrate-1 -n brama  # should end with "Migrations complete"
+
+# Check TLS (after DNS propagation)
+curl -sf https://brama.example.com/health
+```
+
+### Rollback to Docker Compose
+
+If the k3s deployment fails:
+
+```bash
+helm uninstall brama -n brama
+systemctl stop k3s
+docker compose up -d  # PostgreSQL data intact in Docker volumes
+```
+
 ## Next Steps
 
 - [Upgrade runbook](./kubernetes-upgrade.md) — how to upgrade to a new release
 - [Deployment topology matrix](./deployment-topology.md) — supported topologies and trade-offs
 - [Docker deployment guide](./deployment.md) — Docker Compose path
+- [k3s Storage Architecture](./k3s-storage-architecture.md) — storage durability tiers and PVC strategy
+- [Storage Verification Procedures](./k3s-storage-verification.md) — PVC and pod-restart verification
+- [PostgreSQL Backup and Restore Runbook](./k3s-storage-backup.md) — backup and restore procedures

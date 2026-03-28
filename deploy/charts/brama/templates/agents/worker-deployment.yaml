@@ -1,0 +1,56 @@
+{{- if and .Values.agents.knowledge.enabled .Values.knowledgeWorker.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "acp.fullname" . }}-knowledge-worker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "acp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: knowledge-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "acp.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: knowledge-worker
+  template:
+    metadata:
+      labels:
+        {{- include "acp.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: knowledge-worker
+    spec:
+      {{- include "acp.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "acp.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: knowledge-worker
+          image: "{{ .Values.agents.knowledge.image.repository }}:{{ .Values.agents.knowledge.image.tag }}"
+          imagePullPolicy: {{ .Values.agents.knowledge.image.pullPolicy | default .Values.global.imagePullPolicy }}
+          command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600"]
+          {{- if .Values.agents.knowledge.secretRef }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.agents.knowledge.secretRef }}
+          {{- end }}
+          # Exec liveness probe — checks that the consumer process is alive
+          livenessProbe:
+            exec:
+              command:
+                - php
+                - bin/console
+                - messenger:stats
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.knowledgeWorker.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

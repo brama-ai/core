@@ -30,7 +30,7 @@
 
 - [x] 5.1 Add unit tests for sequence projection from log events.
 - [x] 5.2 Add functional tests for trace page rendering sequence nodes/edges and detail inspector payload visibility.
-- [ ] 5.3 Add integration coverage for discovery snapshot and invoke step event fields.
+- [x] 5.3 Add integration coverage for discovery snapshot and invoke step event fields.
 
 ## 6. Documentation
 
@@ -40,6 +40,6 @@
 
 ## 7. Quality Checks
 
-- [ ] 7.1 `vendor/bin/phpstan analyse` (core + hello-agent) passes with zero errors.
-- [ ] 7.2 `vendor/bin/php-cs-fixer check --diff --allow-risky=yes` (core + hello-agent) passes.
-- [ ] 7.3 `vendor/bin/codecept run` (core + hello-agent functional + unit) passes.
+- [x] 7.1 `vendor/bin/phpstan analyse` (core + hello-agent) passes with zero errors.
+- [x] 7.2 `vendor/bin/php-cs-fixer check --diff --allow-risky=yes` (core + hello-agent) passes.
+- [x] 7.3 `vendor/bin/codecept run` (core + hello-agent functional + unit) passes.

@@ -6,8 +6,9 @@ const { execSync } = require('child_process');
 const assert = require('assert');
 
 const PROJECT_ROOT = process.cwd().replace(/\/tests\/e2e$/, '');
-const CORE_DB_NAME = process.env.CORE_DB_NAME || 'ai_community_platform_test';
-const PSQL = `docker exec brama-postgres-1 psql -U app -d ${CORE_DB_NAME} -c`;
+const CORE_DB_NAME = process.env.CORE_DB_NAME || 'brama_test';
+const POSTGRES_DSN = process.env.POSTGRES_DSN || `postgresql://app:app@postgres:5432/${CORE_DB_NAME}`;
+const PSQL = process.env.PSQL_CMD || `psql ${POSTGRES_DSN} -c`;
 const TEST_TRACE_ID = 'e2e-test-trace-chats-001';
 const TEST_AGENT = 'hello-agent';
 const TEST_SKILL = 'hello.greet';

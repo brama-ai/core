@@ -2,6 +2,7 @@
 // Tests that the platform works with environment variable-based configuration
 
 const assert = require('assert');
+const axios = require('axios');
 
 Feature('Smoke: Deployment Configuration');
 
@@ -28,34 +29,29 @@ Scenario('agent health endpoints work with env vars @smoke', async ({ I }) => {
     const knowledgeUrl = process.env.KNOWLEDGE_URL || 'http://localhost:18083';
     const newsUrl = process.env.NEWS_URL || 'http://localhost:18084';
 
-    // Helper: test agent health tolerantly — agents may be unavailable in dev/e2e
+    // Helper: test agent health tolerantly using axios directly (not I.sendGetRequest)
+    // to avoid CodeceptJS marking the test as failed when the agent is unavailable.
     const checkAgent = async (name, baseUrl) => {
         try {
-            const res = await I.sendGetRequest(`${baseUrl}/health`);
-            if (res.status === 404 || res.status === 502 || res.status === 503) {
-                console.log(`${name} not available (got ${res.status}) — skipping`);
-                return;
-            }
+            const res = await axios.get(`${baseUrl}/health`, { timeout: 5000 });
             if (res.status === 200 && res.data) {
                 assert.strictEqual(res.data.status, 'ok');
-                // Service name in response may include -e2e suffix; check it contains the base name
                 if (res.data.service) {
                     assert.ok(
                         res.data.service.includes(name),
-                        `Expected service name to contain '${name}', got '${res.data.service}'`
+                        `Expected service name to contain '${name}', got '${res.data.service}'`,
                     );
-                }
-
-                // Test readiness (some agents may not implement /health/ready)
-                try {
-                    const readyRes = await I.sendGetRequest(`${baseUrl}/health/ready`);
-                    assert.ok([200, 404, 503].includes(readyRes.status));
-                } catch (readyErr) {
-                    console.log(`${name} does not support /health/ready — skipping`);
                 }
             }
         } catch (e) {
-            console.log(`${name} not available, skipping: ${e.message}`);
+            const code = e.code || e.cause?.code || '';
+            const status = e.response?.status;
+            if (['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNABORTED'].includes(code) ||
+                status === 404 || status === 502 || status === 503) {
+                I.say(`${name} not available (${code || status}) — skipping`);
+                return;
+            }
+            throw e;
         }
     };
 

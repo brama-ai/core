@@ -92,5 +92,6 @@
         const payload = JSON.parse(event.data);
         if (payload.task_id === '{{ task.id }}') window.location.reload();
     });
+    window.addEventListener('beforeunload', function () { stream.close(); });
     </script>
 {% endblock %}

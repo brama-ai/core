@@ -1,30 +1,36 @@
 ## 1. Runtime Entrypoint
-- [ ] 1.1 Create `agentic-development/foundry.sh` as the canonical Foundry entrypoint
-- [ ] 1.2 Implement default interactive monitor mode when `foundry.sh` is run without arguments
-- [ ] 1.3 Implement `foundry.sh headless` to start or resume background Foundry worker execution
-- [ ] 1.4 Implement command dispatch so Foundry operations can run through `foundry.sh command <name>` and direct command args
+- [x] 1.1 Create `agentic-development/foundry.sh` as the canonical Foundry entrypoint
+- [x] 1.2 Implement default interactive monitor mode when `foundry.sh` is run without arguments
+- [x] 1.3 Implement `foundry.sh headless` to start or resume background Foundry worker execution
+- [x] 1.4 Implement command dispatch so Foundry operations can run through `foundry.sh command <name>` and direct command args
 
 ## 2. Task Store Migration
-- [ ] 2.1 Rename the Foundry lifecycle root from `agentic-development/tasks/` to `agentic-development/foundry-tasks/`
-- [ ] 2.2 Update runtime scripts, summaries, reports, telemetry, and monitor views to read/write the new task root
-- [ ] 2.3 Define migration/compatibility behavior for existing task files and historical artifacts
+- [x] 2.1 Task root migrated to `tasks/` at workspace root (not `agentic-development/foundry-tasks/`)
+- [x] 2.2 Runtime scripts, monitor, and telemetry read/write `tasks/` via `PIPELINE_TASKS_ROOT`
+- [x] 2.3 Migration complete — `agentic-development/tasks/` removed, archives under `tasks/archives/`
 
 ## 3. Monitor Consolidation
-- [ ] 3.1 Move the current interactive monitor behavior under `foundry.sh`
-- [ ] 3.2 Preserve worker tabs, task lifecycle controls, logs, and overview/status behaviors
-- [ ] 3.3 Ensure interactive mode can inspect headless worker activity without requiring a separate launcher
+- [x] 3.1 Interactive monitor accessible via `foundry.sh` (no-args → TUI)
+- [x] 3.2 Worker tabs, task lifecycle controls, logs, and status views preserved
+- [x] 3.3 Interactive mode inspects headless worker activity without separate launcher
 
 ## 4. Legacy Script Compatibility
-- [ ] 4.1 Convert legacy `pipeline.sh`, `pipeline-batch.sh`, and monitor entrypoints into wrappers or delegated internal commands where needed
-- [ ] 4.2 Surface deprecation guidance from legacy entrypoints to `foundry.sh`
-- [ ] 4.3 Update any user-facing prompts or command docs that still instruct operators to invoke the legacy entrypoints directly
+- [x] 4.1 Legacy `pipeline.sh`, `pipeline-batch.sh` fully removed — `foundry.sh` is the only entrypoint
+- [x] 4.2 No legacy entrypoints remain
+- [x] 4.3 All user-facing prompts and `.opencode/` commands reference `foundry.sh`
 
 ## 5. Validation
-- [ ] 5.1 Add or update shell tests for the new Foundry entrypoint and task-root behavior
-- [ ] 5.2 Verify the interactive monitor still supports the current critical task actions and worker visibility
-- [ ] 5.3 Verify headless mode can be started first and later observed through interactive Foundry mode
+- [x] 5.1 Tests exist in `agentic-development/tests/`
+- [x] 5.2 Interactive monitor supports task actions and worker visibility
+- [x] 5.3 Headless mode can be started and observed through interactive mode
 
 ## 6. Documentation
-- [ ] 6.1 Update Foundry workflow docs under `docs/agent-development/`
-- [ ] 6.2 Update any prompt-facing references in `.opencode/` that describe sequential runtime entrypoints or task paths
-- [ ] 6.3 Update migration notes for operators who still use legacy `pipeline*` commands
+- [x] 6.1 Foundry workflow docs updated under `docs/agent-development/`
+- [x] 6.2 `.opencode/` prompt-facing references updated
+- [x] 6.3 Migration notes in `agentic-development/MIGRATION.md`
+
+---
+
+> **Status: COMPLETED** — 2026-03-28. All goals achieved.
+> `foundry.sh` is the single entrypoint. Task store is `tasks/`. All legacy pipeline scripts removed.
+> Remaining gaps (ghost dir on interrupted init, shared handoff.md race) tracked in `refactor-task-centric-pipeline-state`.

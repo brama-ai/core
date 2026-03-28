@@ -59,7 +59,20 @@
 
 ## 9. Quality Checks
 
-- [ ] `make dev-reporter-analyse` — zero PHPStan errors
-- [ ] `make dev-reporter-cs-check` — no CS violations
-- [ ] `make dev-reporter-test` — all tests pass
-- [ ] `make conventions-test` — agent compliance tests pass
+- [x] `make dev-reporter-analyse` — zero PHPStan errors
+- [x] `make dev-reporter-cs-check` — no CS violations
+- [x] `make dev-reporter-test` — all tests pass (28/28, fixed .env.test missing DATABASE_URL)
+- [x] `make conventions-test` — agent compliance tests pass (17/17)
+
+## 10. E2E Tests
+
+- [x] Add `brama-core/tests/e2e/tests/admin/dev_reporter_admin_test.js` covering:
+  - Health endpoint smoke test (`@smoke @dev-reporter`)
+  - Manifest validation smoke test (`@smoke @dev-reporter`)
+  - Agent discovery and healthy badge (`@admin @dev-reporter`)
+  - Admin panel reports list page loads in iframe (`@admin @dev-reporter`)
+  - Admin panel reports list shows table columns (`@admin @dev-reporter`)
+  - Admin panel reports list has status filter buttons (`@admin @dev-reporter`)
+  - Admin panel reports list direct URL accessible (`@admin @dev-reporter`)
+- [x] Add `DEV_REPORTER_URL` env var to `e2e-inner` and `e2e-smoke-inner` Makefile targets
+- [x] Update `brama-core/docs/agent-requirements/e2e-testing.md` with dev-reporter port (18087)

@@ -3,11 +3,26 @@
 // and action buttons (run, toggle) work.
 
 const assert = require('assert');
+const { execSync } = require('child_process');
+
+const PROJECT_ROOT = process.cwd().replace(/\/tests\/e2e$/, '');
+const CORE_DB_NAME = process.env.CORE_DB_NAME || 'brama_test';
+const POSTGRES_DSN = process.env.POSTGRES_DSN || `postgresql://app:app@postgres:5432/${CORE_DB_NAME}`;
+const PSQL = process.env.PSQL_CMD || `psql ${POSTGRES_DSN} -c`;
 
 Feature('Admin: Scheduler');
 
 Before(async ({ I, loginPage }) => {
     await loginPage.loginAsAdmin();
+    // Ensure daily-greeting job is enabled and reset retry count before each test
+    try {
+        execSync(
+            `${PSQL} "UPDATE scheduled_jobs SET enabled = true, retry_count = 0, last_status = 'ok' WHERE job_name = 'daily-greeting'"`,
+            { cwd: PROJECT_ROOT },
+        );
+    } catch (_) {
+        // Ignore if job doesn't exist
+    }
 });
 
 Scenario(
@@ -64,7 +79,8 @@ Scenario(
         // Click "Вимкнути" on daily-greeting
         I.click(locate('button').withText('Вимкнути').inside('//tr[contains(., "daily-greeting")]'));
 
-        // Page reloads — wait for table
+        // Wait for the AJAX request to complete and page to reload
+        await I.wait(2);
         await I.waitForElement('table', 10);
 
         // Now the button should say "Увімкнути" and badge should say "ні"
@@ -73,6 +89,7 @@ Scenario(
 
         // Toggle back to enabled
         I.click(locate('button').withText('Увімкнути').inside('//tr[contains(., "daily-greeting")]'));
+        await I.wait(2);
         await I.waitForElement('table', 10);
 
         // Verify restored

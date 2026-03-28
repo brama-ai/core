@@ -459,6 +459,74 @@ kubectl logs deploy/brama-core -n brama --previous
 
 Якщо через port-forward `/health` працює, проблема майже напевно в ingress, DNS або TLS шарі.
 
+## Розгортання k3s на одному вузлі Hetzner VPS
+
+Цей розділ описує міграцію з Docker Compose на k3s на Hetzner CX32 VPS
+(4 vCPU / 8 GB RAM). Це рекомендований production-шлях для single-operator розгортань.
+
+Англійська версія з повними командами: [`docs/guides/deployment/en/kubernetes-install.md`](../en/kubernetes-install.md)
+
+### Передумови
+
+- Hetzner CX32 VPS (або аналог) з Ubuntu 24.04+
+- SSH-доступ як root
+- Доменне ім'я, що вказує на IP VPS
+- Налаштовані GitHub Actions secrets: `SSH_HOST`, `SSH_PORT`, `SSH_USER`, `SSH_PRIVATE_KEY`
+
+### Бюджет RAM
+
+Повний стек вміщується в 8 GB RAM з консервативними resource requests (~2.7 Gi загалом):
+
+| Сервіс | Requests | Limits |
+|--------|----------|--------|
+| PostgreSQL | 256 Mi | 512 Mi |
+| Redis | 64 Mi | 128 Mi |
+| OpenSearch | 768 Mi | 1536 Mi |
+| RabbitMQ | 128 Mi | 256 Mi |
+| Core | 256 Mi | 512 Mi |
+| Core Scheduler | 128 Mi | 256 Mi |
+| LiteLLM | 256 Mi | 384 Mi |
+| Knowledge Agent + Worker | 256 Mi | 512 Mi |
+| Hello Agent | 64 Mi | 128 Mi |
+| Wiki Agent | 64 Mi | 128 Mi |
+| News Maker Agent | 128 Mi | 256 Mi |
+| Dev Reporter Agent | 64 Mi | 128 Mi |
+| Langfuse (web+worker) | 256 Mi | 512 Mi |
+| **Разом** | **~2.7 Gi** | **~5.0 Gi** |
+
+> **dev-agent** вимкнено за замовчуванням у `values-hetzner.yaml` — він важкий (git + gh CLI).
+> Вмикайте лише за потреби та моніторте RAM через `kubectl top nodes`.
+
+### Кроки міграції
+
+Детальні команди з поясненнями — в англійській версії:
+[`docs/guides/deployment/en/kubernetes-install.md`](../en/kubernetes-install.md#k3s-single-node-deployment-on-hetzner-vps)
+
+Короткий план:
+
+1. **Резервна копія PostgreSQL** — `pg_dumpall` перед зупинкою Docker Compose
+2. **Зупинити Docker Compose** — `docker compose down`
+3. **Встановити k3s** — `curl -sfL https://get.k3s.io | sh -`
+4. **Встановити Helm** — `get-helm-3` скрипт
+5. **Розгорнути локальний registry** — Deployment + HostNetwork на порту 5000
+6. **Налаштувати registries.yaml** — довіряти `registry.localhost:5000`
+7. **Встановити cert-manager** — Let's Encrypt ClusterIssuer
+8. **Зібрати та запушити образи** — `bash brama-core/deploy/build-and-push.sh`
+9. **Створити namespace та secrets** — `kubectl create secret generic ...`
+10. **Helm upgrade --install** — з `values-hetzner.yaml`
+11. **Відновити PostgreSQL** — `kubectl cp` + `psql -f backup.sql`
+12. **Перевірити** — `kubectl get pods -n brama`, `/health` endpoints
+
+### Rollback до Docker Compose
+
+Якщо k3s-деплой не вдався:
+
+```bash
+helm uninstall brama -n brama
+systemctl stop k3s
+docker compose up -d  # дані PostgreSQL збережені у Docker volumes
+```
+
 ## Наступні кроки
 
 - [Runbook оновлення](./kubernetes-upgrade.md) — як оновити до нового релізу

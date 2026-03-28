@@ -65,9 +65,15 @@ Review:
 ### 4. Confirm backup coverage
 
 Before applying any upgrade, confirm you have current backups of:
-- PostgreSQL databases (all databases used by core and agents)
-- Redis state (if persistence is enabled)
+- PostgreSQL databases (all databases used by core and agents) — **Tier A, mandatory**
+- Redis state (if persistence is enabled) — Tier C, optional
 - Any external secret sources
+
+**PostgreSQL backup is mandatory before every upgrade.** See the
+[PostgreSQL Backup and Restore Runbook](./k3s-storage-backup.md) for concrete `pg_dump` commands.
+
+For a full pre-upgrade storage checklist, see
+[Storage Verification Procedures](./k3s-storage-verification.md).
 
 ### 5. Confirm cluster health
 
@@ -269,3 +275,6 @@ The same logical gates apply to both Docker and Kubernetes upgrades:
 - [Install guide](./kubernetes-install.md)
 - [Deployment topology matrix](./deployment-topology.md)
 - [Docker upgrade runbook](./docker-upgrade.md)
+- [k3s Storage Architecture](./k3s-storage-architecture.md)
+- [PostgreSQL Backup and Restore Runbook](./k3s-storage-backup.md)
+- [Storage Verification Procedures](./k3s-storage-verification.md)

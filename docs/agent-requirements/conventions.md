@@ -291,7 +291,7 @@ Postgres convention:
 
 ## 8. Adding a New Agent — Checklist
 
-### In-repo agent (bundled under apps/)
+### In-repo agent (bundled under apps/) — Docker Compose
 
 1. Add service to `compose.agent-<name>.yaml` with name ending `-agent` and label `ai.platform.agent=true`
 2. Implement `GET /api/v1/manifest` returning valid JSON
@@ -301,6 +301,16 @@ Postgres convention:
 6. Core auto-discovers on next discovery cycle (up to 60s) or via "Run Discovery" in admin panel
 
 No manual registration required. No code changes in core needed.
+
+### In-repo agent (bundled under apps/) — Kubernetes / Helm
+
+1. Add the agent under `agents:` in `deploy/charts/brama/values.yaml` with `enabled: true`
+2. Ensure the agent Service exposes a port named `http` (the Kubernetes discovery provider prefers this name)
+3. The Helm chart automatically applies `ai.platform.agent: "true"` and `ai.platform.agent-name` labels to the Service and pod template — no manual label configuration needed
+4. Implement `GET /api/v1/manifest`, `GET /health`, and `POST /api/v1/a2a` (same contracts as Docker Compose)
+5. Core discovers agents via the Kubernetes API using the `ai.platform.agent=true` label selector
+
+See `docs/guides/discovery/en/kubernetes-discovery.md` for full details on the discovery strategy pattern and RBAC requirements.
 
 ### External agent (checked out under projects/)
 
