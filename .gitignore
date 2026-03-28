@@ -55,9 +55,7 @@ compose.fragments/*.yaml
 !compose.fragments/example-agent.yaml.template
 
 # Claude / agent artifacts
-.claude/*
-!.claude/skills/
-!.claude/commands/
+.claude/
 .agent/
 
 # Neuron AI examples (local only, few people need this)
