@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Controller\EdgeAuth;
 
 use App\EdgeAuth\EdgeJwtService;
+use App\Security\TurnstileVerifier;
 use App\Security\User;
-use App\Security\UserProvider;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -17,16 +17,22 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\Exception\UserNotFoundException;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Security\Core\User\UserProviderInterface;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 final class LoginController extends AbstractController
 {
+    /**
+     * @param UserProviderInterface<User> $userProvider
+     */
     public function __construct(
-        private readonly UserProvider $userProvider,
+        private readonly UserProviderInterface $userProvider,
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly EdgeJwtService $jwtService,
+        private readonly TurnstileVerifier $turnstileVerifier,
         private readonly string $cookieName,
         private readonly int $tokenTtlSeconds,
+        private readonly string $turnstileSiteKey,
     ) {
     }
 
@@ -47,6 +53,8 @@ final class LoginController extends AbstractController
                 'rd' => $redirectTarget,
                 'error' => null,
                 'last_username' => '',
+                'turnstile_enabled' => $this->turnstileVerifier->isEnabled(),
+                'turnstile_site_key' => $this->turnstileSiteKey,
             ]);
         }
 
@@ -58,6 +66,18 @@ final class LoginController extends AbstractController
                 'rd' => $redirectTarget,
                 'error' => 'Введіть логін і пароль.',
                 'last_username' => $username,
+                'turnstile_enabled' => $this->turnstileVerifier->isEnabled(),
+                'turnstile_site_key' => $this->turnstileSiteKey,
+            ], new Response('', Response::HTTP_UNAUTHORIZED));
+        }
+
+        if (!$this->turnstileVerifier->verify($request)) {
+            return $this->render('edge_auth/login.html.twig', [
+                'rd' => $redirectTarget,
+                'error' => 'Не вдалося пройти перевірку CAPTCHA. Спробуйте ще раз.',
+                'last_username' => $username,
+                'turnstile_enabled' => $this->turnstileVerifier->isEnabled(),
+                'turnstile_site_key' => $this->turnstileSiteKey,
             ], new Response('', Response::HTTP_UNAUTHORIZED));
         }
 
@@ -68,6 +88,8 @@ final class LoginController extends AbstractController
                 'rd' => $redirectTarget,
                 'error' => 'Невірний логін або пароль.',
                 'last_username' => $username,
+                'turnstile_enabled' => $this->turnstileVerifier->isEnabled(),
+                'turnstile_site_key' => $this->turnstileSiteKey,
             ], new Response('', Response::HTTP_UNAUTHORIZED));
         }
 

@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ 'login.title'|trans }}</title>
     <link rel="stylesheet" href="/css/admin.css">
+    {% if turnstile_enabled %}
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    {% endif %}
 </head>
 <body class="login-page">
     <div class="login-box">
@@ -22,6 +25,14 @@
             <input type="password" id="password" name="_password" autocomplete="current-password">
 
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+            {% if turnstile_enabled %}
+            <div class="cf-turnstile"
+                 data-sitekey="{{ turnstile_site_key }}"
+                 data-theme="light"
+                 data-size="normal">
+            </div>
+            {% endif %}
 
             <button type="submit">{{ 'login.submit'|trans }}</button>
         </form>

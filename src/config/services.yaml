@@ -1,5 +1,8 @@
 parameters:
     app.internal_token: '%env(APP_INTERNAL_TOKEN)%'
+    app.turnstile_enabled: '%env(bool:TURNSTILE_ENABLED)%'
+    app.turnstile_site_key: '%env(TURNSTILE_SITE_KEY)%'
+    app.turnstile_secret_key: '%env(TURNSTILE_SECRET_KEY)%'
     app.openclaw_gateway_token: '%env(OPENCLAW_GATEWAY_TOKEN)%'
     app.openclaw_discovery_push_url: '%env(OPENCLAW_DISCOVERY_PUSH_URL)%'
     app.redis_url: '%env(REDIS_URL)%'
@@ -102,10 +105,20 @@ services:
         arguments:
             $secret: '%app.edge_auth_jwt_secret%'
 
+    App\Security\TurnstileVerifier:
+        arguments:
+            $enabled: '%app.turnstile_enabled%'
+            $secretKey: '%app.turnstile_secret_key%'
+
+    App\Controller\Admin\LoginController:
+        arguments:
+            $turnstileSiteKey: '%app.turnstile_site_key%'
+
     App\Controller\EdgeAuth\LoginController:
         arguments:
             $cookieName: '%app.edge_auth_cookie_name%'
             $tokenTtlSeconds: '%app.edge_auth_token_ttl%'
+            $turnstileSiteKey: '%app.turnstile_site_key%'
 
     App\Controller\EdgeAuth\VerifyController:
         arguments:
