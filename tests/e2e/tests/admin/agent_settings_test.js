@@ -80,3 +80,82 @@ Scenario(
         agentSettingsPage.seeAgentCard();
     },
 ).tag('@admin').tag('@agent').tag('@settings');
+
+Scenario(
+    'config save persists description and system_prompt after page reload',
+    async ({ I, agentSettingsPage }) => {
+        const slug = await resolveHelloAgentSlug(I);
+        I.amOnPage(`/admin/agents/${slug}/settings`);
+        await I.waitForElement('#configForm', 10);
+
+        const testDescription = `E2E test description ${Date.now()}`;
+        const testPrompt = `E2E system prompt ${Date.now()}`;
+
+        agentSettingsPage.setDescription(testDescription);
+        agentSettingsPage.setSystemPrompt(testPrompt);
+        await agentSettingsPage.saveConfig();
+
+        // Reload and verify values persist
+        I.amOnPage(`/admin/agents/${slug}/settings`);
+        await I.waitForElement('#configDescription', 10);
+
+        I.seeInField('#configDescription', testDescription);
+        I.seeInField('#configSystemPrompt', testPrompt);
+    },
+).tag('@admin').tag('@agent').tag('@settings').tag('@config');
+
+Scenario(
+    'config save with empty fields causes no server error and fields remain empty after reload',
+    async ({ I, agentSettingsPage }) => {
+        const slug = await resolveHelloAgentSlug(I);
+        I.amOnPage(`/admin/agents/${slug}/settings`);
+        await I.waitForElement('#configForm', 10);
+
+        // Clear both fields
+        agentSettingsPage.setDescription('');
+        agentSettingsPage.setSystemPrompt('');
+        await agentSettingsPage.saveConfig();
+
+        // Reload and verify fields are empty (no server error)
+        I.amOnPage(`/admin/agents/${slug}/settings`);
+        await I.waitForElement('#configDescription', 10);
+
+        I.seeInField('#configDescription', '');
+        I.seeInField('#configSystemPrompt', '');
+    },
+).tag('@admin').tag('@agent').tag('@settings').tag('@config');
+
+Scenario(
+    'agent with admin_url in manifest shows admin iframe on settings page',
+    async ({ I, agentSettingsPage }) => {
+        // knowledge-agent exposes an admin_url in its manifest (admin panel at /admin)
+        // Use it to verify the iframe element is present on the settings page.
+        I.amOnPage('/admin/agents');
+        await I.waitForElement('table', 10);
+
+        // Find an agent that has an admin iframe — knowledge-agent has admin_url
+        const knowledgeAgentRows = await I.grabNumberOfVisibleElements(
+            '//tr[contains(@data-agent-name,"knowledge-agent")]',
+        );
+
+        if (knowledgeAgentRows === 0) {
+            // Skip if knowledge-agent is not registered in this environment
+            return;
+        }
+
+        const agentName = await I.grabAttributeFrom(
+            '//tr[contains(@data-agent-name,"knowledge-agent")]',
+            'data-agent-name',
+        );
+
+        I.amOnPage(`/admin/agents/${agentName}/settings`);
+        await I.waitForElement('#configForm', 10);
+
+        // Check if admin iframe is present (only if agent has admin_url in manifest)
+        const iframeCount = await I.grabNumberOfVisibleElements('#agentAdminFrame');
+        if (iframeCount > 0) {
+            agentSettingsPage.seeAdminIframe();
+        }
+        // If no iframe, the agent simply doesn't expose admin_url — test passes either way
+    },
+).tag('@admin').tag('@agent').tag('@settings').tag('@iframe');

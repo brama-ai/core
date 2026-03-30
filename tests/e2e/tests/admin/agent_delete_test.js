@@ -8,7 +8,7 @@ const INTERNAL_TOKEN = process.env.APP_INTERNAL_TOKEN || 'dev-internal-token';
 const FAKE_AGENT = 'e2e-fake-marketplace-agent';
 const PROJECT_ROOT = process.cwd().replace(/\/tests\/e2e$/, '');
 const CORE_DB_NAME = process.env.CORE_DB_NAME || 'brama_test';
-const POSTGRES_DSN = process.env.POSTGRES_DSN || `postgresql://app:app@postgres:5432/${CORE_DB_NAME}`;
+const POSTGRES_DSN = process.env.POSTGRES_DSN || `postgresql://app:app@localhost:5432/${CORE_DB_NAME}`;
 const PSQL = process.env.PSQL_CMD || `psql ${POSTGRES_DSN} -c`;
 
 Feature('Admin: Agent Delete');

@@ -24,26 +24,36 @@ Building a universal, modular ecosystem where autonomous AI agents and classical
 - [x] Core E2E Test Database Isolation (`add-core-e2e-test-database-isolation`)
 - [x] Admin Chats Section (`add-admin-chats-section`)
 - [x] News Digest Manual Channel Delivery (`update-news-digest-manual-channel-delivery`)
+- [x] K3s Storage Architecture (`add-k3s-storage-architecture`) — 28/28 tasks — archived 2026-03-30
+- [x] Kubernetes Agent Discovery (`add-kubernetes-agent-discovery`) — 52/52 tasks — archived 2026-03-30
+- [x] Complete Admin Agent Registry (`complete-admin-agent-registry`) — 17/17 tasks — archived 2026-03-30
+- [x] Fix PSR-4 Multitenant E2E Boot (`fix-psr4-multitenant-e2e-boot`) — 23/23 tasks — archived 2026-03-30
+- [x] Fix Remaining E2E Failures (`fix-remaining-e2e-failures`) — 13/13 tasks — archived 2026-03-30
+- [x] Refactor Foundry Runtime Entrypoint (`refactor-foundry-runtime-entrypoint`) — 19/19 tasks — archived 2026-03-30
+- [x] Validate K3s Local Runtime (`validate-k3s-local-runtime`) — 18/18 tasks — archived 2026-03-30
+- [x] Refactor Task-Centric Pipeline State (`refactor-task-centric-pipeline-state`) — 45/46 tasks (STATUS: COMPLETED) — archived 2026-03-30
 
 ### 🚧 In Progress
-- [ ] **Telegram Bot Integration** (`add-telegram-bot-integration`) - 0/181 tasks - **P0 CRITICAL**
 - [ ] **Tenant Management** (`add-tenant-management`) - 0/15 tasks - **P0 CRITICAL**
-- [ ] **Async Scheduler Dispatch** (`async-scheduler-dispatch`) - 19/20 tasks - **P1**
-- [ ] Development Workflow Improvements (`improve-development-workflow`) - 8/10 tasks
-- [ ] Admin Agent Registry (`add-admin-agent-registry`) - 30/68 tasks
-- [ ] Knowledge Base Agent (`add-knowledge-base-agent`) - 46/79 tasks
-- [ ] Dev Reporter Agent (`add-dev-reporter-agent`) - 33/37 tasks
-- [ ] A2A Trace Sequence Visualization (`add-a2a-trace-sequence-visualization`) - 19/23 tasks
-- [ ] OpenClaw Agent Discovery (`add-openclaw-agent-discovery`) - 19/30 tasks
-- [ ] Dual Docker/Kubernetes Deployment (`add-dual-docker-kubernetes-deployment`) - 18/23 tasks
+- [ ] Development Workflow Improvements (`improve-development-workflow`) - 24/26 tasks
+- [ ] Close A2A Trace Quality Gates (`close-a2a-trace-quality-gates`) - 0/11 tasks
+- [ ] Close Agent Discovery Gaps (`close-agent-discovery-gaps`) - 0/26 tasks
+- [ ] Close Dev Reporter Quality Gates (`close-dev-reporter-quality-gates`) - 0/22 tasks
+- [ ] Enable K3s Runtime (`enable-k3s-runtime`) - 0/19 tasks
+- [ ] Migrate to K3s/Hetzner (`migrate-to-k3s-hetzner`) - 22/42 tasks
+- [ ] Workspace Deployment Model (`workspace-deployment-model`) - 16/27 tasks
+- [ ] K3s Test Workflow (`add-k3s-test-workflow`) - 0/12 tasks
+- [ ] Ultraworks Worktree Isolation (`add-ultraworks-worktree-isolation`) - 0/15 tasks
+- [ ] Refactor Unified Pipeline Agents (`refactor-unified-pipeline-agents`) - 0/15 tasks
+- [ ] Archive Completed OpenSpec Changes (`archive-completed-openspec-changes`) - 0/26 tasks
+- [ ] Sync Roadmap with OpenSpec State (`sync-roadmap-with-openspec-state`) - 0/6 tasks
 
 ### 📋 Planned for Q1
-- [ ] Migrate to k3s/Hetzner (`migrate-to-k3s-hetzner`) - 0/42 tasks - **P2**
-- [ ] Scheduler Delivery (`add-scheduler-delivery`) - 0/25 tasks
-- [ ] OpenClaw Push Endpoint (`add-openclaw-push-endpoint`) - 0/18 tasks
-- [ ] Delivery Channels (`add-delivery-channels`) - 0/30 tasks
-- [ ] Agent Repository Documentation (`add-agent-repo-documentation`) - 0/14 tasks
-- [ ] Pipeline Monitor Fix (`fix-pipeline-monitor`) - No tasks defined
+- [ ] E2E CUJ Coverage (`add-e2e-cuj-coverage`) - 0/25 tasks
+- [ ] E2E Failure Investigation Routing (`add-e2e-failure-investigation-routing`) - 0/13 tasks
+- [ ] Pipeline Task Diagnostics (`add-pipeline-task-diagnostics`) - 0 tasks defined
+- [ ] Knowledge Base Agent Roadmap (`add-knowledge-base-agent-roadmap`) - 0/20 tasks
+- [ ] Cloudflare Turnstile Captcha (`add-cloudflare-turnstile-captcha`) - 0/20 tasks
 
 ---
 
@@ -64,7 +74,6 @@ Building a universal, modular ecosystem where autonomous AI agents and classical
 ### Infrastructure
 - [ ] A2A Streaming and Push (`add-a2a-streaming-and-push`) - 0/23 tasks
 - [ ] Traefik Log Pipeline (`add-traefik-log-pipeline`) - 0/24 tasks
-- [ ] Deep Crawling (`add-deep-crawling`) - 0/18 tasks
 
 ---
 
@@ -200,4 +209,4 @@ Building a universal, modular ecosystem where autonomous AI agents and classical
 
 *This roadmap follows our strict development workflow. All features require OpenSpec proposals, database migrations, TDD, and passing quality gates. See [Workflow Guidelines](docs/WORKFLOW_GUIDELINES.md) for details.*
 
-*Last updated: March 18, 2025*
+*Last updated: March 30, 2026*

@@ -1,10 +1,10 @@
 # Implementation Tasks
 
 ## 1. Define Runtime Modes
-- [ ] 1.1 Document Docker Compose as the primary single-node deployment mode
-- [ ] 1.2 Document devcontainer as a development overlay built on the Compose stack
-- [ ] 1.3 Document k3s as the cluster-oriented deployment mode
-- [ ] 1.4 Ensure terminology is consistent across English and Ukrainian documentation
+- [x] 1.1 Document Docker Compose as the primary single-node deployment mode
+- [x] 1.2 Document devcontainer as a development overlay built on the Compose stack
+- [x] 1.3 Document k3s as the cluster-oriented deployment mode
+- [x] 1.4 Ensure terminology is consistent across English and Ukrainian documentation
 
 **Acceptance checks**
 - `README.md` and `README.ua.md` describe the same three runtime modes

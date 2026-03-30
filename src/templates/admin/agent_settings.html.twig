@@ -1,13 +1,13 @@
 {% extends 'admin/layout.html.twig' %}
 
-{% block title %}{{ agent_name }} — Налаштування{% endblock %}
-{% block page_title %}Налаштування: {{ agent_name }}{% endblock %}
+{% block title %}{{ agent_name }} — {{ 'agent_settings.configuration'|trans }}{% endblock %}
+{% block page_title %}{{ 'agent_settings.configuration'|trans }}: {{ agent_name }}{% endblock %}
 
 {% block content %}
     <div class="iframe-header">
-        <a href="{{ path('admin_agents') }}">&larr; Назад до агентів</a>
+        <a href="{{ path('admin_agents') }}">{{ 'agent_settings.back'|trans }}</a>
         <span class="badge {{ agent.enabled ? 'badge-enabled' : 'badge-disabled' }}">
-            {{ agent.enabled ? 'Увімкнено' : 'Вимкнено' }}
+            {{ agent.enabled ? 'agents.state.enabled'|trans : 'agents.state.disabled'|trans }}
         </span>
     </div>
 
@@ -15,14 +15,14 @@
     {% if has_own_storage %}
         <div class="glass-card" style="margin-bottom:1.5rem;border-left:3px solid var(--info, #3b82f6);">
             <p style="margin:0;font-size:.9rem;color:var(--text-muted);">
-                Цей агент має власне сховище.
+                {{ 'agent_settings.storage_info'|trans }}
                 {% if installed_at %}
-                    Інстальовано: {{ installed_at }}.
+                    {{ 'agent_settings.installed_at'|trans({'%date%': installed_at}) }}
                 {% else %}
-                    Сховище буде створено при увімкненні агента.
+                    {{ 'agent_settings.storage_created'|trans }}
                 {% endif %}
                 {% if admin_url %}
-                    <a href="{{ admin_url }}" target="_blank">Налаштування агента &rarr;</a>
+                    <a href="{{ admin_url }}" target="_blank">{{ 'agent_settings.agent_settings_link'|trans }}</a>
                 {% endif %}
             </p>
         </div>
@@ -30,12 +30,12 @@
 
     {% if can_trigger_news_crawl %}
         <div class="glass-card" style="margin-bottom:1.5rem;">
-            <h2>Ручний запуск парсингу</h2>
+            <h2>{{ 'agent_settings.manual_crawl'|trans }}</h2>
             <p style="font-size:.9rem;color:var(--text-muted);margin-bottom:1rem;">
-                Запускає crawl + ranking + rewriting пайплайн news-maker-agent асинхронно.
+                {{ 'agent_settings.crawl_desc'|trans }}
             </p>
             <div style="display:flex;gap:.5rem;align-items:center;">
-                <button type="button" class="btn btn-primary" id="crawlTriggerBtn" onclick="triggerNewsCrawl()">Запустити парсинг новин</button>
+                <button type="button" class="btn btn-primary" id="crawlTriggerBtn" onclick="triggerNewsCrawl()">{{ 'agent_settings.trigger_crawl'|trans }}</button>
                 <span id="crawlTriggerResult" class="action-result" style="display:none;"></span>
             </div>
         </div>
@@ -43,23 +43,23 @@
 
     {# Agent config form (deprecated for agents with own storage) #}
     <div class="glass-card" style="margin-bottom:1.5rem;">
-        <h2>Конфігурація</h2>
+        <h2>{{ 'agent_settings.configuration'|trans }}</h2>
         {% if has_own_storage %}
             <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:1rem;">
-                Ця форма зберігає конфіг у реєстрі платформи. Агент із власним сховищем керує конфігом самостійно.
+                {{ 'agent_settings.config_note'|trans }}
             </p>
         {% endif %}
         <form id="configForm" onsubmit="saveConfig(event)">
             <div style="margin-bottom:1rem;">
-                <label for="configDescription" class="form-label">Опис</label>
+                <label for="configDescription" class="form-label">{{ 'agent_settings.description'|trans }}</label>
                 <textarea id="configDescription" class="form-input" rows="3">{{ config.description ?? '' }}</textarea>
             </div>
             <div style="margin-bottom:1rem;">
-                <label for="configSystemPrompt" class="form-label">Системний промт</label>
+                <label for="configSystemPrompt" class="form-label">{{ 'agent_settings.system_prompt'|trans }}</label>
                 <textarea id="configSystemPrompt" class="form-input" rows="5">{{ config.system_prompt ?? '' }}</textarea>
             </div>
             <div style="display:flex;gap:.5rem;align-items:center;">
-                <button type="submit" class="btn btn-primary" id="configSaveBtn">Зберегти</button>
+                <button type="submit" class="btn btn-primary" id="configSaveBtn">{{ 'agent_settings.save'|trans }}</button>
                 <span id="configResult" class="action-result" style="display:none;"></span>
             </div>
         </form>
@@ -67,24 +67,24 @@
 
     {# Agent Card info #}
     <div class="glass-card" style="margin-bottom:1.5rem;">
-        <h2>Agent Card</h2>
+        <h2>{{ 'agent_settings.agent_card'|trans }}</h2>
         <div style="display:grid;grid-template-columns:auto 1fr;gap:.5rem 1rem;font-size:.9rem;">
-            <span style="color:var(--text-muted);">Версія:</span>
+            <span style="color:var(--text-muted);">{{ 'agents.table.version'|trans }}:</span>
             <span>{{ agent.version }}</span>
             {% if manifest.description is defined %}
-                <span style="color:var(--text-muted);">Опис:</span>
+                <span style="color:var(--text-muted);">{{ 'agents.table.description'|trans }}:</span>
                 <span>{{ manifest.description }}</span>
             {% endif %}
             {% if manifest.commands is defined and manifest.commands|length > 0 %}
-                <span style="color:var(--text-muted);">Команди:</span>
+                <span style="color:var(--text-muted);">{{ 'agents.card.commands'|trans }}:</span>
                 <span>{{ manifest.commands|join(', ') }}</span>
             {% endif %}
             {% if manifest.events is defined and manifest.events|length > 0 %}
-                <span style="color:var(--text-muted);">Події:</span>
+                <span style="color:var(--text-muted);">{{ 'agents.card.events'|trans }}:</span>
                 <span>{{ manifest.events|join(', ') }}</span>
             {% endif %}
             {% if manifest.skills is defined and manifest.skills|length > 0 %}
-                <span style="color:var(--text-muted);">Skills:</span>
+                <span style="color:var(--text-muted);">{{ 'agents.card.skills'|trans }}:</span>
                 <span>
                 {% for skill in manifest.skills %}
                     {% if skill is iterable and skill.id is defined %}{{ skill.id }}{% else %}{{ skill }}{% endif %}{% if not loop.last %}, {% endif %}
@@ -92,7 +92,7 @@
                 </span>
             {% endif %}
             {% if manifest.capabilities is defined %}
-                <span style="color:var(--text-muted);">Capabilities:</span>
+                <span style="color:var(--text-muted);">{{ 'agents.card.capabilities'|trans }}:</span>
                 <span>streaming={{ manifest.capabilities.streaming|default(false) ? 'yes' : 'no' }}, push={{ manifest.capabilities.pushNotifications|default(false) ? 'yes' : 'no' }}</span>
             {% endif %}
         </div>
@@ -103,13 +103,13 @@
         {% set iframe_url = admin_url ~ ('?' in admin_url ? '&' : '?') ~ 'embedded=1' %}
         <div class="glass-card" style="padding:0;overflow:hidden;">
             <div style="padding:1rem 1.5rem;border-bottom:1px solid var(--bg-card-border);">
-                <h2 style="margin:0;">Панель агента</h2>
+                <h2 style="margin:0;">{{ 'agent_settings.agent_panel'|trans }}</h2>
             </div>
             <div class="iframe-container">
                 <iframe
                     id="agentAdminFrame"
                     src="{{ iframe_url }}"
-                    title="Панель {{ agent_name }}"
+                    title="{{ 'agent_settings.agent_panel'|trans }} {{ agent_name }}"
                     data-admin-url="{{ admin_url|e('html_attr') }}"
                 ></iframe>
             </div>
@@ -119,12 +119,18 @@
 
 {% block javascripts %}
 <script>
+var configSavedText = '{{ 'agent_settings.saved'|trans|e('js') }}';
+var configSavingText = '{{ 'agent_settings.saving'|trans|e('js') }}';
+var configSaveText = '{{ 'agent_settings.save'|trans|e('js') }}';
+var crawlStartedText = '{{ 'agent_settings.crawl_started'|trans|e('js') }}';
+var triggerCrawlText = '{{ 'agent_settings.trigger_crawl'|trans|e('js') }}';
+
 function saveConfig(e) {
     e.preventDefault();
     var btn = document.getElementById('configSaveBtn');
     var result = document.getElementById('configResult');
     btn.disabled = true;
-    btn.textContent = 'Збереження...';
+    btn.textContent = configSavingText;
 
     var config = {
         description: document.getElementById('configDescription').value,
@@ -138,7 +144,7 @@ function saveConfig(e) {
     })
     .then(function(r) {
         if (r.ok) {
-            result.textContent = 'Збережено';
+            result.textContent = configSavedText;
             result.style.color = 'var(--success)';
         } else {
             result.textContent = 'Помилка: ' + r.status;
@@ -146,14 +152,14 @@ function saveConfig(e) {
         }
         result.style.display = 'inline';
         btn.disabled = false;
-        btn.textContent = 'Зберегти';
+        btn.textContent = configSaveText;
     })
     .catch(function() {
         result.textContent = 'Помилка мережі';
         result.style.color = 'var(--danger)';
         result.style.display = 'inline';
         btn.disabled = false;
-        btn.textContent = 'Зберегти';
+        btn.textContent = configSaveText;
     });
 }
 
@@ -166,7 +172,7 @@ function triggerNewsCrawl() {
     }
 
     btn.disabled = true;
-    btn.textContent = 'Запуск...';
+    btn.textContent = '...';
     result.style.display = 'none';
 
     fetch('/api/v1/internal/agents/{{ agent_name|e('js') }}/crawl', {
@@ -178,7 +184,7 @@ function triggerNewsCrawl() {
     })
     .then(function(res) {
         if (res.status >= 200 && res.status < 300) {
-            result.textContent = 'Парсинг запущено';
+            result.textContent = crawlStartedText;
             result.style.color = 'var(--success)';
         } else {
             result.textContent = res.body.error ? ('Помилка: ' + res.body.error) : ('Помилка: ' + res.status);
@@ -193,7 +199,7 @@ function triggerNewsCrawl() {
     })
     .finally(function() {
         btn.disabled = false;
-        btn.textContent = 'Запустити парсинг новин';
+        btn.textContent = triggerCrawlText;
     });
 }
 
