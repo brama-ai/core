@@ -11,7 +11,7 @@ use Doctrine\DBAL\Connection;
  *
  * Extracts the encryption/decryption logic from TelegramBotRepository
  * and makes it channel-agnostic. Credentials are stored encrypted in
- * the telegram_bots table (bot_token_encrypted column) keyed by instance ID.
+ * the channel_instances table (credential_encrypted column) keyed by instance ID.
  *
  * Uses CHANNEL_ENCRYPTION_KEY env var with fallback to TELEGRAM_ENCRYPTION_KEY.
  */
@@ -87,14 +87,14 @@ final class ChannelCredentialVault
 
     private function fetchEncryptedCredential(string $channelInstanceId): string
     {
-        $sql = 'SELECT bot_token_encrypted FROM telegram_bots WHERE id = :id';
+        $sql = 'SELECT credential_encrypted FROM channel_instances WHERE id = :id';
         $row = $this->connection->fetchAssociative($sql, ['id' => $channelInstanceId]);
 
-        if (!$row || empty($row['bot_token_encrypted'])) {
+        if (!$row || empty($row['credential_encrypted'])) {
             throw new \RuntimeException(sprintf('No credential found for channel instance "%s"', $channelInstanceId));
         }
 
-        return (string) $row['bot_token_encrypted'];
+        return (string) $row['credential_encrypted'];
     }
 
     private function deriveKey(): string

@@ -22,10 +22,10 @@ class TelegramBotRepository
     {
         $id = $this->connection->executeQuery('SELECT gen_random_uuid()')->fetchOne();
 
-        $this->connection->insert('telegram_bots', [
+        $this->connection->insert('channel_instances', [
             'id' => $id,
-            'bot_username' => $data['bot_username'],
-            'bot_token_encrypted' => $this->encryptToken($data['bot_token']),
+            'channel_username' => $data['bot_username'],
+            'credential_encrypted' => $this->encryptToken($data['bot_token']),
             'webhook_secret' => $data['webhook_secret'] ?? null,
             'community_id' => $data['community_id'] ?? null,
             'privacy_mode' => $data['privacy_mode'] ?? 'enabled',
@@ -36,8 +36,8 @@ class TelegramBotRepository
             'webhook_url' => $data['webhook_url'] ?? null,
         ], [
             'id' => Types::STRING,
-            'bot_username' => Types::STRING,
-            'bot_token_encrypted' => Types::TEXT,
+            'channel_username' => Types::STRING,
+            'credential_encrypted' => Types::TEXT,
             'webhook_secret' => Types::STRING,
             'community_id' => Types::STRING,
             'privacy_mode' => Types::STRING,
@@ -56,7 +56,7 @@ class TelegramBotRepository
      */
     public function findById(string $id): ?array
     {
-        $sql = 'SELECT * FROM telegram_bots WHERE id = :id';
+        $sql = 'SELECT * FROM channel_instances WHERE id = :id';
         $bot = $this->connection->fetchAssociative($sql, ['id' => $id]);
 
         if (!$bot) {
@@ -71,7 +71,7 @@ class TelegramBotRepository
      */
     public function findByUsername(string $username): ?array
     {
-        $sql = 'SELECT * FROM telegram_bots WHERE bot_username = :username';
+        $sql = 'SELECT * FROM channel_instances WHERE channel_username = :username';
         $bot = $this->connection->fetchAssociative($sql, ['username' => $username]);
 
         if (!$bot) {
@@ -86,7 +86,7 @@ class TelegramBotRepository
      */
     public function findAll(): array
     {
-        $sql = 'SELECT * FROM telegram_bots ORDER BY created_at DESC';
+        $sql = 'SELECT * FROM channel_instances ORDER BY created_at DESC';
         $bots = $this->connection->fetchAllAssociative($sql);
 
         return array_map([$this, 'hydrateBot'], $bots);
@@ -97,7 +97,7 @@ class TelegramBotRepository
      */
     public function findEnabled(): array
     {
-        $sql = 'SELECT * FROM telegram_bots WHERE enabled = true ORDER BY created_at DESC';
+        $sql = 'SELECT * FROM channel_instances WHERE enabled = true ORDER BY created_at DESC';
         $bots = $this->connection->fetchAllAssociative($sql);
 
         return array_map([$this, 'hydrateBot'], $bots);
@@ -113,7 +113,7 @@ class TelegramBotRepository
 
         // Map updateable fields
         $fields = [
-            'bot_username' => Types::STRING,
+            'channel_username' => Types::STRING,
             'webhook_secret' => Types::STRING,
             'community_id' => Types::STRING,
             'privacy_mode' => Types::STRING,
@@ -130,10 +130,16 @@ class TelegramBotRepository
             }
         }
 
+        // Support legacy key 'bot_username' as alias for 'channel_username'
+        if (!isset($updateData['channel_username']) && array_key_exists('bot_username', $data)) {
+            $updateData['channel_username'] = $data['bot_username'];
+            $updateTypes['channel_username'] = Types::STRING;
+        }
+
         // Handle encrypted token
         if (isset($data['bot_token'])) {
-            $updateData['bot_token_encrypted'] = $this->encryptToken($data['bot_token']);
-            $updateTypes['bot_token_encrypted'] = Types::TEXT;
+            $updateData['credential_encrypted'] = $this->encryptToken($data['bot_token']);
+            $updateTypes['credential_encrypted'] = Types::TEXT;
         }
 
         // Handle JSON fields
@@ -152,7 +158,7 @@ class TelegramBotRepository
         }
 
         $affected = $this->connection->update(
-            'telegram_bots',
+            'channel_instances',
             $updateData,
             ['id' => $id],
             $updateTypes
@@ -163,7 +169,7 @@ class TelegramBotRepository
 
     public function delete(string $id): bool
     {
-        $affected = $this->connection->delete('telegram_bots', ['id' => $id]);
+        $affected = $this->connection->delete('channel_instances', ['id' => $id]);
 
         return $affected > 0;
     }
@@ -171,7 +177,7 @@ class TelegramBotRepository
     public function updateLastUpdateId(string $id, int $updateId): void
     {
         $this->connection->update(
-            'telegram_bots',
+            'channel_instances',
             ['last_update_id' => $updateId],
             ['id' => $id],
             ['last_update_id' => Types::BIGINT]
@@ -187,10 +193,15 @@ class TelegramBotRepository
     {
         $bot = $row;
 
-        // Decrypt token
-        if (isset($bot['bot_token_encrypted'])) {
-            $bot['bot_token'] = $this->decryptToken($bot['bot_token_encrypted']);
-            unset($bot['bot_token_encrypted']);
+        // Decrypt token — column is now credential_encrypted
+        if (isset($bot['credential_encrypted'])) {
+            $bot['bot_token'] = $this->decryptToken($bot['credential_encrypted']);
+            unset($bot['credential_encrypted']);
+        }
+
+        // Expose channel_username also as bot_username for backward compatibility
+        if (isset($bot['channel_username'])) {
+            $bot['bot_username'] = $bot['channel_username'];
         }
 
         // Decode JSON fields

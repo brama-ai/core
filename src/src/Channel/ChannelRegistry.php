@@ -9,7 +9,7 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Stores channel_type → agent_name mapping.
- * Reads from telegram_bots table (channel_type + agent_name columns).
+ * Reads from channel_instances table (channel_type + agent_name columns).
  * In-memory cache with TTL.
  */
 final class ChannelRegistry
@@ -96,7 +96,7 @@ final class ChannelRegistry
     {
         $sql = <<<'SQL'
             SELECT DISTINCT channel_type, agent_name
-            FROM telegram_bots
+            FROM channel_instances
             WHERE enabled = true
               AND channel_type IS NOT NULL
               AND agent_name IS NOT NULL

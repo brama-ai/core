@@ -12,8 +12,7 @@ use Psr\Log\LoggerInterface;
 /**
  * Channel-agnostic conversation tracker.
  *
- * Extracted from TelegramChatTracker. Works with the channel_conversations
- * table (currently telegram_chats with added channel_type column).
+ * Extracted from TelegramChatTracker. Works with the channel_conversations table.
  *
  * Tracks conversation metadata for any channel type.
  */
@@ -65,7 +64,7 @@ final class ConversationTracker
     public function findConversation(string $channelType, string $chatId): ?array
     {
         $sql = <<<'SQL'
-            SELECT * FROM telegram_chats
+            SELECT * FROM channel_conversations
             WHERE channel_type = :channel_type AND chat_id = :chat_id
             ORDER BY joined_at DESC NULLS LAST
             LIMIT 1
@@ -94,7 +93,7 @@ final class ConversationTracker
 
         if ($existing) {
             $this->connection->update(
-                'telegram_chats',
+                'channel_conversations',
                 [
                     'title' => $event->chat->title,
                     'type' => $event->chat->type,
@@ -132,7 +131,7 @@ final class ConversationTracker
         \DateTimeImmutable $now,
     ): void {
         $sql = <<<'SQL'
-            UPDATE telegram_chats
+            UPDATE channel_conversations
             SET left_at = :left_at
             WHERE bot_id = :bot_id AND chat_id = :chat_id AND channel_type = :channel_type
         SQL;
@@ -180,7 +179,7 @@ final class ConversationTracker
         // Update title if changed
         if (null !== $event->chat->title && $event->chat->title !== ($existing['title'] ?? '')) {
             $this->connection->update(
-                'telegram_chats',
+                'channel_conversations',
                 ['title' => $event->chat->title],
                 ['id' => $existing['id']],
                 ['title' => Types::STRING],
@@ -190,7 +189,7 @@ final class ConversationTracker
         // Detect thread support
         if (null !== $event->chat->threadId && !($existing['has_threads'] ?? false)) {
             $this->connection->update(
-                'telegram_chats',
+                'channel_conversations',
                 ['has_threads' => true],
                 ['id' => $existing['id']],
                 ['has_threads' => Types::BOOLEAN],
@@ -207,7 +206,7 @@ final class ConversationTracker
     ): void {
         $id = $this->connection->executeQuery('SELECT gen_random_uuid()')->fetchOne();
 
-        $this->connection->insert('telegram_chats', [
+        $this->connection->insert('channel_conversations', [
             'id' => $id,
             'bot_id' => $botId,
             'chat_id' => $chatId,
@@ -235,7 +234,7 @@ final class ConversationTracker
         \DateTimeImmutable $time,
     ): void {
         $sql = <<<'SQL'
-            UPDATE telegram_chats
+            UPDATE channel_conversations
             SET last_message_at = :time
             WHERE bot_id = :bot_id AND chat_id = :chat_id AND channel_type = :channel_type
         SQL;
@@ -259,7 +258,7 @@ final class ConversationTracker
     private function findByBotAndChatId(string $channelType, string $botId, string $chatId): ?array
     {
         $sql = <<<'SQL'
-            SELECT * FROM telegram_chats
+            SELECT * FROM channel_conversations
             WHERE bot_id = :bot_id AND chat_id = :chat_id AND channel_type = :channel_type
         SQL;
 

@@ -21,7 +21,7 @@ class TelegramChatRepository
     {
         $id = $this->connection->executeQuery('SELECT gen_random_uuid()')->fetchOne();
 
-        $this->connection->insert('telegram_chats', [
+        $this->connection->insert('channel_conversations', [
             'id' => $id,
             'bot_id' => $data['bot_id'],
             'chat_id' => $data['chat_id'],
@@ -55,7 +55,7 @@ class TelegramChatRepository
      */
     public function findById(string $id): ?array
     {
-        $sql = 'SELECT * FROM telegram_chats WHERE id = :id';
+        $sql = 'SELECT * FROM channel_conversations WHERE id = :id';
         $chat = $this->connection->fetchAssociative($sql, ['id' => $id]);
 
         if (!$chat) {
@@ -70,7 +70,7 @@ class TelegramChatRepository
      */
     public function findByBotAndChatId(string $botId, int $chatId): ?array
     {
-        $sql = 'SELECT * FROM telegram_chats WHERE bot_id = :bot_id AND chat_id = :chat_id';
+        $sql = 'SELECT * FROM channel_conversations WHERE bot_id = :bot_id AND chat_id = :chat_id';
         $chat = $this->connection->fetchAssociative($sql, [
             'bot_id' => $botId,
             'chat_id' => $chatId,
@@ -89,10 +89,10 @@ class TelegramChatRepository
     public function findAll(): array
     {
         $sql = <<<'SQL'
-            SELECT tc.*, tb.bot_username
-            FROM telegram_chats tc
-            LEFT JOIN telegram_bots tb ON tc.bot_id = tb.id
-            ORDER BY tc.last_message_at DESC NULLS LAST, tc.joined_at DESC NULLS LAST
+            SELECT cc.*, ci.channel_username AS bot_username
+            FROM channel_conversations cc
+            LEFT JOIN channel_instances ci ON cc.bot_id = ci.id
+            ORDER BY cc.last_message_at DESC NULLS LAST, cc.joined_at DESC NULLS LAST
         SQL;
 
         $chats = $this->connection->fetchAllAssociative($sql);
@@ -106,7 +106,7 @@ class TelegramChatRepository
     public function findActiveByBot(string $botId): array
     {
         $sql = <<<'SQL'
-            SELECT * FROM telegram_chats
+            SELECT * FROM channel_conversations
             WHERE bot_id = :bot_id AND left_at IS NULL
             ORDER BY last_message_at DESC NULLS LAST
         SQL;
@@ -169,7 +169,7 @@ class TelegramChatRepository
         }
 
         $affected = $this->connection->update(
-            'telegram_chats',
+            'channel_conversations',
             $updateData,
             ['id' => $id],
             $updateTypes
@@ -181,7 +181,7 @@ class TelegramChatRepository
     public function updateLastMessageTime(string $botId, int $chatId, \DateTimeImmutable $time): void
     {
         $sql = <<<'SQL'
-            UPDATE telegram_chats
+            UPDATE channel_conversations
             SET last_message_at = :time
             WHERE bot_id = :bot_id AND chat_id = :chat_id
         SQL;
@@ -200,7 +200,7 @@ class TelegramChatRepository
     public function markJoined(string $botId, int $chatId, \DateTimeImmutable $joinedAt): void
     {
         $sql = <<<'SQL'
-            UPDATE telegram_chats
+            UPDATE channel_conversations
             SET joined_at = :joined_at, left_at = NULL
             WHERE bot_id = :bot_id AND chat_id = :chat_id
         SQL;
@@ -219,7 +219,7 @@ class TelegramChatRepository
     public function markLeft(string $botId, int $chatId, \DateTimeImmutable $leftAt): void
     {
         $sql = <<<'SQL'
-            UPDATE telegram_chats
+            UPDATE channel_conversations
             SET left_at = :left_at
             WHERE bot_id = :bot_id AND chat_id = :chat_id
         SQL;
@@ -246,7 +246,7 @@ class TelegramChatRepository
                 COUNT(CASE WHEN left_at IS NULL THEN 1 END) as active_chats,
                 COUNT(CASE WHEN last_message_at > :since THEN 1 END) as recently_active,
                 SUM(member_count) as total_members
-            FROM telegram_chats
+            FROM channel_conversations
             WHERE bot_id = :bot_id
         SQL;
 
