@@ -12,7 +12,13 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
-final class TelegramChatsAdminController extends AbstractController
+/**
+ * Admin controller for channel conversations.
+ *
+ * Replaces TelegramChatsAdminController. Works with channel_conversations table
+ * (renamed from telegram_chats) via TelegramChatRepository.
+ */
+final class ChannelConversationsController extends AbstractController
 {
     public function __construct(
         private readonly TelegramChatRepository $chatRepository,
@@ -20,6 +26,7 @@ final class TelegramChatsAdminController extends AbstractController
     ) {
     }
 
+    #[Route('/admin/channels/conversations', name: 'admin_channel_conversations', methods: ['GET'])]
     #[Route('/admin/telegram/chats', name: 'admin_telegram_chats', methods: ['GET'])]
     public function index(#[CurrentUser] User $user): Response
     {

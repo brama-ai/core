@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Channel\ChannelManagerInterface;
 use App\Security\User;
-use App\Telegram\Api\TelegramApiClientInterface;
 use App\Telegram\Repository\TelegramBotRepository;
-use App\Telegram\Service\TelegramBotRegistry;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,15 +15,21 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
-final class TelegramBotsController extends AbstractController
+/**
+ * Admin controller for channel instances (bots/integrations).
+ *
+ * Replaces TelegramBotsController. Channel-specific actions (test-connection,
+ * set-webhook, webhook-info) are delegated through ChannelManager → agent A2A.
+ */
+final class ChannelInstancesController extends AbstractController
 {
     public function __construct(
         private readonly TelegramBotRepository $botRepository,
-        private readonly TelegramBotRegistry $botRegistry,
-        private readonly TelegramApiClientInterface $apiClient,
+        private readonly ChannelManagerInterface $channelManager,
     ) {
     }
 
+    #[Route('/admin/channels/instances', name: 'admin_channel_instances', methods: ['GET'])]
     #[Route('/admin/telegram/bots', name: 'admin_telegram_bots', methods: ['GET'])]
     public function index(#[CurrentUser] User $user): Response
     {
@@ -36,6 +41,7 @@ final class TelegramBotsController extends AbstractController
         ]);
     }
 
+    #[Route('/admin/channels/instances/new', name: 'admin_channel_instances_new', methods: ['GET', 'POST'])]
     #[Route('/admin/telegram/bots/new', name: 'admin_telegram_bots_new', methods: ['GET', 'POST'])]
     public function new(Request $request, #[CurrentUser] User $user): Response
     {
@@ -59,10 +65,19 @@ final class TelegramBotsController extends AbstractController
             }
 
             try {
-                $botId = $this->botRegistry->registerBot($data);
+                // Check if bot already exists
+                $existing = $this->botRepository->findByUsername($data['bot_username']);
+                if ($existing) {
+                    throw new \RuntimeException(sprintf('Bot with username "%s" already exists', $data['bot_username']));
+                }
+
+                // Generate webhook secret
+                $data['webhook_secret'] = bin2hex(random_bytes(32));
+
+                $this->botRepository->create($data);
                 $this->addFlash('success', 'telegram_bots.flash.created');
 
-                return $this->redirectToRoute('admin_telegram_bots');
+                return $this->redirectToRoute('admin_channel_instances');
             } catch (\RuntimeException $e) {
                 return $this->render('admin/telegram/bot_form.html.twig', [
                     'bot' => null,
@@ -81,12 +96,13 @@ final class TelegramBotsController extends AbstractController
         ]);
     }
 
+    #[Route('/admin/channels/instances/{id}/edit', name: 'admin_channel_instances_edit', methods: ['GET', 'POST'])]
     #[Route('/admin/telegram/bots/{id}/edit', name: 'admin_telegram_bots_edit', methods: ['GET', 'POST'])]
     public function edit(string $id, Request $request, #[CurrentUser] User $user): Response
     {
         $bot = $this->botRepository->findById($id);
         if (null === $bot) {
-            throw $this->createNotFoundException('Bot not found');
+            throw $this->createNotFoundException('Channel instance not found');
         }
 
         if ($request->isMethod('POST')) {
@@ -117,10 +133,10 @@ final class TelegramBotsController extends AbstractController
                 }
             }
 
-            $this->botRegistry->updateBot($id, $updates);
+            $this->botRepository->update($id, $updates);
             $this->addFlash('success', 'telegram_bots.flash.updated');
 
-            return $this->redirectToRoute('admin_telegram_bots');
+            return $this->redirectToRoute('admin_channel_instances');
         }
 
         return $this->render('admin/telegram/bot_form.html.twig', [
@@ -131,92 +147,102 @@ final class TelegramBotsController extends AbstractController
         ]);
     }
 
+    #[Route('/admin/channels/instances/{id}/delete', name: 'admin_channel_instances_delete', methods: ['POST'])]
     #[Route('/admin/telegram/bots/{id}/delete', name: 'admin_telegram_bots_delete', methods: ['POST'])]
     public function delete(string $id, Request $request): Response
     {
         $bot = $this->botRepository->findById($id);
         if (null === $bot) {
-            throw $this->createNotFoundException('Bot not found');
+            throw $this->createNotFoundException('Channel instance not found');
         }
 
         if (!$this->isCsrfTokenValid('delete_bot_'.$id, (string) $request->request->get('_token'))) {
             $this->addFlash('error', 'telegram_bots.error.invalid_csrf');
 
-            return $this->redirectToRoute('admin_telegram_bots');
+            return $this->redirectToRoute('admin_channel_instances');
         }
 
-        $this->botRegistry->removeBot($id);
+        $this->botRepository->delete($id);
         $this->addFlash('success', 'telegram_bots.flash.deleted');
 
-        return $this->redirectToRoute('admin_telegram_bots');
+        return $this->redirectToRoute('admin_channel_instances');
     }
 
+    #[Route('/admin/channels/instances/{id}/test-connection', name: 'admin_channel_instances_test', methods: ['POST'])]
     #[Route('/admin/telegram/bots/{id}/test-connection', name: 'admin_telegram_bots_test', methods: ['POST'])]
     public function testConnection(string $id): JsonResponse
     {
         $bot = $this->botRepository->findById($id);
         if (null === $bot) {
-            return $this->json(['ok' => false, 'error' => 'Bot not found'], Response::HTTP_NOT_FOUND);
+            return $this->json(['ok' => false, 'error' => 'Channel instance not found'], Response::HTTP_NOT_FOUND);
         }
 
-        $result = $this->apiClient->getMe($bot['bot_token']);
+        $channelType = (string) ($bot['channel_type'] ?? 'telegram');
 
-        if (!($result['ok'] ?? false)) {
-            return $this->json([
-                'ok' => false,
-                'error' => $result['description'] ?? 'Unknown error',
+        try {
+            $result = $this->channelManager->adminAction($channelType, $id, 'test-connection', [
+                'token' => $bot['bot_token'],
             ]);
-        }
 
-        return $this->json([
-            'ok' => true,
-            'bot' => $result['result'] ?? [],
-        ]);
+            return $this->json($result);
+        } catch (\Throwable $e) {
+            return $this->json(['ok' => false, 'error' => $e->getMessage()]);
+        }
     }
 
+    #[Route('/admin/channels/instances/{id}/set-webhook', name: 'admin_channel_instances_set_webhook', methods: ['POST'])]
     #[Route('/admin/telegram/bots/{id}/set-webhook', name: 'admin_telegram_bots_set_webhook', methods: ['POST'])]
     public function setWebhook(string $id, Request $request): JsonResponse
     {
         $bot = $this->botRepository->findById($id);
         if (null === $bot) {
-            return $this->json(['ok' => false, 'error' => 'Bot not found'], Response::HTTP_NOT_FOUND);
+            return $this->json(['ok' => false, 'error' => 'Channel instance not found'], Response::HTTP_NOT_FOUND);
         }
 
+        $channelType = (string) ($bot['channel_type'] ?? 'telegram');
+
         $webhookUrl = $this->generateUrl(
-            'api_webhook_telegram',
-            ['botId' => $id],
+            'api_webhook_channel',
+            ['channelType' => $channelType, 'channelId' => $id],
             UrlGeneratorInterface::ABSOLUTE_URL
         );
 
-        $params = [
-            'url' => $webhookUrl,
-            'allowed_updates' => ['message', 'edited_message', 'callback_query', 'channel_post', 'edited_channel_post'],
-            'max_connections' => 40,
-        ];
+        try {
+            $result = $this->channelManager->adminAction($channelType, $id, 'set-webhook', [
+                'token' => $bot['bot_token'],
+                'url' => $webhookUrl,
+                'secret' => $bot['webhook_secret'] ?? null,
+            ]);
 
-        if (!empty($bot['webhook_secret'])) {
-            $params['secret_token'] = $bot['webhook_secret'];
+            if ($result['ok'] ?? false) {
+                $this->botRepository->update($id, ['webhook_url' => $webhookUrl]);
+            }
+
+            return $this->json($result);
+        } catch (\Throwable $e) {
+            return $this->json(['ok' => false, 'error' => $e->getMessage()]);
         }
-
-        $result = $this->apiClient->setWebhook($bot['bot_token'], $params);
-
-        if ($result['ok'] ?? false) {
-            $this->botRepository->update($id, ['webhook_url' => $webhookUrl]);
-        }
-
-        return $this->json($result);
     }
 
+    #[Route('/admin/channels/instances/{id}/webhook-info', name: 'admin_channel_instances_webhook_info', methods: ['GET'])]
     #[Route('/admin/telegram/bots/{id}/webhook-info', name: 'admin_telegram_bots_webhook_info', methods: ['GET'])]
     public function webhookInfo(string $id): JsonResponse
     {
         $bot = $this->botRepository->findById($id);
         if (null === $bot) {
-            return $this->json(['ok' => false, 'error' => 'Bot not found'], Response::HTTP_NOT_FOUND);
+            return $this->json(['ok' => false, 'error' => 'Channel instance not found'], Response::HTTP_NOT_FOUND);
         }
 
-        $result = $this->apiClient->getWebhookInfo($bot['bot_token']);
+        $channelType = (string) ($bot['channel_type'] ?? 'telegram');
 
-        return $this->json($result);
+        try {
+            $result = $this->channelManager->adminAction($channelType, $id, 'webhook-info', [
+                'token' => $bot['bot_token'],
+            ]);
+
+            return $this->json($result);
+        } catch (\Throwable $e) {
+            return $this->json(['ok' => false, 'error' => $e->getMessage()]);
+        }
     }
 }

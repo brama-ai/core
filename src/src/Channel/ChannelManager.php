@@ -15,7 +15,7 @@ use Psr\Log\LoggerInterface;
  * retrieves the credential via ChannelCredentialVault, and calls
  * channel.sendOutbound via A2AClientInterface.
  */
-final class ChannelManager
+final class ChannelManager implements ChannelManagerInterface
 {
     public function __construct(
         private readonly ChannelRegistry $registry,
@@ -67,6 +67,41 @@ final class ChannelManager
         );
 
         return $this->buildDeliveryResult($result);
+    }
+
+    /**
+     * Invoke a channel-specific admin action via the channel agent.
+     *
+     * @param array<string, mixed> $params
+     *
+     * @return array<string, mixed>
+     *
+     * @throws \RuntimeException when no agent is registered for the channel type
+     */
+    public function adminAction(string $channelType, string $channelInstanceId, string $action, array $params = []): array
+    {
+        $this->registry->resolveAgent($channelType);
+
+        $traceId = bin2hex(random_bytes(16));
+        $requestId = bin2hex(random_bytes(8));
+
+        $this->logger->info('ChannelManager invoking admin action', [
+            'channel_type' => $channelType,
+            'channel_instance_id' => $channelInstanceId,
+            'action' => $action,
+            'trace_id' => $traceId,
+        ]);
+
+        return $this->a2a->invoke(
+            'channel.adminAction',
+            [
+                'action' => $action,
+                'channelInstanceId' => $channelInstanceId,
+                'params' => $params,
+            ],
+            $traceId,
+            $requestId,
+        );
     }
 
     /**

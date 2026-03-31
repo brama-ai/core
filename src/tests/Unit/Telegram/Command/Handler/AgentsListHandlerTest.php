@@ -5,25 +5,22 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Telegram\Command\Handler;
 
 use App\AgentRegistry\AgentRegistryInterface;
-use App\Telegram\Command\Handler\AgentsListHandler;
-use App\Telegram\DTO\NormalizedChat;
-use App\Telegram\DTO\NormalizedEvent;
-use App\Telegram\DTO\NormalizedMessage;
-use App\Telegram\DTO\NormalizedSender;
-use App\Telegram\Service\TelegramSenderInterface;
+use App\Channel\Command\Handler\AgentsListHandler;
+use App\Channel\DTO\NormalizedChat;
+use App\Channel\DTO\NormalizedEvent;
+use App\Channel\DTO\NormalizedMessage;
+use App\Channel\DTO\NormalizedSender;
 use Codeception\Test\Unit;
 use PHPUnit\Framework\MockObject\MockObject;
 
 final class AgentsListHandlerTest extends Unit
 {
     private AgentRegistryInterface&MockObject $agentRegistry;
-    private TelegramSenderInterface&MockObject $sender;
     private AgentsListHandler $handler;
 
     protected function setUp(): void
     {
         $this->agentRegistry = $this->createMock(AgentRegistryInterface::class);
-        $this->sender = $this->createMock(TelegramSenderInterface::class);
         $this->handler = new AgentsListHandler($this->agentRegistry);
     }
 
@@ -35,11 +32,9 @@ final class AgentsListHandlerTest extends Unit
             ->method('findAll')
             ->willReturn([]);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with('bot-1', 'chat-1', $this->stringContains('Агентів не зареєстровано'), []);
+        $payload = $this->handler->handle($event);
 
-        $this->handler->handle($event, $this->sender);
+        $this->assertStringContainsString('Агентів не зареєстровано', $payload->text);
     }
 
     public function testHandleListsEnabledAgentWithGreenIcon(): void
@@ -56,20 +51,11 @@ final class AgentsListHandlerTest extends Unit
                 ],
             ]);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with(
-                'bot-1',
-                'chat-1',
-                $this->callback(static function (string $text): bool {
-                    return str_contains($text, '🟢')
-                        && str_contains($text, 'my-agent')
-                        && str_contains($text, 'My agent description');
-                }),
-                [],
-            );
+        $payload = $this->handler->handle($event);
 
-        $this->handler->handle($event, $this->sender);
+        $this->assertStringContainsString('🟢', $payload->text);
+        $this->assertStringContainsString('my-agent', $payload->text);
+        $this->assertStringContainsString('My agent description', $payload->text);
     }
 
     public function testHandleListsDisabledAgentWithRedIcon(): void
@@ -86,19 +72,13 @@ final class AgentsListHandlerTest extends Unit
                 ],
             ]);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with(
-                'bot-1',
-                'chat-1',
-                $this->callback(static fn (string $text): bool => str_contains($text, '🔴') && str_contains($text, 'disabled-agent')),
-                [],
-            );
+        $payload = $this->handler->handle($event);
 
-        $this->handler->handle($event, $this->sender);
+        $this->assertStringContainsString('🔴', $payload->text);
+        $this->assertStringContainsString('disabled-agent', $payload->text);
     }
 
-    public function testHandleIncludesThreadIdInOptionsWhenPresent(): void
+    public function testHandleIncludesThreadIdInTargetAddressWhenPresent(): void
     {
         $event = $this->buildEvent('chat-1', '55');
 
@@ -106,11 +86,9 @@ final class AgentsListHandlerTest extends Unit
             ->method('findAll')
             ->willReturn([]);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with('bot-1', 'chat-1', $this->isString(), ['thread_id' => '55']);
+        $payload = $this->handler->handle($event);
 
-        $this->handler->handle($event, $this->sender);
+        $this->assertStringContainsString('chat-1:55', $payload->target->address);
     }
 
     public function testHandleListsMultipleAgents(): void
@@ -124,21 +102,12 @@ final class AgentsListHandlerTest extends Unit
                 ['name' => 'agent-b', 'enabled' => false, 'manifest' => json_encode(['description' => 'Agent B'])],
             ]);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with(
-                'bot-1',
-                'chat-1',
-                $this->callback(static function (string $text): bool {
-                    return str_contains($text, 'agent-a')
-                        && str_contains($text, 'agent-b')
-                        && str_contains($text, '🟢')
-                        && str_contains($text, '🔴');
-                }),
-                [],
-            );
+        $payload = $this->handler->handle($event);
 
-        $this->handler->handle($event, $this->sender);
+        $this->assertStringContainsString('agent-a', $payload->text);
+        $this->assertStringContainsString('agent-b', $payload->text);
+        $this->assertStringContainsString('🟢', $payload->text);
+        $this->assertStringContainsString('🔴', $payload->text);
     }
 
     public function testHandleWithManifestAsArray(): void
@@ -155,16 +124,9 @@ final class AgentsListHandlerTest extends Unit
                 ],
             ]);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with(
-                'bot-1',
-                'chat-1',
-                $this->callback(static fn (string $text): bool => str_contains($text, 'array-agent')),
-                [],
-            );
+        $payload = $this->handler->handle($event);
 
-        $this->handler->handle($event, $this->sender);
+        $this->assertStringContainsString('array-agent', $payload->text);
     }
 
     private function buildEvent(string $chatId, ?string $threadId): NormalizedEvent

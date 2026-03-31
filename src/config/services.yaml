@@ -165,13 +165,12 @@ services:
 
     # Channel services (Phase 2: Core Services)
     # Uses CHANNEL_ENCRYPTION_KEY env var; set it to the same value as TELEGRAM_ENCRYPTION_KEY for backward compat
+    App\Channel\ChannelManagerInterface:
+        alias: App\Channel\ChannelManager
+
     App\Channel\ChannelCredentialVault:
         arguments:
             $encryptionKey: '%env(CHANNEL_ENCRYPTION_KEY)%'
-
-    App\Telegram\Delivery\TelegramDeliveryAdapter:
-        tags:
-            - { name: delivery.adapter, type: telegram }
 
     App\Tenant\TenantRepositoryInterface:
         alias: App\Tenant\TenantRepository
