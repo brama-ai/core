@@ -34,6 +34,7 @@ exports.config = {
         coderPage: './support/pages/CoderPage.js',
         logTracePage: './support/pages/LogTracePage.js',
         agentSettingsPage: './support/pages/AgentSettingsPage.js',
+        devReporterPage: './support/pages/DevReporterPage.js',
     },
     name: 'ai-community-platform-e2e',
 };

@@ -37,6 +37,7 @@
     <div class="action-bar">
         <span id="discoverResult" class="action-result" style="display:none"></span>
         <button class="btn btn-discover" id="discoverBtn" onclick="runDiscovery()">{{ 'agents.discover'|trans }}</button>
+        <button class="btn btn-secondary" id="addByUrlBtn" onclick="document.getElementById('addByUrlModal').classList.add('active')">{{ 'agents.add_by_url'|trans }}</button>
     </div>
 
     <div class="agent-tabs" role="tablist" aria-label="Agent sections">
@@ -69,6 +70,14 @@
             <h3 id="modalTitle">{{ 'agents.violations'|trans }}</h3>
             <ul id="modalList"></ul>
             <button class="btn btn-disable modal-close" onclick="document.getElementById('violationsModal').classList.remove('active')">{{ 'agents.close'|trans }}</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="addByUrlModal" onclick="closeAddByUrlModal(event)">
+        <div class="modal">
+            <h3>{{ 'agents.add_by_url'|trans }}</h3>
+            <p>{{ 'agents.add_by_url_wip'|trans }}</p>
+            <button class="btn btn-disable modal-close" onclick="document.getElementById('addByUrlModal').classList.remove('active')">{{ 'agents.close'|trans }}</button>
         </div>
     </div>
 {% endblock %}
@@ -223,6 +232,12 @@ function showViolations(name, violations) {
 
 function closeModal(e) {
     if (e.target === document.getElementById('violationsModal')) {
+        e.target.classList.remove('active');
+    }
+}
+
+function closeAddByUrlModal(e) {
+    if (e.target === document.getElementById('addByUrlModal')) {
         e.target.classList.remove('active');
     }
 }

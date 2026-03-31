@@ -1,0 +1,132 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'telegram_chats.title'|trans }} — Admin{% endblock %}
+{% block page_title %}{{ 'telegram_chats.title'|trans }}{% endblock %}
+
+{% block content %}
+    {# Stats row #}
+    <div class="stats-grid" style="margin-bottom:1.5rem;">
+        <div class="stat-card">
+            <div class="stat-label">{{ 'telegram_chats.stats.total'|trans }}</div>
+            <div class="stat-value">{{ stats.total }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">{{ 'telegram_chats.stats.active'|trans }}</div>
+            <div class="stat-value text-success">{{ stats.active }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">{{ 'telegram_chats.stats.with_threads'|trans }}</div>
+            <div class="stat-value">{{ stats.with_threads }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">{{ 'telegram_chats.stats.recently_active'|trans }}</div>
+            <div class="stat-value text-success">{{ stats.recently_active }}</div>
+        </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <p style="color:var(--text-muted);font-size:.9rem;margin:0;">{{ 'telegram_chats.subtitle'|trans }}</p>
+        <a href="{{ path('admin_telegram_bots') }}" class="btn btn-settings">
+            {{ 'telegram_chats.manage_bots'|trans }}
+        </a>
+    </div>
+
+    {% if chats is empty %}
+        <div class="glass-card">
+            <div class="stub-content" style="min-height:200px;">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" style="opacity:.3;"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+                <p>{{ 'telegram_chats.empty'|trans }}</p>
+            </div>
+        </div>
+    {% else %}
+        <div class="glass-card" style="padding:0;overflow:hidden;">
+            <div style="overflow-x:auto;">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>{{ 'telegram_chats.table.title'|trans }}</th>
+                            <th>{{ 'telegram_chats.table.type'|trans }}</th>
+                            <th>{{ 'telegram_chats.table.bot'|trans }}</th>
+                            <th>{{ 'telegram_chats.table.members'|trans }}</th>
+                            <th>{{ 'telegram_chats.table.features'|trans }}</th>
+                            <th>{{ 'telegram_chats.table.status'|trans }}</th>
+                            <th>{{ 'telegram_chats.table.last_activity'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for chat in chats %}
+                            {% set is_left = chat.left_at is not null %}
+                            <tr class="{{ is_left ? 'opacity-50' : '' }}" style="{{ is_left ? 'opacity:.5;' : '' }}">
+                                <td>
+                                    <div style="font-weight:500;">{{ chat.title ?? ('telegram_chats.unknown_title'|trans) }}</div>
+                                    <div style="font-size:.75rem;color:var(--text-muted);font-family:monospace;">{{ chat.chat_id }}</div>
+                                </td>
+                                <td>
+                                    {% if chat.type == 'supergroup' %}
+                                        <span class="badge badge-channel">{{ 'telegram_chats.type.supergroup'|trans }}</span>
+                                    {% elseif chat.type == 'group' %}
+                                        <span class="badge badge-channel">{{ 'telegram_chats.type.group'|trans }}</span>
+                                    {% elseif chat.type == 'channel' %}
+                                        <span class="badge" style="background:rgba(168,85,247,.2);color:#a855f7;">{{ 'telegram_chats.type.channel'|trans }}</span>
+                                    {% elseif chat.type == 'private' %}
+                                        <span class="badge">{{ 'telegram_chats.type.private'|trans }}</span>
+                                    {% else %}
+                                        <span class="badge">{{ chat.type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if chat.bot_username is defined and chat.bot_username %}
+                                        <span style="font-family:monospace;font-size:.85rem;">@{{ chat.bot_username }}</span>
+                                    {% elseif bot_map[chat.bot_id] is defined %}
+                                        <span style="font-family:monospace;font-size:.85rem;">@{{ bot_map[chat.bot_id].bot_username }}</span>
+                                    {% else %}
+                                        <span style="color:var(--text-muted);">{{ chat.bot_id[:8] }}…</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if chat.member_count %}
+                                        <span>{{ chat.member_count|number_format }}</span>
+                                    {% else %}
+                                        <span style="color:var(--text-muted);">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div style="display:flex;gap:.3rem;flex-wrap:wrap;">
+                                        {% if chat.has_threads %}
+                                            <span class="badge" style="background:rgba(99,102,241,.2);color:#818cf8;" title="{{ 'telegram_chats.feature.threads_hint'|trans }}">
+                                                {{ 'telegram_chats.feature.threads'|trans }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if is_left %}
+                                        <span class="badge badge-disabled">{{ 'telegram_chats.status.left'|trans }}</span>
+                                    {% elseif chat.joined_at %}
+                                        <span class="badge badge-enabled">{{ 'telegram_chats.status.active'|trans }}</span>
+                                    {% else %}
+                                        <span class="badge badge-unknown">{{ 'telegram_chats.status.unknown'|trans }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if chat.last_message_at %}
+                                        {% set last = chat.last_message_at %}
+                                        {% if last is instanceof('\\DateTimeImmutable') %}
+                                            <span class="trace-time" title="{{ last|date('Y-m-d H:i:s') }}">
+                                                {{ last|date('d.m.Y H:i') }}
+                                            </span>
+                                        {% else %}
+                                            <span class="trace-time">{{ chat.last_message_at }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span style="color:var(--text-muted);">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

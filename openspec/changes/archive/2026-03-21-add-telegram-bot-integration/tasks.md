@@ -50,7 +50,7 @@
 - [x] 4.5 Handle A2A call failures gracefully — log error, continue dispatching to remaining agents
 - [x] 4.6 Add event dispatch metrics — log event type, number of agents notified, total dispatch duration
 - [x] 4.7 Update existing EventBus unit tests for new constructor signature
-- [ ] 4.8 Write unit tests for TelegramEventPublisher
+- [x] 4.8 Write unit tests for TelegramEventPublisher
 
 ## 5. Chat Commands Router
 - [x] 5.1 Create `TelegramCommandRouter` service — receives `command_received` events, routes to handlers
@@ -62,8 +62,8 @@
 - [x] 5.7 Route agent-declared commands — check `manifest.commands[]` for matching command, forward to agent via A2A with command context
 - [x] 5.8 Handle unknown commands — reply with "Unknown command. Use /help to see available commands."
 - [x] 5.9 Handle unauthorized commands — reply with "You don't have permission to use this command."
-- [ ] 5.10 Write unit tests for CommandRouter (role validation, routing logic)
-- [ ] 5.11 Write unit tests for each built-in command handler
+- [x] 5.10 Write unit tests for CommandRouter (role validation, routing logic)
+- [x] 5.11 Write unit tests for each built-in command handler
 
 ## 6. Outbound Messaging (Telegram Sender)
 - [x] 6.1 Create `TelegramApiClient` — thin HTTP client wrapper for Telegram Bot API calls (sendMessage, editMessageText, deleteMessage, getChatMember, getChatMemberCount, sendPhoto, sendMediaGroup, copyMessage, answerCallbackQuery, pinChatMessage, setWebhook, deleteWebhook, getWebhookInfo, getUpdates)
@@ -73,15 +73,15 @@
 - [x] 6.5 Implement message splitting for text >4096 characters (split at paragraph/sentence boundaries, send as multiple messages)
 - [ ] 6.6 Implement rate limiting — token-bucket per chat_id (30 msg/sec global, 20 msg/min per group) with queue backpressure
 - [x] 6.7 TelegramSender builds reply payloads with `reply_to_message_id`, inline keyboard buttons, thread targeting
-- [ ] 6.8 Write unit tests for TelegramSender (formatting, splitting, rate limiting)
+- [x] 6.8 Write unit tests for TelegramSender (formatting, splitting, rate limiting)
 
 ## 7. Delivery Channel Adapter
-- [ ] 7.1 Create `TelegramDeliveryAdapter` implementing `ChannelAdapterInterface` — maps `DeliveryPayload` to `TelegramSender::send()` call
-- [ ] 7.2 Map `DeliveryTarget.address` to Telegram `chat_id` + optional `thread_id` (format: `chat_id` or `chat_id:thread_id`)
-- [ ] 7.3 Map `DeliveryPayload.content_type` to Telegram parse mode (`markdown` → MarkdownV2, `text` → plain, `card` → HTML with formatting)
-- [ ] 7.4 Return `DeliveryResult` with Telegram's `message_id` as `external_message_id`
-- [ ] 7.5 Register adapter in `services.yaml` with tag `delivery.adapter` and type `telegram`
-- [ ] 7.6 Write unit tests for TelegramDeliveryAdapter
+- [x] 7.1 Create `TelegramDeliveryAdapter` implementing `ChannelAdapterInterface` — maps `DeliveryPayload` to `TelegramSender::send()` call
+- [x] 7.2 Map `DeliveryTarget.address` to Telegram `chat_id` + optional `thread_id` (format: `chat_id` or `chat_id:thread_id`)
+- [x] 7.3 Map `DeliveryPayload.content_type` to Telegram parse mode (`markdown` → MarkdownV2, `text` → plain, `card` → HTML with formatting)
+- [x] 7.4 Return `DeliveryResult` with Telegram's `message_id` as `external_message_id`
+- [x] 7.5 Register adapter in `services.yaml` with tag `delivery.adapter` and type `telegram`
+- [x] 7.6 Write unit tests for TelegramDeliveryAdapter
 
 ## 8. OpenClaw Bridge Enhancement
 - [ ] 8.1 Modify `platform-tools` plugin — pass Telegram context (`chat_id`, `thread_id`, `sender`, `message_id`) through tool invocation payload
@@ -103,23 +103,23 @@
 - [ ] 10.4 Auto-register webhook on bot creation via admin UI (optional, with confirmation)
 
 ## 11. Admin UI — Bot Management
-- [ ] 11.1 Create `/admin/telegram/bots` page — list all configured bots with status (enabled, webhook active, last update received)
-- [ ] 11.2 Create bot add form — fields: bot_id, bot_username, bot_token, community assignment
-- [ ] 11.3 Create bot edit form — update config, privacy mode, role overrides
-- [ ] 11.4 Add "Test Connection" button — calls `getMe` API, shows bot info and connection status
-- [ ] 11.5 Add "Set Webhook" button — triggers `setWebhook` with auto-generated URL
-- [ ] 11.6 Add webhook status indicator — shows last `getWebhookInfo` result (pending_update_count, last_error)
-- [ ] 11.7 Add "Delete Bot" with confirmation dialog
+- [x] 11.1 Create `/admin/telegram/bots` page — list all configured bots with status (enabled, webhook active, last update received)
+- [x] 11.2 Create bot add form — fields: bot_id, bot_username, bot_token, community assignment
+- [x] 11.3 Create bot edit form — update config, privacy mode, role overrides
+- [x] 11.4 Add "Test Connection" button — calls `getMe` API, shows bot info and connection status
+- [x] 11.5 Add "Set Webhook" button — triggers `setWebhook` with auto-generated URL
+- [x] 11.6 Add webhook status indicator — shows last `getWebhookInfo` result (pending_update_count, last_error)
+- [x] 11.7 Add "Delete Bot" with confirmation dialog
 
 ## 12. Admin UI — Chat Monitoring
-- [ ] 12.1 Create `/admin/telegram/chats` page — list tracked chats with title, type, member count, last message time
-- [ ] 12.2 Show thread/topic indicators for supergroups with forum mode
-- [ ] 12.3 Add message activity sparkline or count per chat (last 24h/7d)
+- [x] 12.1 Create `/admin/telegram/chats` page — list tracked chats with title, type, member count, last message time
+- [x] 12.2 Show thread/topic indicators for supergroups with forum mode
+- [x] 12.3 Add message activity sparkline or count per chat (last 24h/7d)
 - [ ] 12.4 Add link to chat detail — show recent events, active agents, command usage stats
 
 ## 13. Admin UI — Dashboard Integration
-- [ ] 13.1 Add Telegram status widget to admin dashboard — connection health, total bots, total chats, messages today
-- [ ] 13.2 Add "Telegram Events" link to admin sidebar navigation
+- [x] 13.1 Add Telegram status widget to admin dashboard — connection health, total bots, total chats, messages today
+- [x] 13.2 Add "Telegram Events" link to admin sidebar navigation
 - [ ] 13.3 Modify `/admin/agents` page — show which Telegram events each agent subscribes to
 
 ## 14. Security

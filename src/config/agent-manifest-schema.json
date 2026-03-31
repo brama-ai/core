@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agent-manifest-schema",
+  "title": "Agent Manifest Schema",
+  "description": "Formal JSON Schema for platform Agent Manifest (Agent Card). Defines required fields, optional fields, and format constraints. Aligned with official A2A protocol AgentCard specification.",
+  "type": "object",
+  "required": ["name", "version"],
+  "additionalProperties": true,
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Unique agent identifier, kebab-case slug"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Agent semver version (MAJOR.MINOR.PATCH)"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable purpose shown in admin UI and discovery"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "A2A Server endpoint URL (official A2A field)"
+    },
+    "a2a_endpoint": {
+      "type": "string",
+      "format": "uri",
+      "description": "Deprecated: use 'url' instead. Kept for backward compatibility"
+    },
+    "provider": {
+      "type": "object",
+      "properties": {
+        "organization": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri" }
+      },
+      "description": "Service provider information (official A2A field)"
+    },
+    "documentationUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to agent documentation (official A2A field)"
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "streaming": { "type": "boolean", "default": false },
+        "pushNotifications": { "type": "boolean", "default": false },
+        "stateTransitionHistory": { "type": "boolean", "default": false }
+      },
+      "additionalProperties": false,
+      "description": "A2A protocol capabilities (official A2A AgentCapabilities)"
+    },
+    "defaultInputModes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["text"],
+      "description": "Default MIME types for input (official A2A field)"
+    },
+    "defaultOutputModes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["text"],
+      "description": "Default MIME types for output (official A2A field)"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "required": ["id", "name", "description"],
+            "properties": {
+              "id": { "type": "string", "description": "Unique skill identifier (e.g. hello.greet)" },
+              "name": { "type": "string", "description": "Human-readable skill name" },
+              "description": { "type": "string", "description": "What this skill does" },
+              "tags": { "type": "array", "items": { "type": "string" }, "description": "Categorization tags" },
+              "examples": { "type": "array", "items": { "type": "string" }, "description": "Example prompts" },
+              "inputModes": { "type": "array", "items": { "type": "string" }, "description": "Supported input MIME types" },
+              "outputModes": { "type": "array", "items": { "type": "string" }, "description": "Supported output MIME types" }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "description": "Named A2A skills — accepts string IDs (legacy) or structured AgentSkill objects (official A2A)"
+    },
+    "skill_schemas": {
+      "type": "object",
+      "description": "Deprecated: fold into structured skills. Per-skill input schemas keyed by skill name"
+    },
+    "permissions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Platform extension: minimum roles allowed to trigger this agent"
+    },
+    "commands": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Platform extension: chat commands this agent handles"
+    },
+    "events": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Platform extension: event types this agent subscribes to"
+    },
+    "config_schema": {
+      "type": "object",
+      "description": "Platform extension: JSON Schema for runtime config rendered in admin UI"
+    },
+    "admin_url": {
+      "type": "string",
+      "description": "Platform extension: deep link to agent's own admin page"
+    },
+    "health_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Platform extension: health check URL polled by platform"
+    },
+    "storage": {
+      "type": "object",
+      "description": "Platform extension: storage requirements (postgres, redis, opensearch)"
+    },
+    "scheduled_jobs": {
+      "type": "array",
+      "description": "Platform extension: cron jobs registered in the central scheduler on agent install",
+      "items": {
+        "type": "object",
+        "required": ["name", "skill_id"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "description": "Unique job name within the agent" },
+          "skill_id": { "type": "string", "minLength": 1, "description": "A2A skill ID to invoke (must exist in skills array)" },
+          "cron_expression": { "type": "string", "description": "Standard 5-field cron. Null/omitted = one-shot job" },
+          "payload": { "type": "object", "description": "JSON payload passed to the skill" },
+          "max_retries": { "type": "integer", "minimum": 0, "default": 3, "description": "Max retry attempts on failure" },
+          "retry_delay_seconds": { "type": "integer", "minimum": 1, "default": 60, "description": "Seconds between retries" },
+          "timezone": { "type": "string", "default": "UTC", "description": "Timezone for cron evaluation" }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

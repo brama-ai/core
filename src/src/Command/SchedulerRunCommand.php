@@ -10,6 +10,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Command\SignalableCommandInterface;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -17,6 +18,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class SchedulerRunCommand extends Command implements SignalableCommandInterface
 {
     private const DEFAULT_POLL_INTERVAL_SECONDS = 10;
+    private const DISCOVERY_INTERVAL_SECONDS = 60;
 
     private bool $shouldStop = false;
 
@@ -50,6 +52,8 @@ final class SchedulerRunCommand extends Command implements SignalableCommandInte
         $output->writeln('Scheduler started. Polling every '.$this->pollIntervalSeconds.' seconds.');
         $this->logger->info('Scheduler started');
 
+        $lastDiscoveryAt = 0;
+
         while (!$this->shouldStop) {
             try {
                 $this->ensureConnection();
@@ -64,6 +68,12 @@ final class SchedulerRunCommand extends Command implements SignalableCommandInte
                 $output->writeln(sprintf('[%s] Tick error: %s', date('Y-m-d H:i:s'), $e->getMessage()));
             }
 
+            $now = time();
+            if ($now - $lastDiscoveryAt >= self::DISCOVERY_INTERVAL_SECONDS) {
+                $this->runDiscovery($output);
+                $lastDiscoveryAt = $now;
+            }
+
             if ($this->shouldStop) {
                 break;
             }
@@ -75,6 +85,26 @@ final class SchedulerRunCommand extends Command implements SignalableCommandInte
         $this->logger->info('Scheduler stopped');
 
         return Command::SUCCESS;
+    }
+
+    private function runDiscovery(OutputInterface $output): void
+    {
+        try {
+            $application = $this->getApplication();
+            if (null === $application) {
+                return;
+            }
+
+            $discoveryCommand = $application->find('agent:discovery');
+            $discoveryInput = new ArrayInput([]);
+            $discoveryInput->setInteractive(false);
+            $discoveryCommand->run($discoveryInput, $output);
+
+            $this->logger->info('Scheduled agent discovery completed');
+        } catch (\Throwable $e) {
+            $this->logger->error('Scheduled agent discovery failed', ['exception' => $e]);
+            $output->writeln(sprintf('[%s] Discovery error: %s', date('Y-m-d H:i:s'), $e->getMessage()));
+        }
     }
 
     private function ensureConnection(): void

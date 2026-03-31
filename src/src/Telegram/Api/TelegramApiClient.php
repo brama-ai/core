@@ -6,7 +6,7 @@ namespace App\Telegram\Api;
 
 use Psr\Log\LoggerInterface;
 
-final class TelegramApiClient
+final class TelegramApiClient implements TelegramApiClientInterface
 {
     private const API_BASE = 'https://api.telegram.org/bot';
 

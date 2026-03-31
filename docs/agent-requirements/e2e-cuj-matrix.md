@@ -41,6 +41,8 @@ E2E tests cover CUJs — not individual components (that's what unit tests do).
 | CUJ-20 | Scheduler → create job → delivery channel | `tests/e2e/tests/admin/scheduler_test.js` | `SchedulerPage.js` | **skipped** (requires add-scheduler-delivery) |
 | CUJ-21 | Scheduler → job → view logs | `tests/e2e/tests/admin/scheduler_logs_test.js` | `SchedulerPage.js` | covered |
 | CUJ-22 | Dashboard → metrics cards → A2A/agent/scheduler | `tests/e2e/tests/admin/dashboard_test.js` | `DashboardPage.js` | covered |
+| CUJ-23 | Dev Reporter → admin → reports list → filter by status | `tests/e2e/tests/admin/dev_reporter_admin_test.js` | `DevReporterPage.js` | covered |
+| CUJ-24 | Dev Reporter → health + manifest via Traefik | `tests/e2e/tests/admin/dev_reporter_admin_test.js` | — (API) | covered |
 
 ## How to Add a New CUJ
 

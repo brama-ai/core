@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Telegram\Service;
 
-use App\Telegram\Api\TelegramApiClient;
+use App\Telegram\Api\TelegramApiClientInterface;
 use Psr\Log\LoggerInterface;
 
-final class TelegramSender
+final class TelegramSender implements TelegramSenderInterface
 {
     public function __construct(
-        private readonly TelegramApiClient $apiClient,
+        private readonly TelegramApiClientInterface $apiClient,
         private readonly TelegramBotRegistry $botRegistry,
         private readonly LoggerInterface $logger,
     ) {

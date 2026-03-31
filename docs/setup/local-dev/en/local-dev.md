@@ -423,6 +423,23 @@ make e2e-cleanup  # Stop all E2E containers
 - `make e2e-env-check` may fail if `openclaw-gateway-e2e` is still starting; rerun once the
   service becomes `healthy`.
 
+## Adding a New Agent
+
+To add a new agent to the platform:
+
+1. Add the service to `compose.yaml` (or a compose fragment) with:
+   - Service name ending in `-agent` (e.g. `my-agent`)
+   - Label `ai.platform.agent=true`
+2. Implement the required endpoints:
+   - `GET /api/v1/manifest` — Agent Card JSON (no auth)
+   - `GET /health` — `{"status": "ok"}` (no auth)
+   - `POST /api/v1/a2a` — if the agent declares skills
+3. Run `make conventions-test` to verify compliance
+4. Core auto-discovers the agent within 60 seconds (or click **Run Discovery** in admin)
+
+For the full checklist and field reference, see:
+[`docs/agent-requirements/conventions.md`](../../agent-requirements/conventions.md)
+
 ## AI Agent Skills
 
 ```bash

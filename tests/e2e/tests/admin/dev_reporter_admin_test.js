@@ -150,13 +150,13 @@ Scenario(
         await I.switchTo('iframe');
         await I.waitForText('Pipeline Runs', 10);
 
-        // Verify table headers
-        I.see('Date');
-        I.see('Task');
-        I.see('Branch');
-        I.see('Status');
-        I.see('Duration');
-        I.see('Agents');
+        // Verify table headers (CSS text-transform: uppercase renders them in caps)
+        I.see('DATE');
+        I.see('TASK');
+        I.see('BRANCH');
+        I.see('STATUS');
+        I.see('DURATION');
+        I.see('AGENTS');
         await I.switchTo();
     },
 ).tag('@admin').tag('@dev-reporter');

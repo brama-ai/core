@@ -1,61 +1,79 @@
 # Implementation Tasks
 
 ## 1. Prepare Local k3s Target
-- [ ] 1.1 Document Rancher Desktop prerequisites for local k3s
-- [ ] 1.2 Define the expected kube context for local validation
-- [ ] 1.3 Create the target namespace and shared labels or naming conventions
+- [x] 1.1 Document Rancher Desktop prerequisites for local k3s (version, container runtime, resource allocation)
+- [x] 1.2 Define the expected kube context name for local validation (`rancher-desktop`)
+- [x] 1.3 Create the target namespace manifest (`brama`) with shared labels (`app.kubernetes.io/part-of: brama`)
 
 **Acceptance checks**
 - `kubectl config current-context` points to the expected Rancher Desktop context
 - `kubectl get nodes` shows at least one `Ready` node
-- `kubectl get namespace <target>` succeeds after namespace creation
+- `kubectl get namespace brama` succeeds after namespace creation
+- Namespace carries the label `app.kubernetes.io/part-of: brama`
 
 ## 2. Add Shared Config and Secrets Model
-- [ ] 2.1 Define ConfigMap strategy for non-secret runtime values
-- [ ] 2.2 Define Secret strategy for credentials and sensitive runtime values
-- [ ] 2.3 Ensure the mapping from current `.env` values to k3s config is documented
+- [x] 2.1 Create ConfigMap manifest (`brama-config`) for non-secret runtime values (hostnames, ports, URLs)
+- [x] 2.2 Create Secret manifest (`brama-secrets`) for credentials and sensitive runtime values
+- [x] 2.3 Document the mapping from `.env.deployment.example` variables to ConfigMap/Secret keys
+- [x] 2.4 Verify services can reference config via `envFrom` with `configMapRef` and `secretRef`
 
 **Acceptance checks**
 - `kubectl apply -f` for shared config resources succeeds without schema errors
-- `kubectl get configmap` and `kubectl get secret` show the expected shared resources
+- `kubectl get configmap brama-config -n brama` shows expected keys
+- `kubectl get secret brama-secrets -n brama` shows expected keys
+- No credential values appear in the ConfigMap
 
 ## 3. Boot Infrastructure Services
-- [ ] 3.1 Add deployment assets for PostgreSQL
-- [ ] 3.2 Add deployment assets for Redis
-- [ ] 3.3 Add deployment assets for RabbitMQ
-- [ ] 3.4 Add deployment assets for OpenSearch
+- [x] 3.1 Add Deployment, Service, and PVC manifests for PostgreSQL (pgvector/pgvector:pg16)
+- [x] 3.2 Add Deployment, Service, and PVC manifests for Redis (redis:7-alpine)
+- [x] 3.3 Add Deployment, Service, and PVC manifests for RabbitMQ (rabbitmq:3.13-management-alpine)
+- [x] 3.4 Add Deployment, Service, and PVC manifests for OpenSearch (opensearchproject/opensearch:2.11.1)
 
 **Acceptance checks**
-- All infrastructure pods reach `Running` or equivalent healthy state
-- `kubectl get pods -n <target>` shows no `CrashLoopBackOff` for the infra slice
-- Application services can later resolve infra endpoints through cluster DNS
+- All infrastructure pods reach `Running` state within 120 seconds
+- `kubectl get pods -n brama -l app.kubernetes.io/component=infra` shows no `CrashLoopBackOff`
+- `pg_isready` succeeds inside the PostgreSQL pod
+- `redis-cli ping` returns `PONG` inside the Redis pod
+- `rabbitmq-diagnostics -q ping` succeeds inside the RabbitMQ pod
+- Curl to `http://opensearch:9200` from within the cluster returns a JSON response
 
 ## 4. Boot Core Runtime
-- [ ] 4.1 Add deployment assets for the core service
-- [ ] 4.2 Add service exposure for the core HTTP surface
-- [ ] 4.3 Add readiness and liveness verification requirements
+- [x] 4.1 Add Deployment manifest for the core service with `envFrom` referencing shared config/secrets
+- [x] 4.2 Add Service manifest exposing the core HTTP surface on port 80
+- [x] 4.3 Configure readiness probe: HTTP GET `/health` port 80, initialDelay 10s, period 5s
+- [x] 4.4 Configure liveness probe: HTTP GET `/health` port 80, initialDelay 30s, period 10s
 
 **Acceptance checks**
-- Core pod reaches ready state
-- Core service is reachable from inside the cluster
-- Core health endpoint returns a successful response
+- Core pod reaches `Ready` state within 120 seconds
+- `kubectl exec` curl to `http://core:80/health` returns `{"status":"ok","service":"core-platform"}`
+- Core service is resolvable via cluster DNS (`core.brama.svc`)
 
 ## 5. Boot One Reference Agent
-- [ ] 5.1 Add deployment assets for a lightweight reference agent
-- [ ] 5.2 Connect the agent to required backing services
-- [ ] 5.3 Verify core-to-agent connectivity
+- [x] 5.1 Add Deployment and Service manifests for hello-agent (`ghcr.io/nmdimas/a2a-hello-agent:main`)
+- [x] 5.2 Configure hello-agent `envFrom` to reference shared ConfigMap and Secret
+- [x] 5.3 Verify hello-agent health endpoint returns a successful HTTP response
+- [x] 5.4 Verify core-to-agent connectivity via cluster DNS
 
 **Acceptance checks**
-- The reference agent pod reaches ready state
-- The reference agent health endpoint returns a successful response
-- Core can reach the reference agent over cluster networking
+- Hello-agent pod reaches `Ready` state
+- Hello-agent health endpoint returns a successful response
+- Request from core pod to `http://hello-agent:80/` succeeds over cluster networking
 
 ## 6. Expose and Document Operator Access
-- [ ] 6.1 Define ingress or port-forward path for local operator access
-- [ ] 6.2 Document the verified local URLs
-- [ ] 6.3 Document known gaps and temporary workarounds
+- [x] 6.1 Document `kubectl port-forward` commands for each service (core, postgres, redis, rabbitmq, opensearch)
+- [x] 6.2 Document optional Traefik Ingress path for hostname-based routing
+- [x] 6.3 Document known gaps and temporary workarounds (services not yet exposed, etc.)
 
 **Acceptance checks**
-- At least one browser-reachable URL for core is documented and working
-- The documented access path works on Rancher Desktop without undocumented manual steps
+- `kubectl port-forward svc/core 8081:80 -n brama` makes `http://localhost:8081/health` accessible
+- All documented port-forward commands work on Rancher Desktop without undocumented manual steps
 
+## 7. Documentation
+- [x] 7.1 Create k3s local setup runbook in `docs/` (English, developer-facing)
+- [x] 7.2 Document the ConfigMap/Secret mapping strategy with rationale
+- [x] 7.3 Document the relationship between this local k3s path and the Docker Compose runtime
+- [x] 7.4 Update `docs/agent-requirements/` if agent deployment conventions changed
+
+**Acceptance checks**
+- Runbook covers prerequisites, namespace setup, config, infra boot, core boot, agent boot, and access
+- A new developer can follow the runbook end-to-end without undocumented steps

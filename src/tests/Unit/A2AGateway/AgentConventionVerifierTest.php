@@ -63,4 +63,114 @@ final class AgentConventionVerifierTest extends Unit
         $this->assertSame('healthy', $result->status);
         $this->assertSame([], $result->violations);
     }
+
+    public function testVerifyReturnsErrorWhenNameMissing(): void
+    {
+        $verifier = new AgentConventionVerifier();
+
+        $result = $verifier->verify([
+            'version' => '1.0.0',
+            'skills' => [],
+        ]);
+
+        $this->assertSame('error', $result->status);
+        $this->assertNotEmpty($result->violations);
+        $this->assertContains('Required field missing or empty: name', $result->violations);
+    }
+
+    public function testVerifyReturnsErrorWhenVersionMissing(): void
+    {
+        $verifier = new AgentConventionVerifier();
+
+        $result = $verifier->verify([
+            'name' => 'my-agent',
+            'skills' => [],
+        ]);
+
+        $this->assertSame('error', $result->status);
+        $this->assertNotEmpty($result->violations);
+        $this->assertContains('Required field missing or empty: version', $result->violations);
+    }
+
+    public function testVerifyReturnsDegradedWhenA2aEndpointMissingWithCapabilities(): void
+    {
+        $verifier = new AgentConventionVerifier();
+
+        $result = $verifier->verify([
+            'name' => 'my-agent',
+            'version' => '1.0.0',
+            'skills' => ['my-agent.do-something'],
+            'capabilities' => [
+                'streaming' => false,
+                'pushNotifications' => false,
+            ],
+        ]);
+
+        $this->assertSame('degraded', $result->status);
+        $this->assertNotEmpty($result->violations);
+
+        $hasEndpointWarning = false;
+        foreach ($result->violations as $violation) {
+            if (str_contains($violation, 'url') || str_contains($violation, 'a2a_endpoint')) {
+                $hasEndpointWarning = true;
+                break;
+            }
+        }
+        $this->assertTrue($hasEndpointWarning, 'Expected a warning about missing url/a2a_endpoint when skills are declared');
+    }
+
+    public function testVerifyReturnsErrorForNullInput(): void
+    {
+        $verifier = new AgentConventionVerifier();
+
+        $result = $verifier->verify(null);
+
+        $this->assertSame('error', $result->status);
+        $this->assertNotEmpty($result->violations);
+    }
+
+    public function testVerifyReturnsHealthyForValidManifest(): void
+    {
+        $verifier = new AgentConventionVerifier();
+
+        $result = $verifier->verify([
+            'name' => 'hello-agent',
+            'version' => '1.0.0',
+            'skills' => [],
+            'capabilities' => [
+                'streaming' => false,
+                'pushNotifications' => false,
+            ],
+        ]);
+
+        $this->assertSame('healthy', $result->status);
+        $this->assertSame([], $result->violations);
+    }
+
+    public function testVerifyReturnsDegradedForNonSemverVersion(): void
+    {
+        $verifier = new AgentConventionVerifier();
+
+        $result = $verifier->verify([
+            'name' => 'my-agent',
+            'version' => '1.0',
+            'skills' => [],
+            'capabilities' => [
+                'streaming' => false,
+                'pushNotifications' => false,
+            ],
+        ]);
+
+        $this->assertSame('degraded', $result->status);
+        $this->assertNotEmpty($result->violations);
+
+        $hasVersionWarning = false;
+        foreach ($result->violations as $violation) {
+            if (str_contains($violation, 'version') && str_contains($violation, 'semver')) {
+                $hasVersionWarning = true;
+                break;
+            }
+        }
+        $this->assertTrue($hasVersionWarning, 'Expected a warning about non-semver version string');
+    }
 }

@@ -16,7 +16,8 @@ implemented and verified.
 1. **Agent manifest JSON Schema** — Create `config/agent-manifest-schema.json` so that
    `AgentConventionVerifier` can validate manifests against a formal schema instead of inline
    PHP rules. Align the test-side schema (`tests/agent-conventions/support/manifest-schema.json`)
-   with the same source of truth.
+   with the same source of truth. *(Note: `config/agent-card.schema.json` already exists and
+   may serve as the basis; the task will reconcile naming.)*
 
 2. **Scheduled discovery polling** — Register `agent:discovery` as a scheduled task running
    every 60 seconds via the platform's existing scheduler infrastructure, so agents are
@@ -25,9 +26,10 @@ implemented and verified.
 3. **"Add by URL" admin stub** — Add the placeholder button and modal to the agents admin page
    with a "Функціонал в розробці" message, as specified in the original design.
 
-4. **AgentConventionVerifier unit test coverage** — Expand unit tests to cover: missing `name`,
-   missing `version`, missing `a2a_endpoint` when capabilities are declared, and null/invalid
-   JSON input. Currently only 2 test cases exist (postgres migration contract).
+4. **AgentConventionVerifier unit test coverage** — Expand unit tests to cover 6 cases:
+   missing `name`, missing `version`, null input, valid manifest (healthy), non-semver version
+   (degraded), and skills without endpoint (degraded). Currently only 2 test cases exist
+   (postgres migration contract).
 
 5. **Convention test schema file** — Create `tests/agent-conventions/support/manifest-schema.json`
    mirroring the core schema for test-side validation.
@@ -45,13 +47,14 @@ implemented and verified.
 
 ## Impact
 
-- Affected specs: `agent-conventions` (ADDED — new capability spec), `agent-registry` (MODIFIED — scheduled discovery)
+- Affected specs:
+  - `agent-conventions` (ADDED — new capability: JSON Schema, convention verification model, scheduled discovery, admin placeholder)
+  - `agent-registry` (MODIFIED — Agent Card Fetcher gains scheduled discovery; Admin Agent List View gains "Add by URL" button)
 - Affected code:
-  - NEW `config/agent-manifest-schema.json`
+  - NEW or RECONCILED `config/agent-manifest-schema.json` (may reconcile with existing `config/agent-card.schema.json`)
   - NEW `tests/agent-conventions/support/manifest-schema.json`
-  - MODIFIED `src/src/A2AGateway/AgentConventionVerifier.php` (optional: use schema-based validation)
+  - NEW `src/tests/Unit/A2AGateway/AgentConventionVerifierTest.php` (6 expanded test cases)
   - MODIFIED `src/templates/admin/agents.html.twig` (add "Add by URL" button + modal)
-  - NEW `src/tests/Unit/A2AGateway/AgentConventionVerifierTest.php` (expanded test cases)
   - MODIFIED scheduler config (register `agent:discovery` at 60s interval)
   - MODIFIED `docs/LOCAL_DEV.md` (new agent checklist section)
 - No breaking changes

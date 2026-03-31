@@ -10,10 +10,13 @@ use App\Telegram\Command\Handler\AgentEnableHandler;
 use App\Telegram\Command\Handler\AgentsListHandler;
 use App\Telegram\Command\Handler\HelpHandler;
 use App\Telegram\DTO\NormalizedEvent;
-use App\Telegram\Service\TelegramRoleResolver;
-use App\Telegram\Service\TelegramSender;
+use App\Telegram\Service\TelegramRoleResolverInterface;
+use App\Telegram\Service\TelegramSenderInterface;
 use Psr\Log\LoggerInterface;
 
+/**
+ * @deprecated Use \App\Channel\Command\PlatformCommandRouter instead. Will be removed in Phase 5.
+ */
 final class TelegramCommandRouter
 {
     /** @var array<string, array{handler: string, min_role: string}> */
@@ -26,8 +29,8 @@ final class TelegramCommandRouter
     private const ROLE_HIERARCHY = ['admin' => 3, 'moderator' => 2, 'user' => 1];
 
     public function __construct(
-        private readonly TelegramRoleResolver $roleResolver,
-        private readonly TelegramSender $sender,
+        private readonly TelegramRoleResolverInterface $roleResolver,
+        private readonly TelegramSenderInterface $sender,
         private readonly AgentRegistryInterface $agentRegistry,
         private readonly LoggerInterface $logger,
     ) {

@@ -1,0 +1,124 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% set is_edit = bot is not null %}
+{% block title %}{{ (is_edit ? 'telegram_bots.edit.title' : 'telegram_bots.new.title')|trans }} — Admin{% endblock %}
+{% block page_title %}{{ (is_edit ? 'telegram_bots.edit.title' : 'telegram_bots.new.title')|trans }}{% endblock %}
+
+{% block content %}
+    <div style="margin-bottom:1rem;">
+        <a href="{{ path('admin_telegram_bots') }}" class="btn btn-settings">
+            ← {{ 'telegram_bots.back'|trans }}
+        </a>
+    </div>
+
+    <div class="glass-card" style="max-width:640px;">
+        {% if error %}
+            <div style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:6px;padding:.75rem 1rem;margin-bottom:1.25rem;color:#ef4444;">
+                {{ error|trans }}
+            </div>
+        {% endif %}
+
+        <form method="post" action="{{ is_edit ? path('admin_telegram_bots_edit', {id: bot.id}) : path('admin_telegram_bots_new') }}">
+            <div class="form-group" style="margin-bottom:1rem;">
+                <label class="form-label" for="bot_username">{{ 'telegram_bots.form.username'|trans }} *</label>
+                <input
+                    type="text"
+                    id="bot_username"
+                    name="bot_username"
+                    class="form-input"
+                    value="{{ is_edit ? bot.bot_username : (form_data.bot_username ?? '') }}"
+                    placeholder="mybot"
+                    required
+                >
+                <div style="font-size:.75rem;color:var(--text-muted);margin-top:.25rem;">{{ 'telegram_bots.form.username_hint'|trans }}</div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:1rem;">
+                <label class="form-label" for="bot_token">
+                    {{ 'telegram_bots.form.token'|trans }}
+                    {% if not is_edit %} *{% endif %}
+                </label>
+                <input
+                    type="password"
+                    id="bot_token"
+                    name="bot_token"
+                    class="form-input"
+                    value=""
+                    placeholder="{{ is_edit ? 'telegram_bots.form.token_placeholder_edit'|trans : '1234567890:ABCdef...' }}"
+                    {{ not is_edit ? 'required' : '' }}
+                    autocomplete="new-password"
+                >
+                {% if is_edit %}
+                    <div style="font-size:.75rem;color:var(--text-muted);margin-top:.25rem;">{{ 'telegram_bots.form.token_hint_edit'|trans }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group" style="margin-bottom:1rem;">
+                <label class="form-label" for="community_id">{{ 'telegram_bots.form.community'|trans }}</label>
+                <input
+                    type="text"
+                    id="community_id"
+                    name="community_id"
+                    class="form-input"
+                    value="{{ is_edit ? (bot.community_id ?? '') : (form_data.community_id ?? '') }}"
+                    placeholder="{{ 'telegram_bots.form.community_placeholder'|trans }}"
+                >
+            </div>
+
+            <div class="form-group" style="margin-bottom:1rem;">
+                <label class="form-label" for="privacy_mode">{{ 'telegram_bots.form.privacy_mode'|trans }}</label>
+                <select id="privacy_mode" name="privacy_mode" class="form-input">
+                    {% set current_privacy = is_edit ? bot.privacy_mode : (form_data.privacy_mode ?? 'enabled') %}
+                    <option value="enabled" {{ current_privacy == 'enabled' ? 'selected' : '' }}>{{ 'telegram_bots.privacy.enabled'|trans }}</option>
+                    <option value="disabled" {{ current_privacy == 'disabled' ? 'selected' : '' }}>{{ 'telegram_bots.privacy.disabled'|trans }}</option>
+                </select>
+                <div style="font-size:.75rem;color:var(--text-muted);margin-top:.25rem;">{{ 'telegram_bots.form.privacy_hint'|trans }}</div>
+            </div>
+
+            {% if is_edit %}
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label class="form-label" for="role_overrides">{{ 'telegram_bots.form.role_overrides'|trans }}</label>
+                    <textarea
+                        id="role_overrides"
+                        name="role_overrides"
+                        class="form-input"
+                        rows="4"
+                        placeholder='{"123456789": "admin"}'
+                        style="font-family:monospace;font-size:.85rem;"
+                    >{{ bot.role_overrides is not empty ? bot.role_overrides|json_encode(constant('JSON_PRETTY_PRINT')) : '' }}</textarea>
+                    <div style="font-size:.75rem;color:var(--text-muted);margin-top:.25rem;">{{ 'telegram_bots.form.role_overrides_hint'|trans }}</div>
+                </div>
+            {% endif %}
+
+            <div class="form-group" style="margin-bottom:1.25rem;display:flex;gap:1.5rem;">
+                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+                    <input
+                        type="checkbox"
+                        name="polling_mode"
+                        value="1"
+                        {{ (is_edit ? bot.polling_mode : (form_data.polling_mode ?? false)) ? 'checked' : '' }}
+                    >
+                    {{ 'telegram_bots.form.polling_mode'|trans }}
+                </label>
+                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+                    <input
+                        type="checkbox"
+                        name="enabled"
+                        value="1"
+                        {{ (is_edit ? bot.enabled : (form_data.enabled ?? true)) ? 'checked' : '' }}
+                    >
+                    {{ 'telegram_bots.form.enabled'|trans }}
+                </label>
+            </div>
+
+            <div style="display:flex;gap:.75rem;">
+                <button type="submit" class="btn btn-primary">
+                    {{ (is_edit ? 'telegram_bots.form.save' : 'telegram_bots.form.create')|trans }}
+                </button>
+                <a href="{{ path('admin_telegram_bots') }}" class="btn btn-settings">
+                    {{ 'telegram_bots.form.cancel'|trans }}
+                </a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

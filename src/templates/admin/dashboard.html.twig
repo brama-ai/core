@@ -122,6 +122,52 @@
 
     {% set is_local_host = app.request.host in ['localhost', '127.0.0.1'] or '.localhost' in app.request.host %}
 
+    {# ---- Telegram Status Widget ---- #}
+    {% if telegram_stats.total_bots > 0 or true %}
+    <div class="dash-section-title">{{ 'dashboard.telegram_status'|trans }}</div>
+    <div class="glass-card" style="margin-bottom:1.5rem;">
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="#60a5fa"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            <strong>Telegram</strong>
+            {% if telegram_stats.enabled_bots > 0 %}
+                <span class="badge badge-enabled">{{ 'dashboard.telegram_connected'|trans }}</span>
+            {% else %}
+                <span class="badge badge-unknown">{{ 'dashboard.telegram_no_bots'|trans }}</span>
+            {% endif %}
+        </div>
+        <div class="metrics-stats">
+            <div class="metric-row">
+                <span class="metric-label">{{ 'dashboard.telegram_total_bots'|trans }}:</span>
+                <span class="metric-value">{{ telegram_stats.total_bots }}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">{{ 'dashboard.telegram_enabled_bots'|trans }}:</span>
+                <span class="metric-value text-success">{{ telegram_stats.enabled_bots }}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">{{ 'dashboard.telegram_total_chats'|trans }}:</span>
+                <span class="metric-value">{{ telegram_stats.total_chats }}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">{{ 'dashboard.telegram_active_chats'|trans }}:</span>
+                <span class="metric-value text-success">{{ telegram_stats.active_chats }}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">{{ 'dashboard.telegram_messages_today'|trans }}:</span>
+                <span class="metric-value">{{ telegram_stats.messages_today }}</span>
+            </div>
+        </div>
+        <div style="margin-top:.75rem;display:flex;gap:.5rem;">
+            <a href="{{ path('admin_telegram_bots') }}" class="btn btn-settings" style="font-size:.8rem;">
+                {{ 'dashboard.telegram_manage_bots'|trans }}
+            </a>
+            <a href="{{ path('admin_telegram_chats') }}" class="btn btn-settings" style="font-size:.8rem;">
+                {{ 'dashboard.telegram_view_chats'|trans }}
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
     {# ---- Quick nav ---- #}
     <div class="dash-section-title">{{ 'dashboard.navigation'|trans }}</div>
     <div class="dash-nav-grid">

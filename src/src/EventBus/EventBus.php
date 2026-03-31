@@ -8,7 +8,7 @@ use App\AgentRegistry\AgentRegistryInterface;
 use App\AgentRegistry\ManifestValidator;
 use Psr\Log\LoggerInterface;
 
-final class EventBus
+final class EventBus implements EventBusInterface
 {
     public function __construct(
         private readonly AgentRegistryInterface $registry,

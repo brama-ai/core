@@ -2,28 +2,37 @@
 
 ## Why
 
-The platform already has a fast single-node path via Docker Compose, but there is no verified local
-cluster path for Kubernetes-style deployment. Rancher Desktop now provides a local k3s environment,
-which makes it practical to build and verify a k3s-compatible runtime without waiting for a remote
-production cluster.
+The platform has a validated Docker Compose runtime for local development, but no verified
+Kubernetes-compatible deployment path. Before migrating production to k3s on Hetzner
+(`migrate-to-k3s-hetzner`), the team needs a local k3s environment where manifests, configuration
+strategies, health probes, and cross-service connectivity can be developed and tested incrementally.
 
-To support k3s, the project needs a dedicated deployment layer, Kubernetes-friendly configuration
-management, and a minimal verified path that proves the platform can boot outside Compose.
+Rancher Desktop provides a zero-cost local k3s cluster that mirrors the target production topology.
+This change establishes the local k3s runtime as a second deployment target — not a replacement for
+Compose, but a prerequisite for confident production migration.
 
 ## What Changes
 
-- **ADDED**: A local k3s deployment path for Rancher Desktop
-- **ADDED**: k3s deployment assets under the workspace deployment layer
-- **ADDED**: Secrets and configuration mapping strategy for Kubernetes
-- **ADDED**: Stepwise acceptance criteria for booting infra, core, and at least one agent in k3s
+- **ADDED**: Documented prerequisites for Rancher Desktop k3s (versions, settings, context name)
+- **ADDED**: Target namespace (`brama`) with shared labels and naming conventions
+- **ADDED**: Shared ConfigMap/Secret strategy mapping `.env.deployment` values to Kubernetes resources
+- **ADDED**: k3s deployment assets for infrastructure services (PostgreSQL, Redis, RabbitMQ, OpenSearch)
+- **ADDED**: k3s deployment assets for the core runtime with readiness/liveness probes
+- **ADDED**: k3s deployment assets for one reference agent (hello-agent) with connectivity verification
+- **ADDED**: Ingress and port-forward documentation for local operator access
 
 ## Impact
 
 - Affected specs:
-  - k3s-deployment
+  - `k3s-deployment` — new capability covering local k3s bootstrapping, config strategy,
+    infrastructure services, core runtime, reference agent, and operator access
 - Affected code:
-  - deployment manifests or Helm values/templates for k3s
-  - deployment documentation
+  - New deployment manifests or kustomize overlays under workspace deployment layer
+  - New documentation under `docs/` for k3s local setup runbook
 - Affected runtime:
-  - local Rancher Desktop k3s environment
-
+  - Local Rancher Desktop k3s environment (no production impact)
+- Relationship to other changes:
+  - Prerequisite for `migrate-to-k3s-hetzner` — validates manifests locally before production
+  - Complements `local-dev-runtime` spec — Compose remains the primary dev path; k3s is additive
+  - Does NOT overlap with `migrate-to-k3s-hetzner` Helm chart scope — this change uses plain
+    manifests for simplicity; the Hetzner change introduces the full Helm chart

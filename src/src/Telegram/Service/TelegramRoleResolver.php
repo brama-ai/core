@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Telegram\Service;
 
-use App\Telegram\Api\TelegramApiClient;
+use App\Telegram\Api\TelegramApiClientInterface;
 
-final class TelegramRoleResolver
+final class TelegramRoleResolver implements TelegramRoleResolverInterface
 {
     public function __construct(
-        private readonly TelegramApiClient $apiClient,
+        private readonly TelegramApiClientInterface $apiClient,
         private readonly TelegramBotRegistry $botRegistry,
     ) {
     }

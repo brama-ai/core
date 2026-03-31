@@ -84,6 +84,17 @@ class TelegramBotRepository
     /**
      * @return list<array<string, mixed>>
      */
+    public function findAll(): array
+    {
+        $sql = 'SELECT * FROM telegram_bots ORDER BY created_at DESC';
+        $bots = $this->connection->fetchAllAssociative($sql);
+
+        return array_map([$this, 'hydrateBot'], $bots);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
     public function findEnabled(): array
     {
         $sql = 'SELECT * FROM telegram_bots WHERE enabled = true ORDER BY created_at DESC';

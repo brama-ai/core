@@ -86,6 +86,23 @@ class TelegramChatRepository
     /**
      * @return list<array<string, mixed>>
      */
+    public function findAll(): array
+    {
+        $sql = <<<'SQL'
+            SELECT tc.*, tb.bot_username
+            FROM telegram_chats tc
+            LEFT JOIN telegram_bots tb ON tc.bot_id = tb.id
+            ORDER BY tc.last_message_at DESC NULLS LAST, tc.joined_at DESC NULLS LAST
+        SQL;
+
+        $chats = $this->connection->fetchAllAssociative($sql);
+
+        return array_map([$this, 'hydrateChat'], $chats);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
     public function findActiveByBot(string $botId): array
     {
         $sql = <<<'SQL'

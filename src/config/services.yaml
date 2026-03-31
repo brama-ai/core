@@ -163,6 +163,10 @@ services:
         arguments:
             $encryptionKey: '%env(TELEGRAM_ENCRYPTION_KEY)%'
 
+    App\Telegram\Delivery\TelegramDeliveryAdapter:
+        tags:
+            - { name: delivery.adapter, type: telegram }
+
     App\Tenant\TenantRepositoryInterface:
         alias: App\Tenant\TenantRepository
 
