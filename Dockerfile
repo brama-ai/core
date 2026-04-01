@@ -32,12 +32,7 @@ RUN apk add --no-cache \
     && rm -rf /tmp/pear
 
 # Caddy config: reverse proxy to PHP-FPM
-RUN echo ':80 {' > /etc/caddy/Caddyfile \
-    && echo '    root * /var/www/html/public' >> /etc/caddy/Caddyfile \
-    && echo '    php_fastcgi 127.0.0.1:9000' >> /etc/caddy/Caddyfile \
-    && echo '    file_server' >> /etc/caddy/Caddyfile \
-    && echo '    encode gzip' >> /etc/caddy/Caddyfile \
-    && echo '}' >> /etc/caddy/Caddyfile
+RUN printf '{\n\tservers {\n\t\ttrusted_proxies static 0.0.0.0/0 ::/0\n\t}\n}\n\n:80 {\n\troot * /var/www/html/public\n\tphp_fastcgi 127.0.0.1:9000\n\tfile_server\n\tencode gzip\n}\n' > /etc/caddy/Caddyfile
 
 WORKDIR /var/www/html
 
