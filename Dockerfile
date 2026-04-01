@@ -48,6 +48,9 @@ RUN echo '#!/bin/sh' > /usr/local/bin/start.sh \
     && echo 'exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile' >> /usr/local/bin/start.sh \
     && chmod +x /usr/local/bin/start.sh
 
+ARG ASSET_VERSION=dev
+ENV ASSET_VERSION=${ASSET_VERSION}
+
 EXPOSE 80
 
 CMD ["/usr/local/bin/start.sh"]
