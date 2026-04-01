@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\AgentRegistry\AgentPublicEndpointRepositoryInterface;
 use App\AgentRegistry\AgentRegistryInterface;
 use App\Security\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -16,6 +17,7 @@ final class AgentSettingsController extends AbstractController
 {
     public function __construct(
         private readonly AgentRegistryInterface $registry,
+        private readonly AgentPublicEndpointRepositoryInterface $publicEndpointRepository,
     ) {
     }
 
@@ -38,6 +40,7 @@ final class AgentSettingsController extends AbstractController
 
         $hasOwnStorage = isset($manifest['storage']) && is_array($manifest['storage']);
         $canTriggerNewsCrawl = 'news-maker-agent' === $name && null !== ($agent['installed_at'] ?? null);
+        $publicEndpoints = $this->publicEndpointRepository->findByAgentName($name);
 
         return $this->render('admin/agent_settings.html.twig', [
             'username' => $user->getUserIdentifier(),
@@ -49,6 +52,7 @@ final class AgentSettingsController extends AbstractController
             'has_own_storage' => $hasOwnStorage,
             'installed_at' => $agent['installed_at'] ?? null,
             'can_trigger_news_crawl' => $canTriggerNewsCrawl,
+            'public_endpoints' => $publicEndpoints,
         ]);
     }
 }

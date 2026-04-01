@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\AgentRegistry\AgentHealthChecker;
+use App\AgentRegistry\AgentPublicEndpointSyncer;
 use App\AgentRegistry\AgentRegistryInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -22,6 +23,7 @@ final class AgentHealthPollerCommand extends Command
         private readonly AgentRegistryInterface $registry,
         private readonly LoggerInterface $logger,
         private readonly AgentHealthChecker $healthChecker,
+        private readonly AgentPublicEndpointSyncer $endpointSyncer,
     ) {
         parent::__construct();
     }
@@ -61,6 +63,9 @@ final class AgentHealthPollerCommand extends Command
                     $this->logger->info('Agent health confirmed', ['agent' => $name, 'status' => 'healthy']);
                     $output->writeln(sprintf('[%s] unknown → healthy', $name));
                 }
+
+                // Sync public endpoints from manifest on every successful health check
+                $this->endpointSyncer->syncFromManifest($name, $manifest);
             } else {
                 $failures = $this->registry->recordHealthCheckFailure($name);
                 $this->logger->info('Agent health check failed', ['agent' => $name, 'consecutive_failures' => $failures]);

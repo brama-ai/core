@@ -128,6 +128,35 @@
       "type": "object",
       "description": "Platform extension: storage requirements (postgres, redis, opensearch)"
     },
+    "public_endpoints": {
+      "type": "array",
+      "description": "Platform extension: HTTP endpoints exposed through the platform reverse proxy",
+      "items": {
+        "type": "object",
+        "required": ["path", "methods"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^/",
+            "description": "Relative path on the agent (e.g. /webhook/telegram). Must start with /"
+          },
+          "methods": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["GET", "POST", "PUT", "DELETE"]
+            },
+            "minItems": 1,
+            "description": "Allowed HTTP methods for this endpoint"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable purpose of the endpoint"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "scheduled_jobs": {
       "type": "array",
       "description": "Platform extension: cron jobs registered in the central scheduler on agent install",

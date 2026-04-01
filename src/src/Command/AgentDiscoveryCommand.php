@@ -7,6 +7,7 @@ namespace App\Command;
 use App\A2AGateway\AgentCardFetcher;
 use App\A2AGateway\AgentConventionVerifier;
 use App\A2AGateway\AgentDiscoveryService;
+use App\AgentRegistry\AgentPublicEndpointSyncer;
 use App\AgentRegistry\AgentRegistryInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -21,6 +22,7 @@ final class AgentDiscoveryCommand extends Command
         private readonly AgentCardFetcher $agentCardFetcher,
         private readonly AgentConventionVerifier $conventionVerifier,
         private readonly AgentRegistryInterface $registry,
+        private readonly AgentPublicEndpointSyncer $publicEndpointSyncer,
     ) {
         parent::__construct();
     }
@@ -51,6 +53,11 @@ final class AgentDiscoveryCommand extends Command
                 : $hostname;
 
             $this->registry->upsertFromDiscovery($name, $manifest, $result->status, $result->violations);
+
+            // Sync public endpoints from manifest
+            if (null !== $manifest) {
+                $this->publicEndpointSyncer->syncFromManifest($name, $manifest);
+            }
 
             $icon = match ($result->status) {
                 'healthy' => '✓',

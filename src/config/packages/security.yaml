@@ -16,6 +16,10 @@ security:
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
 
+        agent_proxy:
+            pattern: ^/api/agents/
+            security: false
+
         admin:
             pattern: ^/(admin|api/v1/internal|edge/auth)
             provider: app_users
@@ -35,6 +39,7 @@ security:
         - { path: ^/admin/login, roles: PUBLIC_ACCESS }
         - { path: ^/admin/locale/switch, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1/internal/agents/register$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/agents/, roles: PUBLIC_ACCESS }
         - { path: ^/admin, roles: ROLE_ADMIN }
         - { path: ^/api/v1/internal, roles: ROLE_ADMIN }
 

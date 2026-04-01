@@ -28,6 +28,8 @@ parameters:
     app.litellm_api_key: '%env(LITELLM_API_KEY)%'
     app.llm_model: '%env(LLM_MODEL)%'
     app.coder_max_workers: 2
+    app.agent_proxy_timeout_default: 30
+    app.agent_proxy_timeout: '%env(int:default:app.agent_proxy_timeout_default:AGENT_PROXY_TIMEOUT)%'
 
 services:
     _defaults:
@@ -211,3 +213,10 @@ services:
     App\Command\CoderWorkerStartCommand:
         arguments:
             $maxWorkers: '%app.coder_max_workers%'
+
+    App\AgentRegistry\AgentPublicEndpointRepositoryInterface:
+        alias: App\AgentRegistry\AgentPublicEndpointRepository
+
+    App\Controller\Api\AgentProxyController:
+        arguments:
+            $proxyTimeout: '%app.agent_proxy_timeout%'

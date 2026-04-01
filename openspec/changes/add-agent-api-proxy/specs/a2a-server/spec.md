@@ -1,4 +1,4 @@
-# a2a-server Specification (additions)
+## ADDED Requirements
 
 ### Requirement: Agent API Proxy Controller
 
@@ -40,7 +40,7 @@ Route name: `api_agent_proxy`
 - **THEN** Core returns `405 Method Not Allowed`
 
 #### Scenario: Agent is unreachable (proxy error)
-- **WHEN** the request is forwarded to the agent but the agent does not respond within 30 seconds
+- **WHEN** the request is forwarded to the agent but the agent does not respond within the configured timeout
 - **THEN** Core returns `502 Bad Gateway` with body `{"error": "Agent unreachable"}`
 
 ### Requirement: Proxy Security
@@ -56,6 +56,20 @@ The proxy SHALL NOT require platform authentication (no edge-auth, no API token)
 
 The proxy SHALL use a configurable timeout (default: 30 seconds) for upstream agent requests. The timeout SHALL be configurable via the `AGENT_PROXY_TIMEOUT` environment variable (integer, seconds).
 
+#### Scenario: Proxy uses configured timeout
+- **GIVEN** the environment variable `AGENT_PROXY_TIMEOUT` is set to `15`
+- **WHEN** a request is proxied to an agent
+- **THEN** the HTTP client uses a 15-second timeout for the upstream request
+
+#### Scenario: Proxy uses default timeout when not configured
+- **GIVEN** the environment variable `AGENT_PROXY_TIMEOUT` is not set
+- **WHEN** a request is proxied to an agent
+- **THEN** the HTTP client uses a 30-second timeout for the upstream request
+
+#### Scenario: Proxy returns 504 on timeout
+- **WHEN** a proxied request exceeds the configured timeout
+- **THEN** Core returns `504 Gateway Timeout` with body `{"error": "Agent request timed out"}`
+
 ### Requirement: Admin Visibility
 
 The admin agents page SHALL display the list of public endpoints for each agent that has them.
@@ -63,3 +77,7 @@ The admin agents page SHALL display the list of public endpoints for each agent 
 #### Scenario: Agent detail shows public endpoints
 - **WHEN** viewing an agent in the admin panel that has public_endpoints
 - **THEN** a "Public Endpoints" section displays each endpoint's method, path, and the full proxy URL (`https://brama.dev/api/agents/{name}/{path}`)
+
+#### Scenario: Agent without public endpoints hides section
+- **WHEN** viewing an agent in the admin panel that has no public_endpoints
+- **THEN** no "Public Endpoints" section is displayed

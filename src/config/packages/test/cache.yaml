@@ -3,4 +3,4 @@ framework:
         app: cache.adapter.array
         pools:
             cache.agent_registry:
-                adapter: cache.adapter.array
+                adapter: cache.adapter.filesystem

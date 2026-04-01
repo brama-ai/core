@@ -145,6 +145,13 @@ agent_settings.saved: 'Збережено'
 agent_settings.saving: 'Збереження...'
 agent_settings.agent_card: 'Agent Card'
 agent_settings.agent_panel: 'Панель агента'
+agent_settings.public_endpoints: 'Публічні ендпоінти'
+agent_settings.public_endpoints_desc: 'Ці ендпоінти доступні через зворотний проксі платформи та досяжні з інтернету без автентифікації.'
+agent_settings.endpoint_methods: 'Методи'
+agent_settings.endpoint_path: 'Шлях'
+agent_settings.endpoint_proxy_url: 'URL проксі'
+agent_settings.endpoint_description: 'Опис'
+agent_settings.copy: 'Копіювати'
 
 # Chats
 chats.title: 'Чати'

@@ -1,4 +1,4 @@
-# agent-registry Specification (additions)
+## ADDED Requirements
 
 ### Requirement: Agent Public Endpoints in Manifest
 
@@ -38,12 +38,10 @@ The Agent Card schema SHALL support an optional `public_endpoints` array. Each e
 
 The platform SHALL store public endpoint declarations in an `agent_public_endpoints` table.
 
-#### Schema
-
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | SERIAL PK | Auto-increment |
-| `agent_id` | UUID FK → agent_registry | Owning agent |
+| `agent_id` | UUID FK -> agent_registry | Owning agent |
 | `path` | VARCHAR(255) | Relative path on agent |
 | `methods` | JSON | Allowed HTTP methods |
 | `description` | TEXT NULL | Human-readable description |
@@ -55,3 +53,8 @@ Unique constraint: `(agent_id, path)`.
 #### Scenario: Endpoints cleaned up when agent is deleted
 - **WHEN** an agent is removed from the registry
 - **THEN** all its `agent_public_endpoints` rows are cascade-deleted
+
+#### Scenario: Endpoint lookup by agent and path
+- **WHEN** the proxy controller receives a request for agent `{name}` and path `{path}`
+- **THEN** the platform queries `agent_public_endpoints` joined with `agent_registry` to find a matching row
+- **AND** returns the allowed methods for validation

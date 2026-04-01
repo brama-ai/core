@@ -145,6 +145,13 @@ agent_settings.saved: 'Saved'
 agent_settings.saving: 'Saving...'
 agent_settings.agent_card: 'Agent Card'
 agent_settings.agent_panel: 'Agent Panel'
+agent_settings.public_endpoints: 'Public Endpoints'
+agent_settings.public_endpoints_desc: 'These endpoints are exposed through the platform reverse proxy and reachable from the internet without authentication.'
+agent_settings.endpoint_methods: 'Methods'
+agent_settings.endpoint_path: 'Path'
+agent_settings.endpoint_proxy_url: 'Proxy URL'
+agent_settings.endpoint_description: 'Description'
+agent_settings.copy: 'Copy'
 
 # Chats
 chats.title: 'Chats'
