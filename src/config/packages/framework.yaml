@@ -2,7 +2,7 @@ framework:
     secret: '%env(APP_SECRET)%'
     http_method_override: false
     handle_all_throwables: true
-    trusted_proxies: '%env(default::TRUSTED_PROXIES)%'
+    trusted_proxies: '127.0.0.1,10.0.0.0/8,172.16.0.0/12,REMOTE_ADDR'
     trusted_headers: ['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-port']
     default_locale: uk
     php_errors:
