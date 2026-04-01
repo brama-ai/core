@@ -5,25 +5,22 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Telegram\Command\Handler;
 
 use App\AgentRegistry\AgentRegistryInterface;
-use App\Telegram\Command\Handler\AgentDisableHandler;
-use App\Telegram\DTO\NormalizedChat;
-use App\Telegram\DTO\NormalizedEvent;
-use App\Telegram\DTO\NormalizedMessage;
-use App\Telegram\DTO\NormalizedSender;
-use App\Telegram\Service\TelegramSenderInterface;
+use App\Channel\Command\Handler\AgentDisableHandler;
+use App\Channel\DTO\NormalizedChat;
+use App\Channel\DTO\NormalizedEvent;
+use App\Channel\DTO\NormalizedMessage;
+use App\Channel\DTO\NormalizedSender;
 use Codeception\Test\Unit;
 use PHPUnit\Framework\MockObject\MockObject;
 
 final class AgentDisableHandlerTest extends Unit
 {
     private AgentRegistryInterface&MockObject $agentRegistry;
-    private TelegramSenderInterface&MockObject $sender;
     private AgentDisableHandler $handler;
 
     protected function setUp(): void
     {
         $this->agentRegistry = $this->createMock(AgentRegistryInterface::class);
-        $this->sender = $this->createMock(TelegramSenderInterface::class);
         $this->handler = new AgentDisableHandler($this->agentRegistry);
     }
 
@@ -36,11 +33,9 @@ final class AgentDisableHandlerTest extends Unit
             ->with('missing-agent')
             ->willReturn(null);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with('bot-1', 'chat-1', $this->stringContains('не знайдений'), []);
+        $payload = $this->handler->handle($event, 'missing-agent');
 
-        $this->handler->handle($event, $this->sender, 'missing-agent');
+        $this->assertStringContainsString('не знайдений', $payload->text);
     }
 
     public function testHandleRepliesAlreadyDisabledWhenAgentIsDisabled(): void
@@ -52,11 +47,9 @@ final class AgentDisableHandlerTest extends Unit
             ->with('my-agent')
             ->willReturn(['name' => 'my-agent', 'enabled' => false]);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with('bot-1', 'chat-1', $this->stringContains('вже вимкнений'), []);
+        $payload = $this->handler->handle($event, 'my-agent');
 
-        $this->handler->handle($event, $this->sender, 'my-agent');
+        $this->assertStringContainsString('вже вимкнений', $payload->text);
     }
 
     public function testHandleDisablesAgentAndConfirms(): void
@@ -73,11 +66,9 @@ final class AgentDisableHandlerTest extends Unit
             ->with('my-agent')
             ->willReturn(true);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with('bot-1', 'chat-1', $this->stringContains('вимкнений'), []);
+        $payload = $this->handler->handle($event, 'my-agent');
 
-        $this->handler->handle($event, $this->sender, 'my-agent');
+        $this->assertStringContainsString('вимкнений', $payload->text);
     }
 
     public function testHandleRepliesFailureWhenDisableFails(): void
@@ -92,14 +83,12 @@ final class AgentDisableHandlerTest extends Unit
             ->method('disable')
             ->willReturn(false);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with('bot-1', 'chat-1', $this->stringContains('Не вдалося вимкнути'), []);
+        $payload = $this->handler->handle($event, 'my-agent');
 
-        $this->handler->handle($event, $this->sender, 'my-agent');
+        $this->assertStringContainsString('Не вдалося вимкнути', $payload->text);
     }
 
-    public function testHandleIncludesThreadIdInOptionsWhenPresent(): void
+    public function testHandleIncludesThreadIdInTargetAddressWhenPresent(): void
     {
         $event = $this->buildEvent('chat-1', '33');
 
@@ -107,11 +96,9 @@ final class AgentDisableHandlerTest extends Unit
             ->method('findByName')
             ->willReturn(null);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with('bot-1', 'chat-1', $this->isString(), ['thread_id' => '33']);
+        $payload = $this->handler->handle($event, 'missing-agent');
 
-        $this->handler->handle($event, $this->sender, 'missing-agent');
+        $this->assertStringContainsString('chat-1:33', $payload->target->address);
     }
 
     private function buildEvent(string $chatId, ?string $threadId): NormalizedEvent

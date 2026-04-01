@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Telegram\EventBus;
 
+use App\Channel\DTO\NormalizedChat;
+use App\Channel\DTO\NormalizedEvent;
+use App\Channel\DTO\NormalizedMessage;
+use App\Channel\DTO\NormalizedSender;
+use App\Channel\EventBus\ChannelEventPublisher;
 use App\EventBus\EventBusInterface;
-use App\Telegram\DTO\NormalizedChat;
-use App\Telegram\DTO\NormalizedEvent;
-use App\Telegram\DTO\NormalizedMessage;
-use App\Telegram\DTO\NormalizedSender;
-use App\Telegram\EventBus\TelegramEventPublisher;
 use Codeception\Test\Unit;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
@@ -18,13 +18,13 @@ final class TelegramEventPublisherTest extends Unit
 {
     private EventBusInterface&MockObject $eventBus;
     private LoggerInterface&MockObject $logger;
-    private TelegramEventPublisher $publisher;
+    private ChannelEventPublisher $publisher;
 
     protected function setUp(): void
     {
         $this->eventBus = $this->createMock(EventBusInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
-        $this->publisher = new TelegramEventPublisher($this->eventBus, $this->logger);
+        $this->publisher = new ChannelEventPublisher($this->eventBus, $this->logger);
     }
 
     public function testPublishDispatchesEventToEventBus(): void
@@ -87,7 +87,7 @@ final class TelegramEventPublisherTest extends Unit
                 ->method('dispatch')
                 ->with($eventType, $this->isArray());
 
-            $publisher = new TelegramEventPublisher($eventBus, $this->logger);
+            $publisher = new ChannelEventPublisher($eventBus, $this->logger);
             $publisher->publish($event);
         }
     }

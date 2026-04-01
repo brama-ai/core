@@ -1,0 +1,254 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ 'channels.instances.title'|trans }} — Admin{% endblock %}
+{% block page_title %}{{ 'channels.instances.title'|trans }}{% endblock %}
+
+{% block content %}
+    {# Flash messages #}
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success" style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);border-radius:6px;padding:.75rem 1rem;margin-bottom:1rem;color:#22c55e;">
+            {{ message|trans }}
+        </div>
+    {% endfor %}
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-error" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:6px;padding:.75rem 1rem;margin-bottom:1rem;color:#ef4444;">
+            {{ message|trans }}
+        </div>
+    {% endfor %}
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+        <p style="color:var(--text-muted);font-size:.9rem;margin:0;">{{ 'channels.instances.subtitle'|trans }}</p>
+        <a href="{{ path('admin_channel_instances_new') }}" class="btn btn-primary">
+            + {{ 'channels.instances.add'|trans }}
+        </a>
+    </div>
+
+    {% if instances is empty %}
+        <div class="glass-card">
+            <div class="stub-content" style="min-height:200px;">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" style="opacity:.3;"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM5 15h14v2H5v-2zm0-4h14v2H5v-2zm0-4h14v2H5V7z"/></svg>
+                <p>{{ 'channels.instances.empty'|trans }}</p>
+                <a href="{{ path('admin_channel_instances_new') }}" class="btn btn-primary" style="margin-top:.75rem;">
+                    {{ 'channels.instances.add_first'|trans }}
+                </a>
+            </div>
+        </div>
+    {% else %}
+        <div class="glass-card" style="padding:0;overflow:hidden;">
+            <div style="overflow-x:auto;">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>{{ 'channels.instances.table.name'|trans }}</th>
+                            <th>{{ 'channels.instances.table.type'|trans }}</th>
+                            <th>{{ 'channels.instances.table.status'|trans }}</th>
+                            <th>{{ 'channels.instances.table.webhook'|trans }}</th>
+                            <th>{{ 'channels.instances.table.community'|trans }}</th>
+                            <th>{{ 'channels.instances.table.last_update'|trans }}</th>
+                            <th>{{ 'channels.instances.table.actions'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for instance in instances %}
+                            <tr>
+                                <td>
+                                    <strong>@{{ instance.bot_username }}</strong>
+                                    <div style="font-size:.75rem;color:var(--text-muted);font-family:monospace;">{{ instance.id[:8] }}…</div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-channel">{{ instance.channel_type ?? 'telegram' }}</span>
+                                </td>
+                                <td>
+                                    {% if instance.enabled %}
+                                        <span class="badge badge-enabled">{{ 'channels.status.enabled'|trans }}</span>
+                                    {% else %}
+                                        <span class="badge badge-disabled">{{ 'channels.status.disabled'|trans }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="webhook-status" id="webhook-status-{{ instance.id }}">
+                                        {% if instance.webhook_url %}
+                                            <span class="badge badge-channel" title="{{ instance.webhook_url }}">
+                                                {{ 'channels.webhook.configured'|trans }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-unknown">{{ 'channels.webhook.not_set'|trans }}</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>{{ instance.community_id ?? '—' }}</td>
+                                <td>
+                                    {% if instance.last_update_id %}
+                                        <span style="font-family:monospace;font-size:.8rem;">#{{ instance.last_update_id }}</span>
+                                    {% else %}
+                                        <span style="color:var(--text-muted);">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+                                        <button
+                                            class="btn btn-settings btn-sm"
+                                            onclick="testConnection('{{ instance.id }}')"
+                                            title="{{ 'channels.action.test_connection'|trans }}"
+                                        >
+                                            {{ 'channels.action.test'|trans }}
+                                        </button>
+                                        <button
+                                            class="btn btn-settings btn-sm"
+                                            onclick="setWebhook('{{ instance.id }}')"
+                                            title="{{ 'channels.action.set_webhook'|trans }}"
+                                        >
+                                            {{ 'channels.action.webhook'|trans }}
+                                        </button>
+                                        <button
+                                            class="btn btn-settings btn-sm"
+                                            onclick="loadWebhookInfo('{{ instance.id }}')"
+                                            title="{{ 'channels.action.webhook_info'|trans }}"
+                                        >
+                                            {{ 'channels.action.info'|trans }}
+                                        </button>
+                                        <a href="{{ path('admin_channel_instances_edit', {id: instance.id}) }}" class="btn btn-settings btn-sm">
+                                            {{ 'channels.action.edit'|trans }}
+                                        </a>
+                                        <button
+                                            class="btn btn-danger btn-sm"
+                                            onclick="confirmDelete('{{ instance.id }}', '@{{ instance.bot_username }}')"
+                                        >
+                                            {{ 'channels.action.delete'|trans }}
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Delete confirmation modal #}
+    <div id="deleteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;">
+        <div class="glass-card" style="max-width:420px;width:90%;margin:0 auto;">
+            <h3 style="margin:0 0 .75rem;">{{ 'channels.delete.title'|trans }}</h3>
+            <p id="deleteModalText" style="color:var(--text-muted);margin:0 0 1.25rem;"></p>
+            <form id="deleteForm" method="post">
+                <input type="hidden" name="_token" id="deleteToken">
+                <div style="display:flex;gap:.75rem;justify-content:flex-end;">
+                    <button type="button" class="btn btn-settings" onclick="closeDeleteModal()">
+                        {{ 'channels.delete.cancel'|trans }}
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        {{ 'channels.delete.confirm'|trans }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# Info modal #}
+    <div id="infoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;">
+        <div class="glass-card" style="max-width:560px;width:90%;margin:0 auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+                <h3 style="margin:0;" id="infoModalTitle">{{ 'channels.info.title'|trans }}</h3>
+                <button onclick="closeInfoModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;">✕</button>
+            </div>
+            <pre id="infoModalContent" style="background:var(--code-bg,rgba(0,0,0,.2));border-radius:6px;padding:.75rem;font-size:.8rem;overflow:auto;max-height:400px;white-space:pre-wrap;word-break:break-all;"></pre>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+const csrfTokens = {};
+{% for instance in instances %}
+csrfTokens['{{ instance.id }}'] = '{{ csrf_token('delete_bot_' ~ instance.id) }}';
+{% endfor %}
+
+function testConnection(id) {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '…';
+    btn.disabled = true;
+
+    fetch(`/admin/channels/instances/${id}/test-connection`, {method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}})
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                const b = data.bot;
+                showInfo('{{ 'channels.info.connection_ok'|trans }}', JSON.stringify(b, null, 2));
+            } else {
+                showInfo('{{ 'channels.info.connection_fail'|trans }}', data.error || 'Unknown error');
+            }
+        })
+        .catch(e => showInfo('Error', e.message))
+        .finally(() => { btn.textContent = orig; btn.disabled = false; });
+}
+
+function setWebhook(id) {
+    if (!confirm('{{ 'channels.confirm.set_webhook'|trans }}')) return;
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '…';
+    btn.disabled = true;
+
+    fetch(`/admin/channels/instances/${id}/set-webhook`, {method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}})
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                showInfo('{{ 'channels.info.webhook_set'|trans }}', JSON.stringify(data, null, 2));
+                const statusEl = document.getElementById(`webhook-status-${id}`);
+                if (statusEl) {
+                    statusEl.innerHTML = '<span class="badge badge-enabled">{{ 'channels.webhook.active'|trans }}</span>';
+                }
+            } else {
+                showInfo('{{ 'channels.info.webhook_fail'|trans }}', JSON.stringify(data, null, 2));
+            }
+        })
+        .catch(e => showInfo('Error', e.message))
+        .finally(() => { btn.textContent = orig; btn.disabled = false; });
+}
+
+function loadWebhookInfo(id) {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '…';
+    btn.disabled = true;
+
+    fetch(`/admin/channels/instances/${id}/webhook-info`, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+        .then(r => r.json())
+        .then(data => showInfo('{{ 'channels.info.webhook_info'|trans }}', JSON.stringify(data.result || data, null, 2)))
+        .catch(e => showInfo('Error', e.message))
+        .finally(() => { btn.textContent = orig; btn.disabled = false; });
+}
+
+function confirmDelete(id, name) {
+    document.getElementById('deleteModalText').textContent =
+        '{{ 'channels.delete.message'|trans }}'.replace('%name%', name);
+    document.getElementById('deleteForm').action = `/admin/channels/instances/${id}/delete`;
+    document.getElementById('deleteToken').value = csrfTokens[id] || '';
+    const modal = document.getElementById('deleteModal');
+    modal.style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+}
+
+function showInfo(title, content) {
+    document.getElementById('infoModalTitle').textContent = title;
+    document.getElementById('infoModalContent').textContent = content;
+    document.getElementById('infoModal').style.display = 'flex';
+}
+
+function closeInfoModal() {
+    document.getElementById('infoModal').style.display = 'none';
+}
+
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDeleteModal();
+});
+document.getElementById('infoModal').addEventListener('click', function(e) {
+    if (e.target === this) closeInfoModal();
+});
+</script>
+{% endblock %}

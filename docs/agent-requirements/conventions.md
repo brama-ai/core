@@ -91,7 +91,14 @@ Returns the Agent Card — agent metadata used by core for registration, skill r
     },
     "redis": {},
     "opensearch": {}
-  }
+  },
+  "public_endpoints": [
+    {
+      "path": "/webhook/telegram",
+      "methods": ["POST"],
+      "description": "Telegram Bot API webhook receiver"
+    }
+  ]
 }
 ```
 
@@ -109,6 +116,7 @@ Returns the Agent Card — agent metadata used by core for registration, skill r
 | `admin_url` | optional | Shown as link in core admin panel |
 | `skill_schemas` | deprecated | Fold input schemas into structured skills instead |
 | `storage.postgres.startup_migration` | if `storage.postgres` exists | Startup migration contract. Must declare non-blocking command with `mode = best_effort` |
+| `public_endpoints` | optional | Array of HTTP endpoints exposed through the platform reverse proxy. Each entry: `path` (starts with `/`), `methods` (array of `GET`/`POST`/`PUT`/`DELETE`), `description` (optional) |
 
 ### Validation behavior in core:
 

@@ -5,25 +5,22 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Telegram\Command\Handler;
 
 use App\AgentRegistry\AgentRegistryInterface;
-use App\Telegram\Command\Handler\HelpHandler;
-use App\Telegram\DTO\NormalizedChat;
-use App\Telegram\DTO\NormalizedEvent;
-use App\Telegram\DTO\NormalizedMessage;
-use App\Telegram\DTO\NormalizedSender;
-use App\Telegram\Service\TelegramSenderInterface;
+use App\Channel\Command\Handler\HelpHandler;
+use App\Channel\DTO\NormalizedChat;
+use App\Channel\DTO\NormalizedEvent;
+use App\Channel\DTO\NormalizedMessage;
+use App\Channel\DTO\NormalizedSender;
 use Codeception\Test\Unit;
 use PHPUnit\Framework\MockObject\MockObject;
 
 final class HelpHandlerTest extends Unit
 {
     private AgentRegistryInterface&MockObject $agentRegistry;
-    private TelegramSenderInterface&MockObject $sender;
     private HelpHandler $handler;
 
     protected function setUp(): void
     {
         $this->agentRegistry = $this->createMock(AgentRegistryInterface::class);
-        $this->sender = $this->createMock(TelegramSenderInterface::class);
         $this->handler = new HelpHandler($this->agentRegistry);
     }
 
@@ -35,21 +32,12 @@ final class HelpHandlerTest extends Unit
             ->method('findEnabled')
             ->willReturn([]);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with(
-                'bot-1',
-                'chat-1',
-                $this->callback(static function (string $text): bool {
-                    return str_contains($text, '/help')
-                        && str_contains($text, '/agents')
-                        && str_contains($text, '/agent enable')
-                        && str_contains($text, '/agent disable');
-                }),
-                [],
-            );
+        $payload = $this->handler->handle($event);
 
-        $this->handler->handle($event, $this->sender);
+        $this->assertStringContainsString('/help', $payload->text);
+        $this->assertStringContainsString('/agents', $payload->text);
+        $this->assertStringContainsString('/agent enable', $payload->text);
+        $this->assertStringContainsString('/agent disable', $payload->text);
     }
 
     public function testHandleIncludesAgentCommandsInHelpText(): void
@@ -68,23 +56,14 @@ final class HelpHandlerTest extends Unit
                 ],
             ]);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with(
-                'bot-1',
-                'chat-1',
-                $this->callback(static function (string $text): bool {
-                    return str_contains($text, '/search')
-                        && str_contains($text, '/ask')
-                        && str_contains($text, 'Knowledge base agent');
-                }),
-                [],
-            );
+        $payload = $this->handler->handle($event);
 
-        $this->handler->handle($event, $this->sender);
+        $this->assertStringContainsString('/search', $payload->text);
+        $this->assertStringContainsString('/ask', $payload->text);
+        $this->assertStringContainsString('Knowledge base agent', $payload->text);
     }
 
-    public function testHandleIncludesThreadIdInOptionsWhenPresent(): void
+    public function testHandleIncludesThreadIdInTargetAddressWhenPresent(): void
     {
         $event = $this->buildEvent('chat-1', '99');
 
@@ -92,16 +71,9 @@ final class HelpHandlerTest extends Unit
             ->method('findEnabled')
             ->willReturn([]);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with(
-                'bot-1',
-                'chat-1',
-                $this->isString(),
-                ['thread_id' => '99'],
-            );
+        $payload = $this->handler->handle($event);
 
-        $this->handler->handle($event, $this->sender);
+        $this->assertStringContainsString('chat-1:99', $payload->target->address);
     }
 
     public function testHandleUsesAgentNameAsDescriptionFallback(): void
@@ -119,16 +91,9 @@ final class HelpHandlerTest extends Unit
                 ],
             ]);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with(
-                'bot-1',
-                'chat-1',
-                $this->callback(static fn (string $text): bool => str_contains($text, 'my-agent')),
-                [],
-            );
+        $payload = $this->handler->handle($event);
 
-        $this->handler->handle($event, $this->sender);
+        $this->assertStringContainsString('my-agent', $payload->text);
     }
 
     public function testHandleWithManifestAsArray(): void
@@ -147,16 +112,9 @@ final class HelpHandlerTest extends Unit
                 ],
             ]);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with(
-                'bot-1',
-                'chat-1',
-                $this->callback(static fn (string $text): bool => str_contains($text, '/cmd')),
-                [],
-            );
+        $payload = $this->handler->handle($event);
 
-        $this->handler->handle($event, $this->sender);
+        $this->assertStringContainsString('/cmd', $payload->text);
     }
 
     private function buildEvent(string $chatId, ?string $threadId): NormalizedEvent

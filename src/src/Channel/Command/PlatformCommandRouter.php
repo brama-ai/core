@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace App\Channel\Command;
 
 use App\AgentRegistry\AgentRegistryInterface;
+use App\Channel\ChannelManagerInterface;
 use App\Channel\Command\Handler\AgentDisableHandler;
 use App\Channel\Command\Handler\AgentEnableHandler;
 use App\Channel\Command\Handler\AgentsListHandler;
 use App\Channel\Command\Handler\HelpHandler;
-use App\Channel\Contract\ChannelAdapterInterface;
 use App\Channel\DTO\DeliveryPayload;
 use App\Channel\DTO\DeliveryTarget;
 use App\Channel\DTO\NormalizedEvent;
-use App\Telegram\Service\TelegramRoleResolverInterface;
 use Psr\Log\LoggerInterface;
 
 final class PlatformCommandRouter
@@ -28,8 +27,7 @@ final class PlatformCommandRouter
     private const ROLE_HIERARCHY = ['admin' => 3, 'moderator' => 2, 'user' => 1];
 
     public function __construct(
-        private readonly TelegramRoleResolverInterface $roleResolver,
-        private readonly ChannelAdapterInterface $channelAdapter,
+        private readonly ChannelManagerInterface $channelManager,
         private readonly AgentRegistryInterface $agentRegistry,
         private readonly LoggerInterface $logger,
     ) {
@@ -52,7 +50,9 @@ final class PlatformCommandRouter
             'platform' => $event->platform,
         ]);
 
-        $role = $this->roleResolver->resolve($event->botId, $event->chat->id, $event->sender->id);
+        // Use the role provided by the channel agent in the normalized event sender.
+        // Channel-specific role resolution (e.g. Telegram getChatMember) is done by the agent.
+        $role = $event->sender->role;
 
         $commandDef = self::PLATFORM_COMMANDS[$commandName] ?? null;
 
@@ -89,7 +89,11 @@ final class PlatformCommandRouter
         };
 
         if (null !== $payload) {
-            $this->channelAdapter->send($payload);
+            $this->channelManager->send(
+                $event->platform,
+                DeliveryTarget::fromAddress($payload->target->address),
+                $payload,
+            );
         }
     }
 
@@ -151,7 +155,12 @@ final class PlatformCommandRouter
 
     private function sendReply(NormalizedEvent $event, string $text): void
     {
-        $this->channelAdapter->send($this->buildReply($event, $text));
+        $payload = $this->buildReply($event, $text);
+        $this->channelManager->send(
+            $event->platform,
+            DeliveryTarget::fromAddress($payload->target->address),
+            $payload,
+        );
     }
 
     private function buildReply(NormalizedEvent $event, string $text): DeliveryPayload

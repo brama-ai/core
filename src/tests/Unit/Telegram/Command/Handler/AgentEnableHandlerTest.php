@@ -5,25 +5,22 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Telegram\Command\Handler;
 
 use App\AgentRegistry\AgentRegistryInterface;
-use App\Telegram\Command\Handler\AgentEnableHandler;
-use App\Telegram\DTO\NormalizedChat;
-use App\Telegram\DTO\NormalizedEvent;
-use App\Telegram\DTO\NormalizedMessage;
-use App\Telegram\DTO\NormalizedSender;
-use App\Telegram\Service\TelegramSenderInterface;
+use App\Channel\Command\Handler\AgentEnableHandler;
+use App\Channel\DTO\NormalizedChat;
+use App\Channel\DTO\NormalizedEvent;
+use App\Channel\DTO\NormalizedMessage;
+use App\Channel\DTO\NormalizedSender;
 use Codeception\Test\Unit;
 use PHPUnit\Framework\MockObject\MockObject;
 
 final class AgentEnableHandlerTest extends Unit
 {
     private AgentRegistryInterface&MockObject $agentRegistry;
-    private TelegramSenderInterface&MockObject $sender;
     private AgentEnableHandler $handler;
 
     protected function setUp(): void
     {
         $this->agentRegistry = $this->createMock(AgentRegistryInterface::class);
-        $this->sender = $this->createMock(TelegramSenderInterface::class);
         $this->handler = new AgentEnableHandler($this->agentRegistry);
     }
 
@@ -36,16 +33,9 @@ final class AgentEnableHandlerTest extends Unit
             ->with('missing-agent')
             ->willReturn(null);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with(
-                'bot-1',
-                'chat-1',
-                $this->stringContains('не знайдений'),
-                [],
-            );
+        $payload = $this->handler->handle($event, 'missing-agent', 'moderator');
 
-        $this->handler->handle($event, $this->sender, 'missing-agent', 'moderator');
+        $this->assertStringContainsString('не знайдений', $payload->text);
     }
 
     public function testHandleRepliesAlreadyEnabledWhenAgentIsEnabled(): void
@@ -57,11 +47,9 @@ final class AgentEnableHandlerTest extends Unit
             ->with('my-agent')
             ->willReturn(['name' => 'my-agent', 'enabled' => true]);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with('bot-1', 'chat-1', $this->stringContains('вже увімкнений'), []);
+        $payload = $this->handler->handle($event, 'my-agent', 'moderator');
 
-        $this->handler->handle($event, $this->sender, 'my-agent', 'moderator');
+        $this->assertStringContainsString('вже увімкнений', $payload->text);
     }
 
     public function testHandleEnablesAgentAndConfirms(): void
@@ -78,11 +66,9 @@ final class AgentEnableHandlerTest extends Unit
             ->with('my-agent', $this->isString())
             ->willReturn(true);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with('bot-1', 'chat-1', $this->stringContains('увімкнений'), []);
+        $payload = $this->handler->handle($event, 'my-agent', 'moderator');
 
-        $this->handler->handle($event, $this->sender, 'my-agent', 'moderator');
+        $this->assertStringContainsString('увімкнений', $payload->text);
     }
 
     public function testHandleRepliesFailureWhenEnableFails(): void
@@ -97,11 +83,9 @@ final class AgentEnableHandlerTest extends Unit
             ->method('enable')
             ->willReturn(false);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with('bot-1', 'chat-1', $this->stringContains('Не вдалося увімкнути'), []);
+        $payload = $this->handler->handle($event, 'my-agent', 'moderator');
 
-        $this->handler->handle($event, $this->sender, 'my-agent', 'moderator');
+        $this->assertStringContainsString('Не вдалося увімкнути', $payload->text);
     }
 
     public function testHandleUsesUsernameAsEnabledByWhenAvailable(): void
@@ -117,10 +101,7 @@ final class AgentEnableHandlerTest extends Unit
             ->with('my-agent', 'moderator_user')
             ->willReturn(true);
 
-        $this->sender->expects($this->once())
-            ->method('send');
-
-        $this->handler->handle($event, $this->sender, 'my-agent', 'moderator');
+        $this->handler->handle($event, 'my-agent', 'moderator');
     }
 
     public function testHandleUsesUserIdAsEnabledByWhenNoUsername(): void
@@ -136,13 +117,10 @@ final class AgentEnableHandlerTest extends Unit
             ->with('my-agent', 'user-42')
             ->willReturn(true);
 
-        $this->sender->expects($this->once())
-            ->method('send');
-
-        $this->handler->handle($event, $this->sender, 'my-agent', 'moderator');
+        $this->handler->handle($event, 'my-agent', 'moderator');
     }
 
-    public function testHandleIncludesThreadIdInOptionsWhenPresent(): void
+    public function testHandleIncludesThreadIdInTargetAddressWhenPresent(): void
     {
         $event = $this->buildEvent('user-1', '77');
 
@@ -150,11 +128,9 @@ final class AgentEnableHandlerTest extends Unit
             ->method('findByName')
             ->willReturn(null);
 
-        $this->sender->expects($this->once())
-            ->method('send')
-            ->with('bot-1', 'chat-1', $this->isString(), ['thread_id' => '77']);
+        $payload = $this->handler->handle($event, 'missing-agent', 'moderator');
 
-        $this->handler->handle($event, $this->sender, 'missing-agent', 'moderator');
+        $this->assertStringContainsString('chat-1:77', $payload->target->address);
     }
 
     private function buildEvent(string $senderId, ?string $threadId): NormalizedEvent
