@@ -14,9 +14,6 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
  * Admin controller for channel conversations.
- *
- * Replaces TelegramChatsAdminController. Works with channel_conversations table
- * (renamed from telegram_chats) via TelegramChatRepository.
  */
 final class ChannelConversationsController extends AbstractController
 {
@@ -27,50 +24,49 @@ final class ChannelConversationsController extends AbstractController
     }
 
     #[Route('/admin/channels/conversations', name: 'admin_channel_conversations', methods: ['GET'])]
-    #[Route('/admin/telegram/chats', name: 'admin_telegram_chats', methods: ['GET'])]
     public function index(#[CurrentUser] User $user): Response
     {
-        $chats = $this->chatRepository->findAll();
-        $bots = $this->botRepository->findAll();
+        $conversations = $this->chatRepository->findAll();
+        $instances = $this->botRepository->findAll();
 
-        $botMap = [];
-        foreach ($bots as $bot) {
-            $botMap[$bot['id']] = $bot;
+        $instanceMap = [];
+        foreach ($instances as $instance) {
+            $instanceMap[$instance['id']] = $instance;
         }
 
-        $stats = $this->buildStats($chats);
+        $stats = $this->buildStats($conversations);
 
-        return $this->render('admin/telegram/chats.html.twig', [
-            'chats' => $chats,
-            'bot_map' => $botMap,
+        return $this->render('admin/channels/conversations.html.twig', [
+            'conversations' => $conversations,
+            'instance_map' => $instanceMap,
             'stats' => $stats,
             'username' => $user->getUserIdentifier(),
         ]);
     }
 
     /**
-     * @param list<array<string, mixed>> $chats
+     * @param list<array<string, mixed>> $conversations
      *
      * @return array<string, int>
      */
-    private function buildStats(array $chats): array
+    private function buildStats(array $conversations): array
     {
-        $total = count($chats);
+        $total = count($conversations);
         $active = 0;
         $withThreads = 0;
         $recentlyActive = 0;
         $since = (new \DateTimeImmutable())->modify('-24 hours');
 
-        foreach ($chats as $chat) {
-            if (null === ($chat['left_at'] ?? null)) {
+        foreach ($conversations as $conv) {
+            if (null === ($conv['left_at'] ?? null)) {
                 ++$active;
             }
 
-            if ($chat['has_threads'] ?? false) {
+            if ($conv['has_threads'] ?? false) {
                 ++$withThreads;
             }
 
-            $lastMsg = $chat['last_message_at'] ?? null;
+            $lastMsg = $conv['last_message_at'] ?? null;
             if ($lastMsg instanceof \DateTimeImmutable && $lastMsg > $since) {
                 ++$recentlyActive;
             }

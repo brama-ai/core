@@ -13,7 +13,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'app:channel:delete-webhook', description: 'Delete webhook for a channel bot', aliases: ['app:telegram:delete-webhook'])]
+#[AsCommand(name: 'app:channel:delete-webhook', description: 'Delete webhook for a channel bot')]
 final class TelegramDeleteWebhookCommand extends Command
 {
     public function __construct(

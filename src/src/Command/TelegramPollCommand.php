@@ -23,7 +23,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-#[AsCommand(name: 'app:channel:poll', description: 'Poll channel for updates (local development mode)', aliases: ['app:telegram:poll'])]
+#[AsCommand(name: 'app:channel:poll', description: 'Poll channel for updates (local development mode)')]
 final class TelegramPollCommand extends Command implements SignalableCommandInterface
 {
     private bool $running = true;

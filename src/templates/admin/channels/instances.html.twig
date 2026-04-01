@@ -1,7 +1,7 @@
 {% extends 'admin/layout.html.twig' %}
 
-{% block title %}{{ 'telegram_bots.title'|trans }} — Admin{% endblock %}
-{% block page_title %}{{ 'telegram_bots.title'|trans }}{% endblock %}
+{% block title %}{{ 'channels.instances.title'|trans }} — Admin{% endblock %}
+{% block page_title %}{{ 'channels.instances.title'|trans }}{% endblock %}
 
 {% block content %}
     {# Flash messages #}
@@ -17,19 +17,19 @@
     {% endfor %}
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
-        <p style="color:var(--text-muted);font-size:.9rem;margin:0;">{{ 'telegram_bots.subtitle'|trans }}</p>
-        <a href="{{ path('admin_telegram_bots_new') }}" class="btn btn-primary">
-            + {{ 'telegram_bots.add_bot'|trans }}
+        <p style="color:var(--text-muted);font-size:.9rem;margin:0;">{{ 'channels.instances.subtitle'|trans }}</p>
+        <a href="{{ path('admin_channel_instances_new') }}" class="btn btn-primary">
+            + {{ 'channels.instances.add'|trans }}
         </a>
     </div>
 
-    {% if bots is empty %}
+    {% if instances is empty %}
         <div class="glass-card">
             <div class="stub-content" style="min-height:200px;">
-                <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" style="opacity:.3;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-                <p>{{ 'telegram_bots.empty'|trans }}</p>
-                <a href="{{ path('admin_telegram_bots_new') }}" class="btn btn-primary" style="margin-top:.75rem;">
-                    {{ 'telegram_bots.add_first_bot'|trans }}
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" style="opacity:.3;"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM5 15h14v2H5v-2zm0-4h14v2H5v-2zm0-4h14v2H5V7z"/></svg>
+                <p>{{ 'channels.instances.empty'|trans }}</p>
+                <a href="{{ path('admin_channel_instances_new') }}" class="btn btn-primary" style="margin-top:.75rem;">
+                    {{ 'channels.instances.add_first'|trans }}
                 </a>
             </div>
         </div>
@@ -39,43 +39,47 @@
                 <table class="admin-table">
                     <thead>
                         <tr>
-                            <th>{{ 'telegram_bots.table.username'|trans }}</th>
-                            <th>{{ 'telegram_bots.table.status'|trans }}</th>
-                            <th>{{ 'telegram_bots.table.webhook'|trans }}</th>
-                            <th>{{ 'telegram_bots.table.community'|trans }}</th>
-                            <th>{{ 'telegram_bots.table.last_update'|trans }}</th>
-                            <th>{{ 'telegram_bots.table.actions'|trans }}</th>
+                            <th>{{ 'channels.instances.table.name'|trans }}</th>
+                            <th>{{ 'channels.instances.table.type'|trans }}</th>
+                            <th>{{ 'channels.instances.table.status'|trans }}</th>
+                            <th>{{ 'channels.instances.table.webhook'|trans }}</th>
+                            <th>{{ 'channels.instances.table.community'|trans }}</th>
+                            <th>{{ 'channels.instances.table.last_update'|trans }}</th>
+                            <th>{{ 'channels.instances.table.actions'|trans }}</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for bot in bots %}
+                        {% for instance in instances %}
                             <tr>
                                 <td>
-                                    <strong>@{{ bot.bot_username }}</strong>
-                                    <div style="font-size:.75rem;color:var(--text-muted);font-family:monospace;">{{ bot.id[:8] }}…</div>
+                                    <strong>@{{ instance.bot_username }}</strong>
+                                    <div style="font-size:.75rem;color:var(--text-muted);font-family:monospace;">{{ instance.id[:8] }}…</div>
                                 </td>
                                 <td>
-                                    {% if bot.enabled %}
-                                        <span class="badge badge-enabled">{{ 'telegram_bots.status.enabled'|trans }}</span>
+                                    <span class="badge badge-channel">{{ instance.channel_type ?? 'telegram' }}</span>
+                                </td>
+                                <td>
+                                    {% if instance.enabled %}
+                                        <span class="badge badge-enabled">{{ 'channels.status.enabled'|trans }}</span>
                                     {% else %}
-                                        <span class="badge badge-disabled">{{ 'telegram_bots.status.disabled'|trans }}</span>
+                                        <span class="badge badge-disabled">{{ 'channels.status.disabled'|trans }}</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <div class="webhook-status" id="webhook-status-{{ bot.id }}">
-                                        {% if bot.webhook_url %}
-                                            <span class="badge badge-channel" title="{{ bot.webhook_url }}">
-                                                {{ 'telegram_bots.webhook.configured'|trans }}
+                                    <div class="webhook-status" id="webhook-status-{{ instance.id }}">
+                                        {% if instance.webhook_url %}
+                                            <span class="badge badge-channel" title="{{ instance.webhook_url }}">
+                                                {{ 'channels.webhook.configured'|trans }}
                                             </span>
                                         {% else %}
-                                            <span class="badge badge-unknown">{{ 'telegram_bots.webhook.not_set'|trans }}</span>
+                                            <span class="badge badge-unknown">{{ 'channels.webhook.not_set'|trans }}</span>
                                         {% endif %}
                                     </div>
                                 </td>
-                                <td>{{ bot.community_id ?? '—' }}</td>
+                                <td>{{ instance.community_id ?? '—' }}</td>
                                 <td>
-                                    {% if bot.last_update_id %}
-                                        <span style="font-family:monospace;font-size:.8rem;">#{{ bot.last_update_id }}</span>
+                                    {% if instance.last_update_id %}
+                                        <span style="font-family:monospace;font-size:.8rem;">#{{ instance.last_update_id }}</span>
                                     {% else %}
                                         <span style="color:var(--text-muted);">—</span>
                                     {% endif %}
@@ -84,33 +88,33 @@
                                     <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
                                         <button
                                             class="btn btn-settings btn-sm"
-                                            onclick="testConnection('{{ bot.id }}')"
-                                            title="{{ 'telegram_bots.action.test_connection'|trans }}"
+                                            onclick="testConnection('{{ instance.id }}')"
+                                            title="{{ 'channels.action.test_connection'|trans }}"
                                         >
-                                            {{ 'telegram_bots.action.test'|trans }}
+                                            {{ 'channels.action.test'|trans }}
                                         </button>
                                         <button
                                             class="btn btn-settings btn-sm"
-                                            onclick="setWebhook('{{ bot.id }}')"
-                                            title="{{ 'telegram_bots.action.set_webhook'|trans }}"
+                                            onclick="setWebhook('{{ instance.id }}')"
+                                            title="{{ 'channels.action.set_webhook'|trans }}"
                                         >
-                                            {{ 'telegram_bots.action.webhook'|trans }}
+                                            {{ 'channels.action.webhook'|trans }}
                                         </button>
                                         <button
                                             class="btn btn-settings btn-sm"
-                                            onclick="loadWebhookInfo('{{ bot.id }}')"
-                                            title="{{ 'telegram_bots.action.webhook_info'|trans }}"
+                                            onclick="loadWebhookInfo('{{ instance.id }}')"
+                                            title="{{ 'channels.action.webhook_info'|trans }}"
                                         >
-                                            {{ 'telegram_bots.action.info'|trans }}
+                                            {{ 'channels.action.info'|trans }}
                                         </button>
-                                        <a href="{{ path('admin_telegram_bots_edit', {id: bot.id}) }}" class="btn btn-settings btn-sm">
-                                            {{ 'telegram_bots.action.edit'|trans }}
+                                        <a href="{{ path('admin_channel_instances_edit', {id: instance.id}) }}" class="btn btn-settings btn-sm">
+                                            {{ 'channels.action.edit'|trans }}
                                         </a>
                                         <button
                                             class="btn btn-danger btn-sm"
-                                            onclick="confirmDelete('{{ bot.id }}', '@{{ bot.bot_username }}')"
+                                            onclick="confirmDelete('{{ instance.id }}', '@{{ instance.bot_username }}')"
                                         >
-                                            {{ 'telegram_bots.action.delete'|trans }}
+                                            {{ 'channels.action.delete'|trans }}
                                         </button>
                                     </div>
                                 </td>
@@ -125,16 +129,16 @@
     {# Delete confirmation modal #}
     <div id="deleteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;">
         <div class="glass-card" style="max-width:420px;width:90%;margin:0 auto;">
-            <h3 style="margin:0 0 .75rem;">{{ 'telegram_bots.delete.title'|trans }}</h3>
+            <h3 style="margin:0 0 .75rem;">{{ 'channels.delete.title'|trans }}</h3>
             <p id="deleteModalText" style="color:var(--text-muted);margin:0 0 1.25rem;"></p>
             <form id="deleteForm" method="post">
                 <input type="hidden" name="_token" id="deleteToken">
                 <div style="display:flex;gap:.75rem;justify-content:flex-end;">
                     <button type="button" class="btn btn-settings" onclick="closeDeleteModal()">
-                        {{ 'telegram_bots.delete.cancel'|trans }}
+                        {{ 'channels.delete.cancel'|trans }}
                     </button>
                     <button type="submit" class="btn btn-danger">
-                        {{ 'telegram_bots.delete.confirm'|trans }}
+                        {{ 'channels.delete.confirm'|trans }}
                     </button>
                 </div>
             </form>
@@ -145,7 +149,7 @@
     <div id="infoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;">
         <div class="glass-card" style="max-width:560px;width:90%;margin:0 auto;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
-                <h3 style="margin:0;" id="infoModalTitle">{{ 'telegram_bots.info.title'|trans }}</h3>
+                <h3 style="margin:0;" id="infoModalTitle">{{ 'channels.info.title'|trans }}</h3>
                 <button onclick="closeInfoModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;">✕</button>
             </div>
             <pre id="infoModalContent" style="background:var(--code-bg,rgba(0,0,0,.2));border-radius:6px;padding:.75rem;font-size:.8rem;overflow:auto;max-height:400px;white-space:pre-wrap;word-break:break-all;"></pre>
@@ -156,72 +160,72 @@
 {% block javascripts %}
 <script>
 const csrfTokens = {};
-{% for bot in bots %}
-csrfTokens['{{ bot.id }}'] = '{{ csrf_token('delete_bot_' ~ bot.id) }}';
+{% for instance in instances %}
+csrfTokens['{{ instance.id }}'] = '{{ csrf_token('delete_bot_' ~ instance.id) }}';
 {% endfor %}
 
-function testConnection(botId) {
+function testConnection(id) {
     const btn = event.target;
     const orig = btn.textContent;
     btn.textContent = '…';
     btn.disabled = true;
 
-    fetch(`/admin/telegram/bots/${botId}/test-connection`, {method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}})
+    fetch(`/admin/channels/instances/${id}/test-connection`, {method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}})
         .then(r => r.json())
         .then(data => {
             if (data.ok) {
                 const b = data.bot;
-                showInfo('{{ 'telegram_bots.info.connection_ok'|trans }}', JSON.stringify(b, null, 2));
+                showInfo('{{ 'channels.info.connection_ok'|trans }}', JSON.stringify(b, null, 2));
             } else {
-                showInfo('{{ 'telegram_bots.info.connection_fail'|trans }}', data.error || 'Unknown error');
+                showInfo('{{ 'channels.info.connection_fail'|trans }}', data.error || 'Unknown error');
             }
         })
         .catch(e => showInfo('Error', e.message))
         .finally(() => { btn.textContent = orig; btn.disabled = false; });
 }
 
-function setWebhook(botId) {
-    if (!confirm('{{ 'telegram_bots.confirm.set_webhook'|trans }}')) return;
+function setWebhook(id) {
+    if (!confirm('{{ 'channels.confirm.set_webhook'|trans }}')) return;
     const btn = event.target;
     const orig = btn.textContent;
     btn.textContent = '…';
     btn.disabled = true;
 
-    fetch(`/admin/telegram/bots/${botId}/set-webhook`, {method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}})
+    fetch(`/admin/channels/instances/${id}/set-webhook`, {method: 'POST', headers: {'X-Requested-With': 'XMLHttpRequest'}})
         .then(r => r.json())
         .then(data => {
             if (data.ok) {
-                showInfo('{{ 'telegram_bots.info.webhook_set'|trans }}', JSON.stringify(data, null, 2));
-                const statusEl = document.getElementById(`webhook-status-${botId}`);
+                showInfo('{{ 'channels.info.webhook_set'|trans }}', JSON.stringify(data, null, 2));
+                const statusEl = document.getElementById(`webhook-status-${id}`);
                 if (statusEl) {
-                    statusEl.innerHTML = '<span class="badge badge-enabled">{{ 'telegram_bots.webhook.active'|trans }}</span>';
+                    statusEl.innerHTML = '<span class="badge badge-enabled">{{ 'channels.webhook.active'|trans }}</span>';
                 }
             } else {
-                showInfo('{{ 'telegram_bots.info.webhook_fail'|trans }}', JSON.stringify(data, null, 2));
+                showInfo('{{ 'channels.info.webhook_fail'|trans }}', JSON.stringify(data, null, 2));
             }
         })
         .catch(e => showInfo('Error', e.message))
         .finally(() => { btn.textContent = orig; btn.disabled = false; });
 }
 
-function loadWebhookInfo(botId) {
+function loadWebhookInfo(id) {
     const btn = event.target;
     const orig = btn.textContent;
     btn.textContent = '…';
     btn.disabled = true;
 
-    fetch(`/admin/telegram/bots/${botId}/webhook-info`, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+    fetch(`/admin/channels/instances/${id}/webhook-info`, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
         .then(r => r.json())
-        .then(data => showInfo('{{ 'telegram_bots.info.webhook_info'|trans }}', JSON.stringify(data.result || data, null, 2)))
+        .then(data => showInfo('{{ 'channels.info.webhook_info'|trans }}', JSON.stringify(data.result || data, null, 2)))
         .catch(e => showInfo('Error', e.message))
         .finally(() => { btn.textContent = orig; btn.disabled = false; });
 }
 
-function confirmDelete(botId, username) {
+function confirmDelete(id, name) {
     document.getElementById('deleteModalText').textContent =
-        '{{ 'telegram_bots.delete.message'|trans }}'.replace('%username%', username);
-    document.getElementById('deleteForm').action = `/admin/telegram/bots/${botId}/delete`;
-    document.getElementById('deleteToken').value = csrfTokens[botId] || '';
+        '{{ 'channels.delete.message'|trans }}'.replace('%name%', name);
+    document.getElementById('deleteForm').action = `/admin/channels/instances/${id}/delete`;
+    document.getElementById('deleteToken').value = csrfTokens[id] || '';
     const modal = document.getElementById('deleteModal');
     modal.style.display = 'flex';
 }

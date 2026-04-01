@@ -13,7 +13,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'app:channel:webhook-info', description: 'Display webhook status for a channel bot', aliases: ['app:telegram:webhook-info'])]
+#[AsCommand(name: 'app:channel:webhook-info', description: 'Display webhook status for a channel bot')]
 final class TelegramWebhookInfoCommand extends Command
 {
     public function __construct(

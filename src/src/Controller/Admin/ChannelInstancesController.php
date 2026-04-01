@@ -18,8 +18,8 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 /**
  * Admin controller for channel instances (bots/integrations).
  *
- * Replaces TelegramBotsController. Channel-specific actions (test-connection,
- * set-webhook, webhook-info) are delegated through ChannelManager → agent A2A.
+ * Channel-specific actions (test-connection, set-webhook, webhook-info)
+ * are delegated through ChannelManager → agent A2A.
  */
 final class ChannelInstancesController extends AbstractController
 {
@@ -30,19 +30,17 @@ final class ChannelInstancesController extends AbstractController
     }
 
     #[Route('/admin/channels/instances', name: 'admin_channel_instances', methods: ['GET'])]
-    #[Route('/admin/telegram/bots', name: 'admin_telegram_bots', methods: ['GET'])]
     public function index(#[CurrentUser] User $user): Response
     {
-        $bots = $this->botRepository->findAll();
+        $instances = $this->botRepository->findAll();
 
-        return $this->render('admin/telegram/bots.html.twig', [
-            'bots' => $bots,
+        return $this->render('admin/channels/instances.html.twig', [
+            'instances' => $instances,
             'username' => $user->getUserIdentifier(),
         ]);
     }
 
     #[Route('/admin/channels/instances/new', name: 'admin_channel_instances_new', methods: ['GET', 'POST'])]
-    #[Route('/admin/telegram/bots/new', name: 'admin_telegram_bots_new', methods: ['GET', 'POST'])]
     public function new(Request $request, #[CurrentUser] User $user): Response
     {
         if ($request->isMethod('POST')) {
@@ -56,31 +54,29 @@ final class ChannelInstancesController extends AbstractController
             ];
 
             if ('' === $data['bot_username'] || '' === $data['bot_token']) {
-                return $this->render('admin/telegram/bot_form.html.twig', [
-                    'bot' => null,
-                    'error' => 'telegram_bots.error.required_fields',
+                return $this->render('admin/channels/instance_form.html.twig', [
+                    'instance' => null,
+                    'error' => 'channels.error.required_fields',
                     'form_data' => $data,
                     'username' => $user->getUserIdentifier(),
                 ]);
             }
 
             try {
-                // Check if bot already exists
                 $existing = $this->botRepository->findByUsername($data['bot_username']);
                 if ($existing) {
-                    throw new \RuntimeException(sprintf('Bot with username "%s" already exists', $data['bot_username']));
+                    throw new \RuntimeException(sprintf('Channel instance with username "%s" already exists', $data['bot_username']));
                 }
 
-                // Generate webhook secret
                 $data['webhook_secret'] = bin2hex(random_bytes(32));
 
                 $this->botRepository->create($data);
-                $this->addFlash('success', 'telegram_bots.flash.created');
+                $this->addFlash('success', 'channels.flash.created');
 
                 return $this->redirectToRoute('admin_channel_instances');
             } catch (\RuntimeException $e) {
-                return $this->render('admin/telegram/bot_form.html.twig', [
-                    'bot' => null,
+                return $this->render('admin/channels/instance_form.html.twig', [
+                    'instance' => null,
                     'error' => $e->getMessage(),
                     'form_data' => $data,
                     'username' => $user->getUserIdentifier(),
@@ -88,8 +84,8 @@ final class ChannelInstancesController extends AbstractController
             }
         }
 
-        return $this->render('admin/telegram/bot_form.html.twig', [
-            'bot' => null,
+        return $this->render('admin/channels/instance_form.html.twig', [
+            'instance' => null,
             'error' => null,
             'form_data' => [],
             'username' => $user->getUserIdentifier(),
@@ -97,11 +93,10 @@ final class ChannelInstancesController extends AbstractController
     }
 
     #[Route('/admin/channels/instances/{id}/edit', name: 'admin_channel_instances_edit', methods: ['GET', 'POST'])]
-    #[Route('/admin/telegram/bots/{id}/edit', name: 'admin_telegram_bots_edit', methods: ['GET', 'POST'])]
     public function edit(string $id, Request $request, #[CurrentUser] User $user): Response
     {
-        $bot = $this->botRepository->findById($id);
-        if (null === $bot) {
+        $instance = $this->botRepository->findById($id);
+        if (null === $instance) {
             throw $this->createNotFoundException('Channel instance not found');
         }
 
@@ -124,9 +119,9 @@ final class ChannelInstancesController extends AbstractController
                 try {
                     $updates['role_overrides'] = json_decode($roleOverridesRaw, true, 512, JSON_THROW_ON_ERROR);
                 } catch (\JsonException) {
-                    return $this->render('admin/telegram/bot_form.html.twig', [
-                        'bot' => $bot,
-                        'error' => 'telegram_bots.error.invalid_json',
+                    return $this->render('admin/channels/instance_form.html.twig', [
+                        'instance' => $instance,
+                        'error' => 'channels.error.invalid_json',
                         'form_data' => $updates,
                         'username' => $user->getUserIdentifier(),
                     ]);
@@ -134,13 +129,13 @@ final class ChannelInstancesController extends AbstractController
             }
 
             $this->botRepository->update($id, $updates);
-            $this->addFlash('success', 'telegram_bots.flash.updated');
+            $this->addFlash('success', 'channels.flash.updated');
 
             return $this->redirectToRoute('admin_channel_instances');
         }
 
-        return $this->render('admin/telegram/bot_form.html.twig', [
-            'bot' => $bot,
+        return $this->render('admin/channels/instance_form.html.twig', [
+            'instance' => $instance,
             'error' => null,
             'form_data' => [],
             'username' => $user->getUserIdentifier(),
@@ -148,40 +143,38 @@ final class ChannelInstancesController extends AbstractController
     }
 
     #[Route('/admin/channels/instances/{id}/delete', name: 'admin_channel_instances_delete', methods: ['POST'])]
-    #[Route('/admin/telegram/bots/{id}/delete', name: 'admin_telegram_bots_delete', methods: ['POST'])]
     public function delete(string $id, Request $request): Response
     {
-        $bot = $this->botRepository->findById($id);
-        if (null === $bot) {
+        $instance = $this->botRepository->findById($id);
+        if (null === $instance) {
             throw $this->createNotFoundException('Channel instance not found');
         }
 
         if (!$this->isCsrfTokenValid('delete_bot_'.$id, (string) $request->request->get('_token'))) {
-            $this->addFlash('error', 'telegram_bots.error.invalid_csrf');
+            $this->addFlash('error', 'channels.error.invalid_csrf');
 
             return $this->redirectToRoute('admin_channel_instances');
         }
 
         $this->botRepository->delete($id);
-        $this->addFlash('success', 'telegram_bots.flash.deleted');
+        $this->addFlash('success', 'channels.flash.deleted');
 
         return $this->redirectToRoute('admin_channel_instances');
     }
 
     #[Route('/admin/channels/instances/{id}/test-connection', name: 'admin_channel_instances_test', methods: ['POST'])]
-    #[Route('/admin/telegram/bots/{id}/test-connection', name: 'admin_telegram_bots_test', methods: ['POST'])]
     public function testConnection(string $id): JsonResponse
     {
-        $bot = $this->botRepository->findById($id);
-        if (null === $bot) {
+        $instance = $this->botRepository->findById($id);
+        if (null === $instance) {
             return $this->json(['ok' => false, 'error' => 'Channel instance not found'], Response::HTTP_NOT_FOUND);
         }
 
-        $channelType = (string) ($bot['channel_type'] ?? 'telegram');
+        $channelType = (string) ($instance['channel_type'] ?? 'telegram');
 
         try {
             $result = $this->channelManager->adminAction($channelType, $id, 'test-connection', [
-                'token' => $bot['bot_token'],
+                'token' => $instance['bot_token'],
             ]);
 
             return $this->json($result);
@@ -191,15 +184,14 @@ final class ChannelInstancesController extends AbstractController
     }
 
     #[Route('/admin/channels/instances/{id}/set-webhook', name: 'admin_channel_instances_set_webhook', methods: ['POST'])]
-    #[Route('/admin/telegram/bots/{id}/set-webhook', name: 'admin_telegram_bots_set_webhook', methods: ['POST'])]
     public function setWebhook(string $id, Request $request): JsonResponse
     {
-        $bot = $this->botRepository->findById($id);
-        if (null === $bot) {
+        $instance = $this->botRepository->findById($id);
+        if (null === $instance) {
             return $this->json(['ok' => false, 'error' => 'Channel instance not found'], Response::HTTP_NOT_FOUND);
         }
 
-        $channelType = (string) ($bot['channel_type'] ?? 'telegram');
+        $channelType = (string) ($instance['channel_type'] ?? 'telegram');
 
         $webhookUrl = $this->generateUrl(
             'api_webhook_channel',
@@ -209,9 +201,9 @@ final class ChannelInstancesController extends AbstractController
 
         try {
             $result = $this->channelManager->adminAction($channelType, $id, 'set-webhook', [
-                'token' => $bot['bot_token'],
+                'token' => $instance['bot_token'],
                 'url' => $webhookUrl,
-                'secret' => $bot['webhook_secret'] ?? null,
+                'secret' => $instance['webhook_secret'] ?? null,
             ]);
 
             if ($result['ok'] ?? false) {
@@ -225,19 +217,18 @@ final class ChannelInstancesController extends AbstractController
     }
 
     #[Route('/admin/channels/instances/{id}/webhook-info', name: 'admin_channel_instances_webhook_info', methods: ['GET'])]
-    #[Route('/admin/telegram/bots/{id}/webhook-info', name: 'admin_telegram_bots_webhook_info', methods: ['GET'])]
     public function webhookInfo(string $id): JsonResponse
     {
-        $bot = $this->botRepository->findById($id);
-        if (null === $bot) {
+        $instance = $this->botRepository->findById($id);
+        if (null === $instance) {
             return $this->json(['ok' => false, 'error' => 'Channel instance not found'], Response::HTTP_NOT_FOUND);
         }
 
-        $channelType = (string) ($bot['channel_type'] ?? 'telegram');
+        $channelType = (string) ($instance['channel_type'] ?? 'telegram');
 
         try {
             $result = $this->channelManager->adminAction($channelType, $id, 'webhook-info', [
-                'token' => $bot['bot_token'],
+                'token' => $instance['bot_token'],
             ]);
 
             return $this->json($result);
