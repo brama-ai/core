@@ -38,11 +38,11 @@ core:
     APP_ENV: prod
     AGENT_DISCOVERY_PROVIDER: auto
     LANGFUSE_ENABLED: "true"
-    LANGFUSE_BASE_URL: "https://langfuse.brama.example.com"
+    LANGFUSE_BASE_URL: "https://langfuse.brama.dev"
     EDGE_AUTH_COOKIE_NAME: ACP_EDGE_TOKEN
     EDGE_AUTH_TOKEN_TTL: "43200"
-    EDGE_AUTH_LOGIN_BASE_URL: "https://brama.example.com"
-    EDGE_AUTH_COOKIE_DOMAIN: ".brama.example.com"
+    EDGE_AUTH_LOGIN_BASE_URL: "https://brama.dev"
+    EDGE_AUTH_COOKIE_DOMAIN: ".brama.dev"
 
   # kubectl create secret generic core-secrets -n brama \
   #   --from-literal=APP_SECRET="..." \
@@ -263,10 +263,10 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
   hosts:
-    core: brama.example.com
-    langfuse: langfuse.brama.example.com
-    litellm: litellm.brama.example.com
-    openclaw: openclaw.brama.example.com
+    core: brama.dev
+    langfuse: langfuse.brama.dev
+    litellm: litellm.brama.dev
+    openclaw: openclaw.brama.dev
 
 # ---------------------------------------------------------------------------
 # Bundled sub-charts — all enabled for single-node k3s
